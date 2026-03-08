@@ -154,6 +154,8 @@ jobs:
           push: true
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
+          build-args: |
+            NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true
           tags: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:${{ needs.prepare.outputs.image_tag }}
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:latest
