@@ -106,6 +106,10 @@ configMap:
   # Das aktiviert EE-Code-Pfade (onyx.server.tenants etc.) die wir nicht haben.
   # Muss explizit auf "false" gesetzt werden.
   LICENSE_ENFORCEMENT_ENABLED: "false"
+  # --- VÖB Extension Framework ---
+  # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)
+  EXT_ENABLED: "true"
+  EXT_BRANDING_ENABLED: "true"
 
 # --- Image Pull Secret für StackIT Container Registry ---
 imagePullSecrets:
