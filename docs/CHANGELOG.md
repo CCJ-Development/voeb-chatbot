@@ -22,6 +22,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Feature Flag: `EXT_BRANDING_ENABLED` (AND-gated mit `EXT_ENABLED`)
   - Docker: `COPY ./ext /app/ext` in Dockerfile (ext-Code im Image), `main.py` Mount in `docker-compose.voeb.yml`
   - Docker: `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true` in `.env` (Build-Time, Web-Server Rebuild noetig)
+  - CI/CD: `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true` als Docker build-arg in `stackit-deploy.yml` (Next.js baut NEXT_PUBLIC_* zur Build-Zeit ein)
+  - Helm: `EXT_ENABLED` + `EXT_BRANDING_ENABLED` in `values-common.yaml` configMap (Backend Feature Flags)
+  - Deployment: DEV + TEST deployed und getestet (2026-03-08), Branding-Konfiguration funktional
   - `env.template` erweitert: Alle EXT_-Feature Flags dokumentiert
   - CORE #10 (AdminSidebar.tsx): "Upgrade Plan"/Billing ausgeblendet, "Branding"-Link unter Settings eingefuegt
   - `.claude/hooks/protect-onyx-files.sh` erweitert: 7 → 10 erlaubte Core-Dateien (CORE #8, #9, #10)

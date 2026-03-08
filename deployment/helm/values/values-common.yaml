@@ -107,6 +107,7 @@ configMap:
   # Muss explizit auf "false" gesetzt werden.
   LICENSE_ENFORCEMENT_ENABLED: "false"
   # "Powered by Onyx" im Header entfernen (Whitelabel)
+  # Hinweis: Auch als build-arg in stackit-deploy.yml definiert (Next.js NEXT_PUBLIC_* = Build-Zeit)
   NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED: "true"
   # --- VÖB Extension Framework ---
   # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)

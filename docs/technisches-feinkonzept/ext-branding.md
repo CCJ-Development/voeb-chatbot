@@ -18,6 +18,10 @@
 | Core-Patch CORE #9 (AuthFlowContainer.tsx) | Implementiert | Logo + Name Override, Patch generiert |
 | Unit-Tests (21 Tests) | Bestanden | Schema, Magic Bytes, Defaults, Constraints |
 | Docker-Integration | Verifiziert | Lokal getestet, alle Endpoints OK |
+| Helm Values (DEV/TEST) | Deployed | EXT_ENABLED + EXT_BRANDING_ENABLED in configMap |
+| CI/CD build-arg | Deployed | NEXT_PUBLIC_* als Docker build-arg in stackit-deploy.yml |
+| DEV Deployment | Getestet | http://188.34.74.187, Branding funktional (2026-03-08) |
+| TEST Deployment | Getestet | http://188.34.118.201, Branding funktional (2026-03-08) |
 | Admin-UI (Browser-Seite) | Implementiert | Route `/admin/ext-branding`, Sidebar-Link unter Settings |
 | Core-Patch CORE #10 (AdminSidebar.tsx) | Implementiert | Billing→Branding, Patch generiert |
 | Favicon | Offen | Nicht im Scope v1.0 (siehe "Nicht im Umfang") |
@@ -666,6 +670,32 @@ Zeile 23: `New to Onyx?` → `application_name` nutzen oder generisch "New here?
 
 > **Wichtig:** `EXT_BRANDING_ENABLED` muss BEIDEN Services zur Verfuegung stehen — dem Python-Backend (fuer Router-Registrierung) UND dem Next.js-Frontend (fuer das Flag in `constants.ts`).
 
+### Deployment-Hinweise (Lessons Learned, 2026-03-08)
+
+Bei der ersten Deployment-Runde auf DEV/TEST traten zwei Probleme auf, die fuer **alle zukuenftigen ext-Module relevant** sind:
+
+#### Problem 1: Feature Flags fehlten in Helm Values
+
+| | |
+|---|---|
+| **Symptom** | Admin-Sidebar zeigt "Upgrade Plan" statt "Branding", `/enterprise-settings` Endpoint gibt 404 |
+| **Ursache** | `EXT_ENABLED` und `EXT_BRANDING_ENABLED` waren nur in `deployment/docker_compose/.env` (lokal), nicht in `deployment/helm/values/values-common.yaml` (Kubernetes) |
+| **Auswirkung** | Backend: ext-Router nicht registriert. Frontend: `enterpriseSettings` ist `null` |
+| **Loesung** | Feature Flags in `values-common.yaml` unter `configMap:` ergaenzt |
+| **Regel fuer neue Module** | **Jedes neue `EXT_*` Flag muss in DREI Stellen gesetzt werden:** (1) `env.template`, (2) `.env`, (3) `values-common.yaml` |
+
+#### Problem 2: NEXT_PUBLIC_* ist Build-Zeit, nicht Runtime
+
+| | |
+|---|---|
+| **Symptom** | "Powered by Onyx" wird trotz `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true` in Helm configMap weiterhin angezeigt |
+| **Ursache** | Next.js ersetzt `process.env.NEXT_PUBLIC_*` waehrend `next build` (Compile-Zeit). Helm configMap setzt Werte erst zur Container-Laufzeit — da ist das JS-Bundle bereits gebaut. |
+| **Auswirkung** | Variable im Container vorhanden, aber im Browser-Bundle `undefined` |
+| **Loesung** | Variable als Docker `build-arg` in `.github/workflows/stackit-deploy.yml` (Frontend-Build-Step) ergaenzt. Das Dockerfile hat bereits `ARG NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED`. |
+| **Regel fuer neue Module** | **`NEXT_PUBLIC_*` Variablen muessen als `build-args:` im CI/CD Frontend-Build-Step uebergeben werden, NICHT nur als Helm configMap.** Helm configMap reicht nur fuer Backend-Variablen (Python `os.getenv()`). |
+
+> **Merksatz:** Backend-Flags → Helm configMap. Frontend-Flags (`NEXT_PUBLIC_*`) → Docker build-arg im CI/CD.
+
 ---
 
 ## Neue Dateien
@@ -1149,3 +1179,4 @@ Das Audit hat keine architektonischen Fehler oder Security-Blocker identifiziert
 |---------|-------|-------|-----------|
 | 0.1 | 2026-03-08 | Claude (Entwurf) | Initialer Entwurf nach Tiefenanalyse |
 | 0.2 | 2026-03-08 | Claude (Entwurf) | OPEN-1/6/7 geklaert, Branding-Audit (alle "Onyx"-Stellen), OPEN-8/9 hinzugefuegt, SVG ausgeschlossen |
+| 1.0 | 2026-03-08 | Claude | Implementiert, DEV/TEST deployed. Deployment-Hinweise (Lessons Learned) ergaenzt. |
