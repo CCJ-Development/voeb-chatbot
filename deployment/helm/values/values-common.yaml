@@ -106,6 +106,8 @@ configMap:
   # Das aktiviert EE-Code-Pfade (onyx.server.tenants etc.) die wir nicht haben.
   # Muss explizit auf "false" gesetzt werden.
   LICENSE_ENFORCEMENT_ENABLED: "false"
+  # "Powered by Onyx" im Header entfernen (Whitelabel)
+  NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED: "true"
   # --- VÖB Extension Framework ---
   # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)
   EXT_ENABLED: "true"
