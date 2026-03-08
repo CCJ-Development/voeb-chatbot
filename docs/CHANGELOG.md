@@ -9,6 +9,25 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Feature] **Phase 4b: ext-branding — Whitelabel Module** (2026-03-08)
+  - Backend: REST-API fuer Branding-Konfiguration (5 Endpoints: GET/PUT Config + Logo)
+  - Datenbank: `ext_branding_config` Tabelle (Alembic Migration `ff7273065d0d`)
+  - Konfigurierbar zur Laufzeit: App-Name, Logo (PNG/JPEG, max 2MB), Login-Text, Greeting, Disclaimer, Popup, Consent Screen
+  - Core-Patches: CORE #6 (constants.ts, 1 Zeile), CORE #8 (LoginText.tsx), CORE #9 (AuthFlowContainer.tsx)
+  - Public Endpoints ohne Auth (Login-Seite braucht Branding vor Login)
+  - FOSS-Frontend liest automatisch von `/enterprise-settings` — kein Frontend-Patch fuer Logo/Sidebar noetig
+  - "Powered by Onyx" entfernt via `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true`
+  - 21 Unit-Tests (Schema-Validierung, Magic-Byte-Detection, Defaults, Logo-Constraints) — alle bestanden
+  - Endpoint-Tests: 5/5 funktional, 3/3 Validierung, 2/2 Routing (direkt + nginx)
+  - Feature Flag: `EXT_BRANDING_ENABLED` (AND-gated mit `EXT_ENABLED`)
+  - Docker: `COPY ./ext /app/ext` in Dockerfile (ext-Code im Image), `main.py` Mount in `docker-compose.voeb.yml`
+  - Docker: `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true` in `.env` (Build-Time, Web-Server Rebuild noetig)
+  - `env.template` erweitert: Alle EXT_-Feature Flags dokumentiert
+  - CORE #10 (AdminSidebar.tsx): "Upgrade Plan"/Billing ausgeblendet, "Branding"-Link unter Settings eingefuegt
+  - `.claude/hooks/protect-onyx-files.sh` erweitert: 7 → 10 erlaubte Core-Dateien (CORE #8, #9, #10)
+  - 8 Core-Originals + Patches in `backend/ext/_core_originals/` (4 Paare: constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx)
+  - Admin-UI Route aktiv unter `/admin/ext-branding` (Sidebar-Link + Next.js App Router)
+  - Modulspezifikation: `docs/technisches-feinkonzept/ext-branding.md` v1.0
 - [Infra] **Kubernetes v1.32 → v1.33 Upgrade** (2026-03-08)
   - Terraform apply erfolgreich (9m40s), 0 added, 1 changed, 0 destroyed
   - Nodes: v1.33.8, Flatcar 4459.2.1 (beide supported, vorherige Versionen deprecated)
@@ -294,7 +313,8 @@ docs/
 ├── entra-id-kundenfragen.md                     (Entra ID Fragenkatalog)
 ├── technisches-feinkonzept/
 │   ├── template-modulspezifikation.md           (Template)
-│   └── ext-framework.md                         (Extension Framework Spec)
+│   ├── ext-framework.md                         (Extension Framework Spec)
+│   └── ext-branding.md                          (Whitelabel Branding Spec)
 ├── adr/
 │   ├── adr-001-onyx-foss-als-basis.md           (Platform Choice)
 │   ├── adr-002-extension-architektur.md         (Extension Architecture)
@@ -358,6 +378,6 @@ Bei Fragen zur Dokumentation:
 
 ---
 
-**Letzte Aktualisierung**: 2026-03-07
+**Letzte Aktualisierung**: 2026-03-08
 **Wartete durch**: [AUSSTEHEND]
 **Nächste Überprüfung**: [AUSSTEHEND]

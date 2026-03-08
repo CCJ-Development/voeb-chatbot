@@ -53,12 +53,15 @@ git push origin feature/{thema}
 
 ## PR-Workflow
 ```bash
-# PR erstellen
-gh pr create --base main --title "<type>(<scope>): <Beschreibung>" --body "..."
+# PR erstellen — IMMER -R Flag angeben (sonst geht PR an upstream/onyx-foss!)
+gh pr create --base main -R CCJ-Development/voeb-chatbot \
+  --title "<type>(<scope>): <Beschreibung>" --body "..."
 
 # Nach Nikos Freigabe: Merge
-gh pr merge <PR-NR> --squash --delete-branch
+gh pr merge <PR-NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
 ```
+
+> **WICHTIG:** Ohne `-R CCJ-Development/voeb-chatbot` erstellt `gh` den PR gegen das Parent-Repo (onyx-foss), nicht gegen unseren Fork. Das ist ein bekanntes `gh`-CLI-Verhalten bei Forks.
 
 ---
 
