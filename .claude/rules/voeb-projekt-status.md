@@ -35,8 +35,8 @@
   - ✅ DNS: A-Records gesetzt (2026-03-05): `dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`
   - ✅ DNS: Cloudflare Proxy auf DNS-only umgestellt und verifiziert (2026-03-05)
   - ⏳ TLS/HTTPS: Blockiert — DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen. Token-Fix erledigt, ClusterIssuers READY. HTTP-01 nicht moeglich (Onyx Chart containerPort 1024). Details: docs/runbooks/dns-tls-setup.md
-  - ✅ LLM: GPT-OSS 120B + Qwen3-VL 235B via StackIT AI Model Serving (2026-02-27)
-  - ✅ LLM: Embedding-Blocker aufgehoben (Upstream PR #9005 — Search Settings Swap re-enabled). nomic-embed-text-v1 noch aktiv, Wechsel auf Qwen3-VL-Embedding 8B jetzt moeglich ueber Admin-UI.
+  - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
+  - ✅ Embedding DEV: nomic-embed-text-v1 (self-hosted). Wechsel auf Qwen3-VL-Embedding 8B steht aus.
   - 📋 Scope: DEV live, TEST live.
 - **Phase 2 TEST:** ✅ **TEST LIVE** (2026-03-03)
   - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
@@ -49,12 +49,12 @@
   - ✅ Eigene IngressClass `nginx-test` (Conflict mit DEV vermieden)
   - ✅ values-test.yaml Commit + Push (2026-03-03)
   - ✅ CI/CD workflow_dispatch TEST verifiziert — Build + Deploy grün (2026-03-03)
-  - ✅ LLM: GPT-OSS 120B + Qwen3-VL 235B in TEST konfiguriert (2026-03-03)
+  - ✅ LLM: 4 Chat-Modelle in TEST konfiguriert (GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1) (2026-03-08)
   - ✅ Enterprise-Dokumentation überarbeitet: Betriebskonzept, Sicherheitskonzept, Meilensteinplan, ADR-004, README, CHANGELOG (2026-03-03)
   - ✅ Upstream-Merge: 415 Commits von onyx-foss, 0 Core-Konflikte, DEV grün (2026-03-03)
   - ✅ DNS/TLS-Runbook erstellt (docs/runbooks/dns-tls-setup.md)
   - ✅ Fork-Management Doku überarbeitet (8-Schritte-Anleitung)
-  - ✅ LLM: Embedding-Blocker aufgehoben (Upstream PR #9005). Wechsel auf Qwen3-VL-Embedding 8B jetzt moeglich.
+  - ✅ Embedding TEST: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-08, 4096 Dim, multilingual). DEV: nomic-embed-text-v1 (self-hosted).
   - ✅ DNS: A-Records gesetzt + Cloudflare DNS-only verifiziert (2026-03-05)
   - ⏳ TLS/HTTPS: Blockiert — DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen. Token-Fix erledigt, ClusterIssuers READY. HTTP-01 nicht moeglich (Onyx Chart containerPort 1024). Details: docs/runbooks/dns-tls-setup.md
   - ✅ Cloud-Infrastruktur-Audit durchgeführt (2026-03-04): 10 CRITICAL, 18 HIGH, ~20 MEDIUM, ~12 LOW
@@ -80,7 +80,7 @@
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. Extension-Module starten: ext-branding → ext-token → ext-prompts → ext-analytics (alle unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 2. TLS aktivieren (Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen, Details: docs/runbooks/dns-tls-setup.md) → 3. M1-Abnahmeprotokoll ausfuellen → 4. Entra ID (wartet auf VÖB) → 5. Embedding auf Qwen3-VL (Blocker aufgehoben, via Admin-UI) → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
+**1. Extension-Module: ext-token → ext-prompts → ext-analytics (alle unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 2. TLS aktivieren (Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen, Details: docs/runbooks/dns-tls-setup.md) → 3. M1-Abnahmeprotokoll ausfuellen → 4. Entra ID (wartet auf VÖB) → 5. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
