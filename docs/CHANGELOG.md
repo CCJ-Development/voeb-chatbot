@@ -31,6 +31,13 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - 8 Core-Originals + Patches in `backend/ext/_core_originals/` (4 Paare: constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx)
   - Admin-UI Route aktiv unter `/admin/ext-branding` (Sidebar-Link + Next.js App Router)
   - Modulspezifikation: `docs/technisches-feinkonzept/ext-branding.md` v1.0
+- [Config] **LLM-Modelle: 4 Chat-Modelle + Embedding-Wechsel auf TEST** (2026-03-08)
+  - Chat: 4 Modelle in 1 Provider konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B)
+  - Model-IDs mit StackIT-Doku verifiziert (3 Korrekturen: Llama 3.3, Mistral-Nemo, Llama 3.1 neu)
+  - Embedding TEST: Wechsel von nomic-embed-text-v1 auf `Qwen/Qwen3-VL-Embedding-8B` (4096 Dim, multilingual)
+  - Embedding DEV: nomic-embed-text-v1 weiterhin aktiv
+  - Nicht kompatibel mit Onyx: Gemma 3 27B + Mistral-Nemo 12B (kein Tool Calling auf StackIT vLLM)
+  - Runbook aktualisiert: `docs/runbooks/llm-konfiguration.md`
 - [Infra] **Kubernetes v1.32 → v1.33 Upgrade** (2026-03-08)
   - Terraform apply erfolgreich (9m40s), 0 added, 1 changed, 0 destroyed
   - Nodes: v1.33.8, Flatcar 4459.2.1 (beide supported, vorherige Versionen deprecated)

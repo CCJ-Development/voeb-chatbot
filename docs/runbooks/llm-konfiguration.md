@@ -1,6 +1,6 @@
 # Runbook: LLM- und Embedding-Konfiguration
 
-**Zuletzt verifiziert:** 2026-03-04
+**Zuletzt verifiziert:** 2026-03-08
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -26,19 +26,25 @@
 
 ### Verfuegbare Modelle (Stand Maerz 2026)
 
-#### Chat-Modelle
+#### Chat-Modelle — Kompatibel mit Onyx
 
-| Modell | Model ID | Kontext | Preis (Input/Output) |
-|--------|----------|---------|----------------------|
-| GPT-OSS 120B | `openai/gpt-oss-120b` | 131K Tokens | 0,45 / 0,65 EUR pro 1M Tokens |
-| Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | 218K Tokens | 0,45 / 0,65 EUR pro 1M Tokens |
-| Llama 3.3 70B | `meta-llama/Llama-3.3-70B-Instruct` | 128K Tokens | — |
+| Modell | Model ID | Kontext | Tool Calling | Status |
+|--------|----------|---------|-------------|--------|
+| GPT-OSS 120B | `openai/gpt-oss-120b` | 131K | ✅ | ✅ Verifiziert (DEV + TEST) |
+| Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | 218K | ✅ | ✅ Verifiziert (DEV + TEST) |
+| Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
+| Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
 
-> **TODO (H3):** Model-ID muss mit StackIT verifiziert werden. Im [Implementierungsplan](../referenz/stackit-implementierungsplan.md) steht `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` (FP8-Quantisierung). Korrekte ID bei StackIT prüfen und hier vereinheitlichen.
-| Gemma 3 27B | `google/gemma-3-27b-it` | — | — |
-| Mistral-Nemo 12B | `mistralai/Mistral-Nemo-Instruct-2407` | — | — |
+#### Chat-Modelle — NICHT kompatibel mit Onyx
 
-> **Hinweis:** In Onyx muss der Provider Name IMMER `openai` sein — unabhaengig vom tatsaechlichen Modell.
+| Modell | Model ID | Kontext | Tool Calling | Problem |
+|--------|----------|---------|-------------|---------|
+| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | ❌ | vLLM-Instanz hat `--enable-auto-tool-choice` nicht aktiviert |
+| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | ❌ | vLLM-Instanz hat `--enable-auto-tool-choice` nicht aktiviert |
+
+> **Warum Gemma und Mistral-Nemo nicht funktionieren:** Onyx sendet bei jedem Chat-Request `tool_choice: "auto"` (fuer Suche, Actions, Agents). StackIT hat fuer diese Modelle kein Tool Calling auf der vLLM-Instanz aktiviert. Das fuehrt zu HTTP 400: `"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set`. Dies ist eine serverseitige StackIT-Limitation, die wir nicht beeinflussen koennen. `drop_params: True` in LiteLLM Custom Configs wurde getestet, wird aber von Onyx nicht korrekt weitergereicht.
+
+> **Hinweis:** In Onyx muss der Provider Name IMMER `openai` sein — unabhaengig vom tatsaechlichen Modell. Alle kompatiblen Modelle koennen in einem einzigen Provider konfiguriert werden (gleicher API Key + API Base, mehrere Model Configurations).
 
 #### Embedding-Modelle
 
@@ -67,30 +73,27 @@ Der StackIT AI Model Serving Token wird im StackIT Portal erstellt:
 2. **Add Provider** → **Custom Models** → "Set Up"
 3. Felder ausfuellen:
 
-| Feld | Wert (Beispiel: GPT-OSS 120B) |
-|------|-------------------------------|
-| Display Name | `StackIT - GPT-OSS` |
+| Feld | Wert |
+|------|------|
+| Display Name | `StackIT` |
 | Provider | `openai` |
 | API Key | StackIT AI Model Serving Token |
 | API Base URL | `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1` |
-| Model Names | `openai/gpt-oss-120b` |
-| Default Model | `openai/gpt-oss-120b` |
 
-4. **Submit** → Provider erscheint unter "Available Providers"
-5. **Default Model** Dropdown (oben) → auf das gewuenschte Modell setzen
+4. Unter **Model Configurations** alle kompatiblen Modelle hinzufuegen ("+ Add New"):
 
-### Zweites Chat-Modell hinzufuegen
+| Model Name | Max Input Tokens |
+|------------|-----------------|
+| `openai/gpt-oss-120b` | 130048 |
+| `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | 218000 |
+| `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128000 |
+| `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128000 |
 
-Neuen Provider mit anderem Display Name anlegen (gleiche API Base + Key):
+5. **Default Model** auf `openai/gpt-oss-120b` setzen
+6. **Submit** → Provider erscheint unter "Available Providers"
+7. **Default Model** Dropdown (ganz oben) → auf das gewuenschte Modell setzen
 
-| Feld | Wert (Beispiel: Qwen3-VL) |
-|------|---------------------------|
-| Display Name | `StackIT - Qwen3-VL` |
-| Provider | `openai` |
-| API Key | Gleicher Token |
-| API Base URL | Gleiche URL |
-| Model Names | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` |
-| Default Model | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` |
+> **Alle 4 Modelle in einem Provider:** Gleicher API Key, gleiche API Base. Nutzer koennen pro Chat zwischen den Modellen waehlen.
 
 ### Validierung
 
@@ -106,11 +109,13 @@ curl -s http://<IP>/api/health | jq .
 
 ## 3. Embedding-Modell konfigurieren
 
-### Aktueller Status (Stand Maerz 2026)
+### Aktueller Status (Stand 2026-03-08)
 
-> **UPDATE (2026-03-06):** Das Wechseln des Embedding-Modells ueber die Admin-UI ist seit [PR #9005](https://github.com/onyx-dot-app/onyx/pull/9005) wieder moeglich (Search Settings Swap re-enabled). Die fruehere Sperre ([PR #7541](https://github.com/onyx-dot-app/onyx/pull/7541)) wurde durch den Upstream-Merge vom 2026-03-06 aufgehoben.
+> **TEST:** `Qwen/Qwen3-VL-Embedding-8B` aktiv (umgestellt 2026-03-08). 4096 Dimensionen, LiteLLM Provider, float Precision.
 >
-> **Aktuell aktiv:** `nomic-ai/nomic-embed-text-v1` (self-hosted, laeuft auf dem Model Server im Cluster). Wechsel auf Qwen3-VL-Embedding 8B ist jetzt moeglich — siehe Ziel-Konfiguration unten.
+> **DEV:** `nomic-ai/nomic-embed-text-v1` (self-hosted, Model Server). Wechsel auf Qwen3-VL-Embedding 8B steht noch aus.
+>
+> **Hintergrund:** Das Wechseln des Embedding-Modells ueber die Admin-UI ist seit [PR #9005](https://github.com/onyx-dot-app/onyx/pull/9005) wieder moeglich (Search Settings Swap re-enabled, 2026-03-06).
 
 ### Ziel-Konfiguration
 
@@ -234,12 +239,26 @@ Diese Fehlermeldung tritt auf, wenn ein aelteres Onyx-Release verwendet wird, da
 - Sicherstellen, dass das aktuelle Image deployed ist (nach 2026-03-06)
 - Falls die Meldung weiterhin erscheint: Upstream-Merge pruefen, ggf. neues Deployment ausloesen
 
+### "auto" tool choice requires --enable-auto-tool-choice
+
+**Fehlermeldung:** `"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set`
+
+**Ursache:** Das Modell hat kein Tool Calling auf der StackIT vLLM-Instanz aktiviert. Onyx sendet `tool_choice: "auto"` bei jedem Chat-Request, was vom vLLM-Backend abgelehnt wird.
+
+**Betroffene Modelle (Stand 2026-03-08):** `google/gemma-3-27b-it`, `neuralmagic/Mistral-Nemo-Instruct-2407-FP8`
+
+**Getestete Workarounds:**
+- `drop_params: True` in LiteLLM Custom Configs → wird von Onyx nicht korrekt an LiteLLM weitergereicht
+- Separater Provider mit `drop_params` → gleicher Fehler
+
+**Loesung:** Diese Modelle koennen aktuell nicht mit Onyx verwendet werden. Nur Modelle mit Tool-Calling-Support nutzen (siehe Kompatibilitaetstabelle oben).
+
 ### Rate Limits (StackIT)
 
 | Limit | Wert |
 |-------|------|
-| Chat: Tokens pro Minute | 200.000 TPM |
-| Chat: Requests pro Minute | 600 RPM |
+| Chat: Tokens pro Minute | 200.000 TPM (alle Modelle) |
+| Chat: Requests pro Minute | 80 RPM (30 RPM fuer GPT-OSS) |
 | Embedding: Tokens pro Minute | 200.000 TPM |
 | Embedding: Requests pro Minute | 600 RPM |
 
@@ -252,9 +271,10 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 | Feld | DEV | TEST | PROD |
 |------|-----|------|------|
 | URL | `http://188.34.74.187` | `http://188.34.118.201` | TBD |
+| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | TBD |
 | Chat Default | GPT-OSS 120B | GPT-OSS 120B | TBD |
-| Embedding | nomic-embed-text-v1 (self-hosted) | nomic-embed-text-v1 (self-hosted) | TBD |
-| Embedding (Ziel) | Qwen3-VL-Embedding 8B (StackIT) | Qwen3-VL-Embedding 8B (StackIT) | TBD |
+| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | TBD |
+| Embedding | nomic-embed-text-v1 (self-hosted) | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | TBD |
 
 > **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
 

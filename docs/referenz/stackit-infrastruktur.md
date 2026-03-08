@@ -87,12 +87,14 @@
 
 | Modell | StackIT Model ID | Verwendung | Status |
 |--------|------------------|------------|--------|
-| GPT-OSS 120B | `openai/gpt-oss-120b` | Chat-Antworten (primär) | ✅ Verifiziert (DEV + TEST) |
-| Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | Chat + Vision/OCR | ✅ Verifiziert (DEV + TEST) |
-| nomic-embed-text-v1 | `nomic-ai/nomic-embed-text-v1` | Embedding / Vektor-Suche (aktiver Fallback, self-hosted auf Model Server) | ✅ Aktiv |
-| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding / Vektor-Suche (multilingual, 32k Context) | ⏳ Geplant (Blocker aufgehoben, Upstream PR #9005 — Search Settings Swap re-enabled) |
+| GPT-OSS 120B | `openai/gpt-oss-120b` | Chat (primaer), 131K Kontext | ✅ Verifiziert (DEV + TEST) |
+| Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | Chat + Vision/OCR, 218K Kontext | ✅ Verifiziert (DEV + TEST) |
+| Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | Chat, 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
+| Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | Chat (leichtgewichtig), 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
+| nomic-embed-text-v1 | `nomic-ai/nomic-embed-text-v1` | Embedding (self-hosted auf Model Server) | ✅ Aktiv |
+| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding (multilingual, 32k Context) | ⏳ Geplant |
 
-**Weitere verfuegbare Modelle (Fallback):** Llama 3.3 70B, Gemma 3 27B, Mistral-Nemo 12B, Llama 3.1 8B
+**Nicht kompatibel mit Onyx** (kein Tool Calling auf StackIT vLLM): `google/gemma-3-27b-it` (Gemma 3 27B), `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` (Mistral-Nemo 12B). Details: [LLM-Runbook](../runbooks/llm-konfiguration.md#chat-modelle--nicht-kompatibel-mit-onyx).
 
 **Wichtig:** LLM laeuft auf StackIT AI Model Serving (OpenAI-kompatible API, vLLM-Backend) — kein OpenAI, keine Daten verlassen Deutschland.
 
