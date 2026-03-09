@@ -63,8 +63,9 @@ configMap:
   # 2. kubectl get svc -n onyx-test → EXTERNAL-IP notieren
   # 3. Hier eintragen, committen, erneut deployen
   # Ohne korrekte IP schlägt der CI/CD Smoke Test fehl!
-  DOMAIN: "188.34.118.201"
-  WEB_DOMAIN: "http://188.34.118.201"
+  # Domain + TLS (Let's Encrypt ECDSA P-384, cert-manager DNS-01 via Cloudflare)
+  DOMAIN: "test.chatbot.voeb-service.de"
+  WEB_DOMAIN: "https://test.chatbot.voeb-service.de"
 
   # Auth: Basic Auth (Entra ID kommt in Phase 3)
   AUTH_TYPE: "basic"
@@ -172,7 +173,16 @@ nginx:
 
 # --- TLS ---
 letsencrypt:
-  enabled: false  # TEST: Kein TLS bis DNS verfügbar
+  enabled: false  # Eigener ClusterIssuer (DNS-01 via Cloudflare), nicht Chart-eigener (HTTP-01)
+
+# --- Ingress: HTTPS via NGINX Ingress Controller (IngressClass nginx-test) ---
+ingress:
+  enabled: true
+  className: "nginx-test"
+  api:
+    host: "test.chatbot.voeb-service.de"
+  webserver:
+    host: "test.chatbot.voeb-service.de"
 
 # --- Backend API: 1 Replica ---
 api:

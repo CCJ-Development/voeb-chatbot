@@ -53,9 +53,9 @@ configMap:
   S3_ENDPOINT_URL: "https://object.storage.eu01.onstackit.cloud"
   S3_FILE_STORE_BUCKET_NAME: "vob-dev"
 
-  # Domain (IP solange kein DNS/TLS — nach DNS-Setup auf FQDN + HTTPS ändern)
-  DOMAIN: "188.34.74.187"
-  WEB_DOMAIN: "http://188.34.74.187"
+  # Domain + TLS (Let's Encrypt ECDSA P-384, cert-manager DNS-01 via Cloudflare)
+  DOMAIN: "dev.chatbot.voeb-service.de"
+  WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 
   # Auth: Basic Auth (Entra ID kommt in Phase 3)
   AUTH_TYPE: "basic"
@@ -150,7 +150,16 @@ celery_worker_user_file_processing:
 
 # --- TLS ---
 letsencrypt:
-  enabled: false  # DEV: Erstmal ohne TLS starten, später aktivieren
+  enabled: false  # Eigener ClusterIssuer (DNS-01 via Cloudflare), nicht Chart-eigener (HTTP-01)
+
+# --- Ingress: HTTPS via NGINX Ingress Controller ---
+ingress:
+  enabled: true
+  className: "nginx"
+  api:
+    host: "dev.chatbot.voeb-service.de"
+  webserver:
+    host: "dev.chatbot.voeb-service.de"
 
 # --- Backend API: 1 Replica ---
 api:
