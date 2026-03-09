@@ -8,13 +8,14 @@
 
 **Kein `develop`-Branch.** `main` ist der einzige langlebige Branch.
 
-- `main` ← Integrationsbranch, auto-deploy DEV, Upstream-Merges via Branch+PR
-- `feature/*` ← Feature-Branches von main, PR zurück nach main
+- `main` ← Integrationsbranch, auto-deploy DEV
+- `feature/*` ← Feature-Branches von main, lokal merge zurück nach main (kein PR)
+- `chore/upstream-sync-*` ← Upstream-Merges via Branch+PR (Ausnahme: Diff-Inspektion)
 - `release/*` ← Geschnitten von main wenn TEST/PROD-ready
 
 ### Promotion-Modell
 ```
-feature/* → PR → main → auto-deploy DEV
+feature/* → local merge → main → push → auto-deploy DEV
                   │
                   └→ release/1.0 → workflow_dispatch → TEST
                           │
@@ -69,7 +70,7 @@ git worktree remove .claude/worktrees/upstream-test
 
 ### 3. Merge-Branch erstellen + Merge durchführen
 ```bash
-# Branch erstellen (Branch Protection verbietet Direct Push auf main)
+# Upstream-Syncs nutzen weiterhin Branch+PR (Diff-Inspektion bei grossen Merges)
 git checkout -b chore/upstream-sync-YYYY-MM-DD
 
 # Merge durchführen
@@ -126,7 +127,7 @@ grep "repository:" deployment/helm/charts/onyx/Chart.yaml
 # Fehlende Repos in ALLEN 3 Deploy-Jobs (dev, test, prod) ergänzen
 ```
 
-### 7. PR erstellen und mergen
+### 7. PR erstellen und mergen (nur für Upstream-Syncs)
 ```bash
 git commit -m "chore(upstream): Merge upstream/main — <N> Commits"
 git push origin chore/upstream-sync-YYYY-MM-DD
@@ -136,12 +137,12 @@ gh pr create --base main -R CCJ-Development/voeb-chatbot \
   --title "chore(upstream): Merge upstream/main — <N> Commits" \
   --body "Upstream-Sync: <N> Commits, <X> Konflikte"
 
-# Nach CI-Checks + Review: Merge
+# Nach CI-Checks: Merge
 gh pr merge <PR-NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
 ```
 
-> **Hinweis:** Direct Push auf main ist durch Branch Protection blockiert.
-> PRs muessen 3 CI-Checks bestehen: helm-validate, build-backend, build-frontend.
+> **Warum PR nur für Upstream-Syncs?** Upstream-Merges bringen hunderte fremde Commits — der PR-Diff zeigt Konflikte und unerwartete Änderungen bevor sie auf main landen. Für eigene Feature-Branches ist das nicht nötig (Solo-Dev, lokaler Merge reicht).
+> CI-Checks (helm-validate, build-backend, build-frontend) laufen auf Push-to-main.
 
 ### 8. TEST nach erfolgreichem DEV
 ```bash
