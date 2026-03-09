@@ -4,7 +4,7 @@
 > **Autor:** Nikolaj Ivanov (CCJ / Coffee Studios)
 > **Status:** DEV + TEST angewendet (2026-03-05)
 > **Audit-Referenz:** C5 (CRITICAL) + SEC-03 (P1) aus `cloud-infrastruktur-audit-2026-03-04.md`
-> **Cluster:** StackIT SKE, K8s v1.32.12, Region EU01 Frankfurt
+> **Cluster:** StackIT SKE, K8s v1.33.8 (erstellt auf v1.32.12, upgraded 2026-03-08), Region EU01 Frankfurt
 
 ---
 

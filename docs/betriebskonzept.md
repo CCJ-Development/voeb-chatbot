@@ -28,7 +28,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │ Internet / Benutzer                                               │
 └───────────────────────────┬───────────────────────────────────────┘
                             │
-                            ↓ HTTP (TLS blockiert — wartet auf ACME-Challenge CNAMEs bei GlobVill)
+                            ↓ HTTPS (TLSv1.3 — Let's Encrypt ECDSA P-384, cert-manager DNS-01)
 
 ┌───────────────────────────────────────────────────────────────────┐
 │ StackIT Cloud -- Region EU01 (Frankfurt)                          │
@@ -842,7 +842,7 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 | ID | Maßnahme | Priorität | Status |
 |----|----------|-----------|--------|
 | OPS-01 | Cluster API ACL einschränken | P1 | Vor PROD |
-| OPS-02 | TLS/HTTPS aktivieren | P1 | Nach DNS-Setup |
+| OPS-02 | TLS/HTTPS aktivieren | P1 | ✅ ERLEDIGT (2026-03-09) — DEV + TEST HTTPS LIVE |
 | OPS-03 | Image Scanning (Trivy/Snyk in CI/CD) | P2 | Vor Abnahme |
 | OPS-04 | Audit Logging (zentralisiert) | P2 | Vor Abnahme |
 
@@ -862,7 +862,7 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 | 2 | [StackIT PostgreSQL](./runbooks/stackit-postgresql.md) | Verifiziert | DB anlegen, Readonly-User, Managed PG Einschränkungen |
 | 3 | [Helm Deploy](./runbooks/helm-deploy.md) | Verifiziert | Helm Install/Upgrade, Secrets, Redis, Troubleshooting |
 | 4 | [CI/CD Pipeline](./runbooks/ci-cd-pipeline.md) | Verifiziert | Deploy, Rollback, Secrets, Troubleshooting |
-| 5 | [DNS/TLS Setup](./runbooks/dns-tls-setup.md) | Blockiert (DNS-Architektur, wartet auf ACME-Challenge CNAMEs) | cert-manager, Let's Encrypt, Cloudflare DNS-01, BSI-konform |
+| 5 | [DNS/TLS Setup](./runbooks/dns-tls-setup.md) | ✅ Verifiziert (LIVE seit 2026-03-09) | cert-manager, Let's Encrypt, Cloudflare DNS-01, BSI-konform |
 | 6 | [LLM-Konfiguration](./runbooks/llm-konfiguration.md) | Verifiziert | StackIT AI Model Serving, Embedding, Admin UI Setup |
 | 7 | [Rollback-Verfahren](./runbooks/rollback-verfahren.md) | Verifiziert | Entscheidungsbaum, Helm/DB-Rollback, Kommunikation, Post-Mortem |
 

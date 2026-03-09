@@ -62,3 +62,12 @@ def register_ext_routers(application: FastAPI) -> None:
 
         include_router_with_global_prefix_prepended(application, token_router)
         logger.info("Extension token router registered")
+
+    # ext-prompts: Custom System Prompts
+    from ext.config import EXT_CUSTOM_PROMPTS_ENABLED
+
+    if EXT_CUSTOM_PROMPTS_ENABLED:
+        from ext.routers.prompts import router as prompts_router
+
+        include_router_with_global_prefix_prepended(application, prompts_router)
+        logger.info("Extension prompts router registered")

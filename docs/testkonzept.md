@@ -85,7 +85,7 @@ Die Testing-Strategie orientiert sich an der Onyx-Codebase und erweitert diese u
 #### 5. User Acceptance Testing (UAT) — Stakeholder
 - **Ziel**: Auftraggeber verifiziert Anforderungen erfüllt
 - **Scope**: Manuell durch VÖB-Tester
-- **Umgebung**: TEST-Umgebung (`onyx-test`, `http://188.34.118.201`)
+- **Umgebung**: TEST-Umgebung (`onyx-test`, `https://test.chatbot.voeb-service.de`)
 - **Automatisiert**: Nein, manuell
 - **Erfolgskriterium**: Abnahmekriterien erfüllt (siehe Abnahmekriterien-Tabelle)
 
@@ -142,7 +142,7 @@ PROD (geplant, eigener SKE-Cluster)       ← Manuell + GitHub Environment Appro
 - **Pods**: 16 Pods Running (API Server, Background, Web Server, Model Server, Vespa, Redis, Nginx)
 - **Datenbank**: PostgreSQL Flex `vob-dev` (2 CPU, 4 GB RAM, Single)
 - **Object Storage**: Bucket `vob-dev`
-- **Zugriff**: `http://188.34.74.187` (DNS + TLS ausstehend)
+- **Zugriff**: `https://dev.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
 - **Authentifizierung**: `AUTH_TYPE: basic` (Entra ID ausstehend, blockiert durch VÖB)
 - **LLM**: GPT-OSS 120B + Qwen3-VL 235B via StackIT AI Model Serving
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-dev.yaml`
@@ -156,7 +156,7 @@ PROD (geplant, eigener SKE-Cluster)       ← Manuell + GitHub Environment Appro
 - **Pods**: 15 Pods Running
 - **Datenbank**: PostgreSQL Flex `vob-test` (2 CPU, 4 GB RAM, Single) — eigene Instanz, isoliert von DEV
 - **Object Storage**: Bucket `vob-test` — eigene Credentials
-- **Zugriff**: `http://188.34.118.201` (DNS + TLS ausstehend)
+- **Zugriff**: `https://test.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
 - **IngressClass**: `nginx-test` (eigene IngressClass, Konflikt mit DEV vermieden)
 - **LLM**: GPT-OSS 120B + Qwen3-VL 235B konfiguriert
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-test.yaml`

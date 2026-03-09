@@ -63,6 +63,7 @@ configMap:
 
   # VÖB Extension Framework (EXT_ENABLED + EXT_BRANDING_ENABLED in values-common.yaml)
   EXT_TOKEN_LIMITS_ENABLED: "true"
+  EXT_CUSTOM_PROMPTS_ENABLED: "true"
 
   # Logging
   LOG_LEVEL: "INFO"

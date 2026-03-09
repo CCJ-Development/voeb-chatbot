@@ -91,7 +91,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 6: main.py, multi_llm.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx):
+Fuer JEDE gepatchte Core-Datei (aktuell 7: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx):
 
 ```bash
 # Beispiel Backend-Datei:
@@ -131,12 +131,13 @@ grep "repository:" deployment/helm/charts/onyx/Chart.yaml
 git commit -m "chore(upstream): Merge upstream/main — <N> Commits"
 git push origin chore/upstream-sync-YYYY-MM-DD
 
-# PR erstellen
-gh pr create --base main --title "chore(upstream): Merge upstream/main — <N> Commits" \
+# PR erstellen — IMMER -R Flag (sonst geht PR an upstream/onyx-foss!)
+gh pr create --base main -R CCJ-Development/voeb-chatbot \
+  --title "chore(upstream): Merge upstream/main — <N> Commits" \
   --body "Upstream-Sync: <N> Commits, <X> Konflikte"
 
 # Nach CI-Checks + Review: Merge
-gh pr merge <PR-NR> --squash --delete-branch
+gh pr merge <PR-NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
 ```
 
 > **Hinweis:** Direct Push auf main ist durch Branch Protection blockiert.
@@ -194,7 +195,7 @@ git checkout --theirs backend/Dockerfile
 
 ### `deployment/docker_compose/env.template` (seit Phase 4b)
 
-25 Zeilen am Dateiende: VÖB Extension Framework Feature Flags.
+27 Zeilen am Dateiende: VÖB Extension Framework Feature Flags.
 
 **Bei Upstream-Konflikt:**
 ```bash
@@ -205,9 +206,22 @@ git checkout --theirs deployment/docker_compose/env.template
 
 **Risiko:** Niedrig — Appends am Dateiende mergen fast immer automatisch.
 
-### `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10, seit ext-branding + ext-token)
+### `backend/onyx/chat/prompt_utils.py` (CORE #7, seit ext-prompts)
 
-3 Stellen: Import-Zeilen (SvgPaintBrush + SvgActivity hinzufuegen) + Settings-Section (~16 Zeilen: Billing durch Branding ersetzen + Token Usage Link).
+1 Stelle: ext-prompts Hook in `build_system_prompt()` (~15 Zeilen nach `user_info_section`, vor `should_append_citation_guidance`). Prepend aktiver Prompts vor Base System Prompt.
+
+**Bei Upstream-Konflikt:**
+```bash
+git checkout --theirs backend/onyx/chat/prompt_utils.py
+patch -p0 < backend/ext/_core_originals/prompt_utils.py.patch
+# Pruefen ob Patch sauber angewendet wurde
+```
+
+**Risiko:** Niedrig — `build_system_prompt()` ist eine stabile Funktion, Hook-Stelle (nach user_info_section) aendert sich selten.
+
+### `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10, seit ext-branding + ext-token + ext-prompts)
+
+3 Stellen: Import-Zeilen (SvgPaintBrush + SvgActivity + SvgFileText hinzufuegen) + Settings-Section (~19 Zeilen: Billing durch Branding ersetzen + Token Usage Link + System Prompts Link).
 
 **Bei Upstream-Konflikt:**
 ```bash
@@ -224,12 +238,13 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 |-------|-----|--------|--------|
 | `backend/onyx/main.py` (CORE #1) | Hook | ~14 | Niedrig |
 | `backend/onyx/llm/multi_llm.py` (CORE #2) | 3 Hooks | ~45 | Mittel |
+| `backend/onyx/chat/prompt_utils.py` (CORE #7) | Hook | ~15 | Niedrig |
 | `web/src/lib/constants.ts` (CORE #6) | 1 Zeile | 1 | Niedrig |
 | `web/src/app/auth/login/LoginText.tsx` (CORE #8) | Conditional | ~8 | Niedrig |
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |
-| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage | ~16 | Mittel |
+| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage+Prompts | ~19 | Mittel |
 | `backend/Dockerfile` | COPY | 3 | Mittel |
-| `deployment/docker_compose/env.template` | Append | 25 | Niedrig |
+| `deployment/docker_compose/env.template` | Append | 27 | Niedrig |
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.
 

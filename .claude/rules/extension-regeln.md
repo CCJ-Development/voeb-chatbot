@@ -8,27 +8,23 @@ paths:
 
 ## Backend (`backend/ext/`)
 
-Aktueller Stand (Phase 4a) und geplante Erweiterungen:
+Aktueller Stand (Phase 4d) — alle Verzeichnisse befuellt:
 
 ```
 backend/ext/
-  __init__.py                ← Package-Marker (existiert)
-  config.py                  ← Feature Flags (existiert)
-  routers/                   ← FastAPI Router (existiert: health.py)
-  tests/                     ← pytest Tests (existiert: test_config.py)
-  _core_originals/           ← Backups der Core-Dateien (existiert: main.py.*)
-  # --- Ab Phase 4b werden diese Verzeichnisse erstellt: ---
-  models/                    ← SQLAlchemy Models (ext_-Prefix)
-  schemas/                   ← Pydantic Schemas
-  services/                  ← Business Logic
+  __init__.py                ← Package-Marker
+  config.py                  ← Feature Flags (6 Module)
+  routers/                   ← FastAPI Router (health, branding, token, prompts)
+  models/                    ← SQLAlchemy Models (branding, token, prompts)
+  schemas/                   ← Pydantic Schemas (branding, token, prompts)
+  services/                  ← Business Logic (branding, token_tracker, prompt_manager)
+  tests/                     ← pytest Tests (config, health, branding, token, prompts)
+  _core_originals/           ← Backups der Core-Dateien (.original + .patch)
 ```
-
-> **Hinweis:** `models/`, `schemas/`, `services/` werden erst mit dem jeweils ersten
-> Modul erstellt, das sie benoetigt. Nicht vorher leere Ordner anlegen.
 
 ## Frontend (`web/src/ext/`)
 
-Aktuell nur `.gitkeep`. Wird ab Phase 4b befuellt:
+Befuellt seit Phase 4b (ext-branding):
 
 ```
 web/src/ext/
@@ -51,8 +47,10 @@ web/src/ext/
 ```python
 # backend/ext/config.py
 EXT_ENABLED = os.getenv("EXT_ENABLED", "true").lower() == "true"
+EXT_BRANDING_ENABLED = EXT_ENABLED and os.getenv("EXT_BRANDING_ENABLED", "false").lower() == "true"
 EXT_TOKEN_LIMITS_ENABLED = EXT_ENABLED and os.getenv("EXT_TOKEN_LIMITS_ENABLED", "false").lower() == "true"
-# ... pro Modul
+EXT_CUSTOM_PROMPTS_ENABLED = EXT_ENABLED and os.getenv("EXT_CUSTOM_PROMPTS_ENABLED", "false").lower() == "true"
+# ... weitere Module analog
 ```
 Flag=false → Router nicht registriert, Hooks feuern nicht, keine DB-Queries. Onyx läuft 100% normal.
 

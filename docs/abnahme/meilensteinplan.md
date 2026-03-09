@@ -25,8 +25,8 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 |-------------|-------|--------|--------|--------|
 | **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen |
 | **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | [TBD] | Blockiert (Entra ID) |
-| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08) |
-| **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Geplant |
+| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08, ext-token ✅ deployed 2026-03-09) |
+| **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Teilweise (ext-prompts ✅ implementiert 2026-03-09) |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
 
@@ -110,8 +110,8 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
 
 | Nr. | Thema | Status |
 |-----|-------|--------|
-| M1-N1 | DNS-Eintraege (`dev.chatbot.voeb-service.de` / `test.chatbot.voeb-service.de`) | ✅ A-Records gesetzt (2026-03-05). ✅ Cloudflare DNS-only verifiziert (2026-03-05). TLS blockiert — DNS-Architektur (voeb-service.de bei GlobVill), wartet auf 2 ACME-Challenge CNAMEs |
-| M1-N2 | TLS/HTTPS (nach DNS-Setup) | Blockiert — Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen. Details: docs/runbooks/dns-tls-setup.md |
+| M1-N1 | DNS-Eintraege (`dev.chatbot.voeb-service.de` / `test.chatbot.voeb-service.de`) | ✅ A-Records gesetzt (2026-03-05). ✅ Cloudflare DNS-only verifiziert (2026-03-05). ✅ ACME-Challenge CNAMEs gesetzt (2026-03-09) |
+| M1-N2 | TLS/HTTPS (nach DNS-Setup) | ✅ Erledigt (2026-03-09) — HTTPS LIVE auf DEV + TEST. Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Details: docs/runbooks/dns-tls-setup.md |
 | M1-N3 | Embedding-Modell (Qwen3-VL-Embedding 8B) konfigurieren | Blocker aufgehoben (Upstream PR #9005). Fallback nomic-embed-text-v1 aktiv, RAG funktional. |
 | M1-N4 | LLM in TEST Admin UI konfigurieren | ✅ Erledigt (2026-03-03) |
 | M1-N5 | CI/CD `workflow_dispatch` fuer TEST verifizieren | ✅ Erledigt (2026-03-03) |
@@ -507,7 +507,7 @@ System ist produktiv deployed, validiert und an VÖB uebergeben.
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
 | Entra ID Zugangsdaten | VÖB IT | Blockiert M2 (Auth) |
-| DNS-Eintraege | VÖB IT | ✅ A-Records gesetzt (2026-03-05). TLS blockiert — 2 ACME-Challenge CNAMEs bei GlobVill offen (wartet auf Leif) |
+| ~~DNS-Eintraege~~ | ~~VÖB IT~~ | ✅ Erledigt — A-Records (2026-03-05) + ACME-Challenge CNAMEs (2026-03-09) + TLS LIVE |
 
 ---
 

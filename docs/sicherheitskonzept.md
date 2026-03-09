@@ -1,8 +1,8 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-03-07
-**Version**: 0.4
+**Letzte Aktualisierung**: 2026-03-09
+**Version**: 0.5
 **Nächste Überprüfung**: 2026-04-03
 
 ---
@@ -15,6 +15,7 @@
 | 0.2 | 2026-03-03 | Nikolaj Ivanov | Überarbeitung auf tatsächlichen Infrastruktur-Stand (DEV + TEST live), Security-Audit-Findings SEC-01 bis SEC-07 integriert, Code-Beispiele korrigiert (Python/FastAPI), Secrets Management aktualisiert |
 | 0.3 | 2026-03-05 | Nikolaj Ivanov | Cloud-Infrastruktur-Audit (2026-03-04) referenziert, SEC-03 als ERLEDIGT (NetworkPolicies DEV+TEST), 3 Quick Wins dokumentiert: C6 (DB_READONLY→K8s Secret), H8 (Security-Header), H11 (Script Injection Fix), Audit-Datum korrigiert |
 | 0.4 | 2026-03-05 | Nikolaj Ivanov | Zugriffsmatrix (M-CM-3) hinzugefügt, 4-Augen-Prinzip (M-CM-2) dokumentiert mit BAIT-Referenz, Interims-Lösung und geplanten GitHub-Protection-Maßnahmen |
+| 0.5 | 2026-03-09 | Nikolaj Ivanov | TLS/HTTPS als IMPLEMENTIERT aktualisiert (Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 auf DEV+TEST seit 2026-03-09), SEC-06 Phase 1 erledigt (privileged: false), SEC-07 als verifiziert (StackIT AES-256), BAIT-Compliance-Tabelle korrigiert, URLs auf HTTPS-FQDNs aktualisiert |
 
 ---
 
@@ -40,8 +41,8 @@ Dieses Konzept gilt für:
 
 | Umgebung | Status | URL | Auth |
 |----------|--------|-----|------|
-| DEV | LIVE seit 2026-02-27 | `http://188.34.74.187` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
-| TEST | LIVE seit 2026-03-03 | `http://188.34.118.201` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
+| DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
+| TEST | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
 | PROD | Geplant | -- | Entra ID (OIDC) |
 
 > **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST) und **GEPLANT** (offen, für PROD). Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
@@ -59,7 +60,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 
 | Anforderung | Status | Details |
 |-------------|--------|---------|
-| Verschlüsselte Datenübertragung (TLS 1.2+) | OFFEN | Aktuell HTTP only (DEV/TEST). TLS geplant nach DNS-Setup |
+| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT | TLSv1.3 / ECDSA P-384 auf DEV + TEST (seit 2026-03-09). Let's Encrypt via cert-manager DNS-01 |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
 | Zugriffskontrollen (Authentifizierung) | TEILWEISE | Basic Auth aktiv (DEV/TEST). Entra ID (OIDC) geplant (Phase 3) |
 | Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01) |
@@ -287,24 +288,26 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 #### TLS/HTTPS
 
-**Status: NICHT IMPLEMENTIERT (DEV/TEST)**
+**Status: IMPLEMENTIERT (DEV + TEST, seit 2026-03-09)**
 
-Aktuell kommunizieren DEV und TEST über HTTP:
-- DEV: `http://188.34.74.187`
-- TEST: `http://188.34.118.201`
+- DEV: `https://dev.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
+- TEST: `https://test.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
 
-**Geplant (nach DNS-Setup)**:
+**Technische Details:**
 - TLS-Terminierung am NGINX Ingress Controller (in-cluster)
-- Let's Encrypt Zertifikate via cert-manager
-- Voraussetzung: DNS-Einträge müssen von VÖB IT gesetzt werden
+- Let's Encrypt Zertifikate via cert-manager (v1.19.4), DNS-01 Challenge über Cloudflare API
+- ACME-Challenge CNAME-Delegation über GlobVill (voeb-service.de NS bei GlobVill)
+- ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` (beide READY)
+- Auto-Renewal aktiv
+- BSI TR-02102-2 konform: ECDSA P-384 (stärker als BSI-Mindestanforderung)
 
 ```yaml
 # Aktuelle Konfiguration (DEV + TEST)
 letsencrypt:
-  enabled: false  # Kein TLS bis DNS verfügbar
+  enabled: true
 ```
 
-**DNS-Status (2026-03-05)**: A-Records gesetzt (`dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`). Cloudflare Proxy auf DNS-only (graue Wolke) umgestellt und verifiziert (2026-03-05). **Ausstehend:** TLS-Zertifikate via cert-manager + Let's Encrypt (Cloudflare API Token Authentifizierungsproblem, wartet auf Token-Fix).
+**DNS-Status (2026-03-05)**: A-Records gesetzt (`dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt (2026-03-09). Details: `docs/runbooks/dns-tls-setup.md`
 
 #### Interne Kommunikation (Cluster-intern)
 
@@ -451,12 +454,12 @@ pg_acl = [
 
 ### Ingress & TLS
 
-**IMPLEMENTIERT (ohne TLS)**:
+**IMPLEMENTIERT (mit TLS, seit 2026-03-09)**:
 
 - NGINX Ingress Controller läuft in-cluster (Helm Subchart)
-- DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.74.187`
-- TEST: Eigene IngressClass `nginx-test`, LoadBalancer-IP `188.34.118.201` (Konflikt-Vermeidung im Shared Cluster)
-- TLS: **Nicht aktiv** (`letsencrypt.enabled: false`)
+- DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.74.187`, TLS aktiv
+- TEST: Eigene IngressClass `nginx-test`, LoadBalancer-IP `188.34.118.201`, TLS aktiv (Konflikt-Vermeidung im Shared Cluster)
+- TLS: **Aktiv** — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
 
 **Implementierte Security-Header** (H8, 2026-03-05):
 - `X-Content-Type-Options: nosniff` — verhindert MIME-Type-Sniffing
@@ -465,8 +468,11 @@ pg_acl = [
 - `Permissions-Policy: geolocation=(), microphone=(), camera=()` — deaktiviert unnötige Browser-APIs
 - Konfiguriert via `http-snippet` in `values-common.yaml`
 
-**Geplant (nach DNS-Setup)**:
-- cert-manager mit Let's Encrypt via Cloudflare DNS-01 Challenge (BSI TR-02102-2: ECDSA P-384 Pflicht, RSA 2048 von LE Standard erfüllt BSI nicht). Details: `docs/runbooks/dns-tls-setup.md`
+**TLS-Details (seit 2026-03-09)**:
+- cert-manager (v1.19.4) mit Let's Encrypt via Cloudflare DNS-01 Challenge
+- ECDSA P-384 (BSI TR-02102-2 konform), TLSv1.3, HTTP/2
+- Auto-Renewal aktiv, ClusterIssuers READY
+- Details: `docs/runbooks/dns-tls-setup.md`
 - HSTS-Header (benötigt aktives HTTPS)
 - SSL-Redirect
 
@@ -698,11 +704,11 @@ Der VÖB Service Chatbot muss mit folgenden Regelwerken konform sein:
 | DSGVO | Löschkonzept | GEPLANT (Onyx unterstützt User-Löschung nativ) |
 | DSGVO | Datenschutzerklärung | [AUSSTEHEND -- Klärung mit VÖB] |
 | DSGVO | AVV (Auftragsverarbeitungsvertrag) | [AUSSTEHEND -- Klärung mit VÖB] |
-| BAIT | Verschlüsselung im Transit | OFFEN (kein TLS, siehe oben) |
+| BAIT | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST seit 2026-03-09) |
 | BAIT | Zugangskontrolle | TEILWEISE (Basic Auth, Entra ID geplant) |
 | BAIT | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies, DEV+TEST, 2026-03-05) |
 | BSI-Grundschutz | Container-Härtung | **TEILWEISE** (SEC-06 Phase 1: `privileged: false` deployed, Phase 2: `runAsNonRoot` vor PROD) |
-| BSI-Grundschutz | Verschlüsselung at-rest | OFFEN (SEC-07: nicht verifiziert) |
+| BSI-Grundschutz | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
 
 ### Personenbezogene Daten (PII)
 
