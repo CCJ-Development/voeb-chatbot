@@ -1,7 +1,7 @@
 # Modulspezifikation: ext-prompts (Custom System Prompts)
 
-**Dokumentstatus**: Implementiert
-**Version**: 1.0
+**Dokumentstatus**: Deployed (DEV + TEST)
+**Version**: 1.1
 **Autor**: Nikolaj Ivanov (CCJ / Coffee Studios)
 **Datum**: 2026-03-09
 **Status**: [ ] Entwurf | [ ] Review | [ ] Freigegeben | [x] Implementiert

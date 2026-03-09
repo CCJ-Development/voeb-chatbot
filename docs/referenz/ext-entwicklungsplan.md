@@ -22,8 +22,8 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           ├── Phase 4c: ✅ ext-token (implementiert + DEV/TEST deployed 2026-03-09)
           │     LLM-Nutzung tracken, Limits pro User/Gruppe
           │
-          ├── Phase 4d: ✅ ext-prompts (implementiert 2026-03-09, DEV/TEST Deploy offen)
-          │     Custom System Prompts pro Gruppe/Persona
+          ├── Phase 4d: ✅ ext-prompts (DEV + TEST deployed + abgenommen 2026-03-09)
+          │     Custom System Prompts (globale Anweisungen fuer jeden LLM-Aufruf)
           │
           ├── Phase 4e: ext-analytics ← JETZT STARTBAR
           │     Nutzungsstatistiken, Admin-Dashboard

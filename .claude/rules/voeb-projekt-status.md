@@ -74,7 +74,7 @@
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch `feature/ext-token` offen für Nachbesserungen.
-  - 4d: ✅ ext-prompts — Custom System Prompts. **Implementiert (2026-03-09).** Branch `feature/ext-prompts`, lokal getestet (29 Unit Tests, API funktional). DEV + TEST Deploy offen.
+  - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
   - 4e: 📋 ext-analytics — Nutzungsstatistiken + Dashboard. **JETZT STARTBAR**, keine Blocker.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
@@ -82,7 +82,7 @@
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. ext-prompts DEV + TEST deployen (Branch `feature/ext-prompts`, Frontend-Rebuild noetig) → 2. Extension-Module: ext-analytics (unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 3. M1-Abnahmeprotokoll ausfuellen → 4. Entra ID (wartet auf VÖB) → 5. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
+**1. Extension-Module: ext-analytics (unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 2. M1-Abnahmeprotokoll ausfuellen → 3. Entra ID (wartet auf VÖB) → 4. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 5. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

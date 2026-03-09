@@ -9,7 +9,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- [Feature] **Phase 4d: ext-prompts — Custom System Prompts** (2026-03-09)
+- [Feature] **Phase 4d: ext-prompts — Custom System Prompts** (2026-03-09, DEV + TEST deployed + abgenommen)
   - Backend: REST-API fuer globale System Prompts (5 Endpoints unter `/api/ext/prompts/`)
   - Datenbank: `ext_custom_prompts` Tabelle (Alembic Migration `c7f2e8a3d105`)
   - Core-Hook CORE #7 (prompt_utils.py): Prepend aktiver Prompts vor Base System Prompt
