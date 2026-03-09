@@ -1,7 +1,7 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** BLOCKIERT — DNS-Architektur: `voeb-service.de` liegt bei GlobVill (nicht Cloudflare). ACME Challenge CNAME-Delegation bei GlobVill noetig. Wartet auf Leif.
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-07 (Tiefenanalyse DNS + HTTP-01)
+**Status:** DEV + TEST LIVE (2026-03-09) — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3.
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-09 (DEV + TEST TLS aktiviert)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 
 ---
@@ -12,8 +12,8 @@
 
 | Environment | Zugriff | Status |
 |-------------|---------|--------|
-| DEV | `http://188.34.74.187` | HTTP-only, IP-basiert |
-| TEST | `http://188.34.118.201` | HTTP-only, IP-basiert |
+| DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
+| TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
 | PROD | Noch nicht provisioniert | — |
 
 ### Zielzustand
@@ -180,11 +180,115 @@ cert-manager benoetigt einen Cloudflare API Token um DNS-TXT-Records fuer die Ze
 | 1 | Subdomain-Name festlegen | Pascal/Leif | **ERLEDIGT** — `chatbot` |
 | 2 | 2x DNS A-Record anlegen (DNS-only!) | Leif | **ERLEDIGT** (2026-03-05) |
 | 3 | Cloudflare API Token erstellen | Leif | **ERLEDIGT** (2026-03-05, Permissions korrigiert 2026-03-07) |
-| 4 | 2x ACME Challenge CNAME bei GlobVill | Leif | **OFFEN — AKTUELLER BLOCKER** |
+| 4 | 2x ACME Challenge CNAME bei GlobVill | Leif | **ERLEDIGT** (2026-03-09) |
 
-**Punkt 4 ist der letzte Blocker.** Die Domain `voeb-service.de` liegt bei GlobVill (nicht Cloudflare). cert-manager setzt TXT-Records bei Cloudflare, aber DNS-Queries gehen an GlobVill. Leif muss 2 CNAME-Records bei GlobVill anlegen, die die ACME-Challenge-Subdomains an Cloudflare delegieren. Details: siehe Diagnose 2 weiter unten.
+**Alle 4 Punkte erledigt.** ACME-Challenge CNAME-Delegation bei GlobVill funktioniert ueber `*.cdn.cloudflare.net` (Wildcard-CNAME). cert-manager DNS-01 Challenges erfolgreich validiert.
 
-**Sobald die CNAMEs stehen, koennen wir HTTPS innerhalb von ~30 Minuten aktivieren.**
+### DEV TLS — Aktivierungsprotokoll (2026-03-09)
+
+**Dauer:** ~40 Minuten (inkl. 3 Fehlversuche, Details siehe unten)
+
+**Was wurde gemacht:**
+
+1. **DNS-Verifikation:** ACME-Challenge CNAMEs bei GlobVill bestaetigt per `dig +trace`
+2. **Staging-Test:** Certificate-Ressourcen mit Staging-ACME erstellt → beide READY in ~90 Sekunden
+3. **Production-Umstellung:** ClusterIssuers auf `acme-v02.api.letsencrypt.org` umgestellt
+4. **Production-Zertifikate:** Staging-Certs geloescht, neue erstellt → beide READY in ~2 Minuten
+5. **Helm Values:** `DOMAIN`, `WEB_DOMAIN`, `ingress.enabled` in `values-dev.yaml` angepasst
+6. **Image-Repos:** StackIT Registry in `values-common.yaml` fest hinterlegt (war vorher nur per CI/CD `--set`)
+7. **Secrets:** Redis-Passwort in `values-dev-secrets.yaml` ergaenzt (war vorher nur per CI/CD `--set`)
+8. **Deploy:** `helm upgrade` mit allen korrekten Values → 16/16 Pods Running, HTTPS 200 OK
+
+**Ergebnis:**
+
+| Eigenschaft | Wert |
+|------------|------|
+| URL | `https://dev.chatbot.voeb-service.de` |
+| TLS-Version | TLSv1.3 |
+| Cipher | AEAD-AES256-GCM-SHA384 |
+| Zertifikat | ECDSA P-384 (secp384r1) — BSI TR-02102-2 konform |
+| Issuer | Let's Encrypt E8 (ECDSA Intermediate) |
+| Chain | Leaf (P-384) → E8 (P-384) → ISRG Root X1 (RSA 4096) |
+| HTTP-Version | HTTP/2 |
+| Gueltigkeit | 2026-03-09 bis 2026-06-07 (auto-renewal durch cert-manager) |
+| Health Check | `GET /api/health` → 200 OK |
+
+**Fehler und Loesungen waehrend der Aktivierung:**
+
+| # | Problem | Ursache | Loesung | Lektion |
+|---|---------|---------|---------|---------|
+| 1 | Helm Deploy Timeout (10min) | `--atomic --timeout 10m` zu kurz — alle 16 Pods starten gleichzeitig neu | `--wait --timeout 15m` ohne `--atomic` verwenden | Fuer manuelle Deploys mit Config-Aenderungen immer 15min Timeout |
+| 2 | Redis CrashLoopBackOff | Manueller Deploy ueberschreibt Redis-Passwort mit leerem String (`values-dev.yaml` hat `redis_password: ""`) | Redis-Passwort aus Helm History (Rev 30) geholt, in `values-dev-secrets.yaml` eingetragen | **Alle Secrets die in CI/CD per `--set` gesetzt werden muessen auch in der lokalen Secrets-Datei stehen** |
+| 3 | Alembic Migration fehlt (`b3e4a7d91f08`) | Manueller Deploy nutzt Chart-Default-Images (`onyxdotapp/onyx-backend:latest` von Docker Hub) statt StackIT Registry | Image-Repos fest in `values-common.yaml` hinterlegt (api, webserver, celery_shared, model-server) | **Image-Repos gehoeren in Values-Dateien, nicht nur in CI/CD `--set` Flags** |
+| 4 | Helm `pending-upgrade` blockiert | Vorheriger fehlgeschlagener Deploy haengt in pending-State | `helm rollback` auf letzte deployed Revision, dann neu deployen | Bei Helm-Fehlern zuerst `helm history` pruefen und bereinigen |
+| 5 | YAML Duplikat-Keys | `celery_shared`, `inferenceCapability`, `indexCapability` existierten schon fuer securityContext | Image- und SecurityContext-Config in einer Section pro Key konsolidiert | YAML erlaubt keine Duplikat-Keys — immer pruefen ob Section schon existiert |
+
+**Strukturelle Fixes (dauerhaft):**
+
+| Datei | Aenderung | Warum |
+|-------|-----------|-------|
+| `values-common.yaml` | Image-Repos fuer api, webserver, celery_shared, inferenceCapability, indexCapability hinzugefuegt | Manuelle Deploys nutzen jetzt automatisch die richtigen Images (StackIT Registry) |
+| `values-dev-secrets.yaml` | `auth.redis.values.redis_password` hinzugefuegt | Redis-Passwort wird nicht mehr bei manuellen Deploys ueberschrieben |
+| `values-dev.yaml` | DOMAIN, WEB_DOMAIN, ingress-Block hinzugefuegt | HTTPS-Konfiguration fuer DEV |
+
+**Wichtig fuer zukuenftige manuelle Deploys:**
+
+```bash
+# Korrekter manueller Deploy-Befehl (alle Values-Dateien, kein --atomic):
+helm upgrade --install onyx-dev deployment/helm/charts/onyx \
+  --namespace onyx-dev \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-dev.yaml \
+  -f deployment/helm/values/values-dev-secrets.yaml \
+  --wait --timeout 15m
+```
+
+> **Merke:** `values-dev-secrets.yaml` muss IMMER mit angegeben werden. Ohne diese Datei werden PG-Passwort, Redis-Passwort, S3-Credentials und DB-Readonly-Passwort auf leere Strings gesetzt.
+
+### TEST TLS — Aktivierungsprotokoll (2026-03-09)
+
+**Dauer:** ~5 Minuten (keine Fehlversuche — alle Lessons Learned von DEV angewendet)
+
+**Was wurde gemacht:**
+
+1. **Gate-Check:** DNS (`188.34.118.201`) + ClusterIssuer `onyx-test-letsencrypt` (READY seit 4d) verifiziert
+2. **Certificate-Ressourcen:** ECDSA P-384 fuer `test.chatbot.voeb-service.de` erstellt → beide READY in ~2 Minuten
+3. **Helm Values:** `DOMAIN`, `WEB_DOMAIN`, `ingress`-Block in `values-test.yaml` angepasst (IngressClass `nginx-test`)
+4. **Secrets:** `values-test-secrets.yaml` erstellt (gitignored) — Credentials aus Helm Rev 7 extrahiert
+5. **Deploy:** `helm upgrade` mit allen Values → 15/15 Pods Running, HTTPS 200 OK
+
+**Ergebnis:**
+
+| Eigenschaft | Wert |
+|------------|------|
+| URL | `https://test.chatbot.voeb-service.de` |
+| TLS-Version | TLSv1.3 |
+| Cipher | TLS_AES_256_GCM_SHA384 |
+| Zertifikat | ECDSA P-384 (secp384r1) — BSI TR-02102-2 konform |
+| Issuer | Let's Encrypt E8 (ECDSA Intermediate) |
+| Chain | Leaf (P-384) → E8 (P-384) → ISRG Root X1 (RSA 4096) |
+| Gueltigkeit | 2026-03-09 bis 2026-06-07 (auto-renewal durch cert-manager) |
+| Health Check | `GET /api/health` → 200 OK |
+| Helm Revision | 8 |
+
+**Keine Fehler** — Lessons Learned von DEV konsequent angewendet:
+- `values-test-secrets.yaml` VOR Deploy erstellt (Redis/PG/S3 Credentials)
+- Image-Repos bereits in `values-common.yaml` (seit DEV-Fix)
+- `--wait --timeout 15m` statt `--atomic`
+- Certificates VOR Helm Deploy erstellt (BSI-konformes ECDSA statt auto-erstelltes RSA)
+
+**Korrekter manueller Deploy-Befehl (TEST):**
+
+```bash
+helm upgrade --install onyx-test deployment/helm/charts/onyx \
+  --namespace onyx-test \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-test.yaml \
+  -f deployment/helm/values/values-test-secrets.yaml \
+  --wait --timeout 15m
+```
+
+> **Merke:** `values-test-secrets.yaml` muss IMMER mit angegeben werden. Analog zu DEV.
 
 ---
 
@@ -609,18 +713,14 @@ helm upgrade --install onyx-dev \
 ```bash
 # Option A: CI/CD (workflow_dispatch, Environment: test)
 
-# Option B: Manuell
+# Option B: Manuell (empfohlen fuer ersten TLS-Deploy)
 helm upgrade --install onyx-test \
   deployment/helm/charts/onyx \
   --namespace onyx-test \
   -f deployment/helm/values/values-common.yaml \
   -f deployment/helm/values/values-test.yaml \
-  --set "auth.postgresql.values.password=<PG_PASSWORD>" \
-  --set "auth.redis.values.redis_password=<REDIS_PASSWORD>" \
-  --set "auth.objectstorage.values.s3_aws_access_key_id=<S3_KEY>" \
-  --set "auth.objectstorage.values.s3_aws_secret_access_key=<S3_SECRET>" \
-  --set "auth.dbreadonly.values.db_readonly_password=<READONLY_PW>" \
-  --atomic --timeout 10m
+  -f deployment/helm/values/values-test-secrets.yaml \
+  --wait --timeout 15m
 ```
 
 ### Schritt 6: Verifikation

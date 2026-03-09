@@ -15,6 +15,18 @@ global:
   pullPolicy: IfNotPresent
   host: "0.0.0.0"
 
+# --- Container Images: StackIT Registry ---
+# Alle Custom-Images (Backend, Frontend, Celery) kommen aus der StackIT Registry.
+# Tag wird über global.version in values-{env}.yaml gesetzt (default: "latest").
+# Model Server + Vespa + Redis nutzen Upstream-Images (Docker Hub).
+api:
+  image:
+    repository: registry.onstackit.cloud/voeb-chatbot/onyx-backend
+
+webserver:
+  image:
+    repository: registry.onstackit.cloud/voeb-chatbot/onyx-web-server
+
 # --- PostgreSQL: DEAKTIVIERT ---
 # Wir nutzen StackIT Managed PostgreSQL Flex (extern).
 # Connection-Details kommen per Environment-Values.
@@ -85,16 +97,24 @@ mcpServer:
 # Phase 2 (vor PROD): runAsUser: 1001 + runAsNonRoot: true (Onyx Dockerfile definiert User 'onyx' UID 1001).
 # BSI SYS.1.6.A10: "Privileged Mode SOLLTE NICHT verwendet werden."
 celery_shared:
+  image:
+    repository: registry.onstackit.cloud/voeb-chatbot/onyx-backend
   securityContext:
     privileged: false
     runAsUser: 0
 
 inferenceCapability:
+  image:
+    repository: docker.io/onyxdotapp/onyx-model-server
+    tag: "v2.9.8"
   securityContext:
     privileged: false
     runAsUser: 0
 
 indexCapability:
+  image:
+    repository: docker.io/onyxdotapp/onyx-model-server
+    tag: "v2.9.8"
   securityContext:
     privileged: false
     runAsUser: 0
