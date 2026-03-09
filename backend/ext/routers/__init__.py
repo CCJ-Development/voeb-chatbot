@@ -54,8 +54,11 @@ def register_ext_routers(application: FastAPI) -> None:
         )
         logger.info("Extension branding routers registered")
 
-    # Future module routers will be registered here behind their flags:
-    # from ext.config import EXT_TOKEN_LIMITS_ENABLED
-    # if EXT_TOKEN_LIMITS_ENABLED:
-    #     from ext.routers.token_limits import router as token_limits_router
-    #     include_router_with_global_prefix_prepended(application, token_limits_router)
+    # ext-token: LLM Usage Tracking + Token Limits
+    from ext.config import EXT_TOKEN_LIMITS_ENABLED
+
+    if EXT_TOKEN_LIMITS_ENABLED:
+        from ext.routers.token import router as token_router
+
+        include_router_with_global_prefix_prepended(application, token_router)
+        logger.info("Extension token router registered")

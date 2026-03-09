@@ -1,0 +1,81 @@
+--- backend/ext/_core_originals/multi_llm.py.original	2026-03-09 10:14:32
++++ backend/onyx/llm/multi_llm.py	2026-03-09 10:15:14
+@@ -368,6 +368,21 @@
+         user_identity: LLMUserIdentity | None = None,
+         client: "HTTPHandler | None" = None,
+     ) -> Union["ModelResponse", "CustomStreamWrapper"]:
++        # === VÖB ext-token: Per-User Limit Check ===
++        try:
++            from ext.config import EXT_TOKEN_LIMITS_ENABLED
++
++            if EXT_TOKEN_LIMITS_ENABLED and user_identity and user_identity.user_id:
++                from ext.services.token_tracker import check_user_token_limit
++
++                check_user_token_limit(user_identity.user_id)
++        except ImportError:
++            pass  # ext/ nicht vorhanden
++        except Exception as e:
++            if hasattr(e, "status_code") and e.status_code == 429:
++                raise  # 429 mit Reset-Zeitpunkt muss durchkommen
++            logger.warning("ext-token limit check failed", exc_info=True)
++
+         # Lazy loading to avoid memory bloat for non-inference flows
+         from onyx.llm.litellm_singleton import litellm
+         from litellm.exceptions import Timeout, RateLimitError
+@@ -662,7 +677,26 @@
+             # Track LLM cost for Onyx-managed API keys
+             if model_response.usage:
+                 self._track_llm_cost(model_response.usage)
++
++            # === VÖB ext-token: Usage Logging (invoke) ===
++            try:
++                from ext.config import EXT_TOKEN_LIMITS_ENABLED
+ 
++                if EXT_TOKEN_LIMITS_ENABLED and model_response.usage:
++                    from ext.services.token_tracker import log_token_usage
++
++                    log_token_usage(
++                        user_id=user_identity.user_id if user_identity else None,
++                        model_name=self._model_version,
++                        prompt_tokens=model_response.usage.prompt_tokens,
++                        completion_tokens=model_response.usage.completion_tokens,
++                        total_tokens=model_response.usage.total_tokens,
++                    )
++            except ImportError:
++                pass  # ext/ nicht vorhanden
++            except Exception:
++                logger.warning("ext-token logging hook failed", exc_info=True)
++
+             return model_response
+         finally:
+             if client is not None:
+@@ -742,6 +776,29 @@
+                 if model_response.usage:
+                     self._track_llm_cost(model_response.usage)
+ 
++                # === VÖB ext-token: Usage Logging (stream, last chunk) ===
++                try:
++                    from ext.config import EXT_TOKEN_LIMITS_ENABLED
++
++                    if (
++                        EXT_TOKEN_LIMITS_ENABLED
++                        and model_response.usage
++                        and model_response.usage.completion_tokens > 0
++                    ):
++                        from ext.services.token_tracker import log_token_usage
++
++                        log_token_usage(
++                            user_id=user_identity.user_id if user_identity else None,
++                            model_name=self._model_version,
++                            prompt_tokens=model_response.usage.prompt_tokens,
++                            completion_tokens=model_response.usage.completion_tokens,
++                            total_tokens=model_response.usage.total_tokens,
++                        )
++                except ImportError:
++                    pass  # ext/ nicht vorhanden
++                except Exception:
++                    logger.warning("ext-token logging hook failed", exc_info=True)
++
+                 yield model_response
+         finally:
+             if client is not None:

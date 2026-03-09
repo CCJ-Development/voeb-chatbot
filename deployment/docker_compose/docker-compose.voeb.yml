@@ -13,6 +13,8 @@ services:
     volumes:
       - ../../backend/ext:/app/ext
       - ../../backend/onyx/main.py:/app/onyx/main.py:ro
+      - ../../backend/onyx/llm/multi_llm.py:/app/onyx/llm/multi_llm.py:ro
+      - ../../backend/alembic:/app/alembic
     env_file:
       - path: .env
         required: false
@@ -20,6 +22,7 @@ services:
   background:
     volumes:
       - ../../backend/ext:/app/ext
+      - ../../backend/onyx/llm/multi_llm.py:/app/onyx/llm/multi_llm.py:ro
     env_file:
       - path: .env
         required: false

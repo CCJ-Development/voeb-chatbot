@@ -61,6 +61,11 @@ configMap:
   AUTH_TYPE: "basic"
   REQUIRE_EMAIL_VERIFICATION: "false"  # DEV: Kein SMTP konfiguriert
 
+  # VÖB Extension Framework
+  EXT_ENABLED: "true"
+  EXT_BRANDING_ENABLED: "true"
+  EXT_TOKEN_LIMITS_ENABLED: "true"
+
   # Logging
   LOG_LEVEL: "INFO"
 

@@ -91,7 +91,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 5: main.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx):
+Fuer JEDE gepatchte Core-Datei (aktuell 6: main.py, multi_llm.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx):
 
 ```bash
 # Beispiel Backend-Datei:
@@ -223,6 +223,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | Datei | Art | Zeilen | Risiko |
 |-------|-----|--------|--------|
 | `backend/onyx/main.py` (CORE #1) | Hook | ~14 | Niedrig |
+| `backend/onyx/llm/multi_llm.py` (CORE #2) | 3 Hooks | ~45 | Mittel |
 | `web/src/lib/constants.ts` (CORE #6) | 1 Zeile | 1 | Niedrig |
 | `web/src/app/auth/login/LoginText.tsx` (CORE #8) | Conditional | ~8 | Niedrig |
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |

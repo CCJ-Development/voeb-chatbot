@@ -1,10 +1,10 @@
 # Modulspezifikation: ext-token (LLM Usage Tracking + Token Limits)
 
-**Dokumentstatus**: Entwurf
-**Version**: 0.2
+**Dokumentstatus**: Freigegeben
+**Version**: 0.3
 **Autor**: Nikolaj Ivanov (CCJ / Coffee Studios)
 **Datum**: 2026-03-09
-**Status**: [x] Entwurf | [ ] Review | [ ] Freigegeben
+**Status**: [ ] Entwurf | [ ] Review | [x] Freigegeben
 **Prioritaet**: [x] Hoch | [ ] Kritisch | [ ] Normal | [ ] Niedrig
 
 ---
@@ -748,6 +748,21 @@ def test_ext_token_disabled_by_default(self):
 
 ---
 
+## Implementierungs-Abweichungen (v0.3)
+
+Dokumentiert nach Implementierung + Docker-Test am 2026-03-09.
+
+| ID | Spec v0.2 | Implementierung | Begruendung |
+|----|-----------|-----------------|-------------|
+| D1 | `log_token_usage(user_id, model_name, usage: Usage)` | `log_token_usage(user_id, model_name, prompt_tokens, completion_tokens, total_tokens)` | Individuelle int-Parameter statt Usage-Objekt — vermeidet Import-Dependency auf `onyx.llm.model_response.Usage` in ext-Code |
+| D2 | Frontend in `web/src/ext/components/token/TokenManagementPage.tsx` | Frontend in `web/src/ext/pages/admin/token/page.tsx` | `pages/` statt `components/` — konsistent mit ext-branding Pattern, klarere Trennung Page vs. Component |
+| D3 | `user_identity.user_id` ist UUID-String → direkter `UUID()` Cast | `_resolve_user_uuid()` resolved Email ODER UUID → User-Tabellen-Lookup | Onyx uebergibt Email (nicht UUID) als `user_identity.user_id` — Cast scheiterte, Bugfix erforderte Resolver-Funktion |
+| D4 | User Limits: UUID-Eingabefeld | User Limits: Email-Dropdown (fetcht `/api/manage/users`) | UX-Verbesserung — Admin kennt keine UUIDs, Email-Auswahl ist praxistauglich |
+| D5 | Frontend nutzt `useSWR` (CLAUDE.md Regel) | Frontend nutzt `fetch` + `useState` | Bewusste v1-Entscheidung — Cleanup in v1.1 geplant |
+| D6 | `recharts` fuer Zeitverlauf-Grafiken | Horizontale Balken mit CSS (`div` + `style.width`) | Reduziert Komplexitaet fuer v1, `recharts`-Integration in v1.1 |
+
+---
+
 ## Approvals
 
 | Rolle | Name | Datum | Status |
@@ -762,3 +777,4 @@ def test_ext_token_disabled_by_default(self):
 |---------|-------|-------|-----------|
 | 0.1 | 2026-03-09 | CCJ | Initialer Entwurf basierend auf Tiefenanalyse |
 | 0.2 | 2026-03-09 | CCJ | Validierung: 3 Fehler korrigiert — eigene `ext_token_user_limit` Tabelle statt FOSS `token_rate_limit` (keine user_id Spalte in FOSS), Route `/admin/ext-token` (konsistent mit ext-branding), Icons aus `@opal/icons`, `recharts` als Chart-Library bestaetigt, Streaming-Deduplizierung dokumentiert, Token-Count-Quelle praezisiert |
+| 0.3 | 2026-03-09 | CCJ | Implementierung abgeschlossen, Abweichungen dokumentiert (D1-D3), Status auf Freigegeben |

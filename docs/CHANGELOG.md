@@ -9,6 +9,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Feature] **Phase 4c: ext-token — LLM Usage Tracking + Token Limits** (2026-03-09)
+  - Backend: REST-API fuer Token-Usage + Per-User Limits (6 Endpoints unter `/api/ext/token/`)
+  - Datenbank: `ext_token_usage` + `ext_token_user_limit` Tabellen (Alembic Migration `b3e4a7d91f08`)
+  - Core-Hook CORE #2 (multi_llm.py): 3 Hooks — Enforcement vor LLM-Call, Logging nach invoke() + stream()
+  - Per-User Token-Limits: Budget in Tausenden, rolling Zeitfenster, 429 mit Reset-Zeitpunkt
+  - Usage-Dashboard: Aggregation nach User/Modell, Zeitreihen (Stunde/Tag), Per-User Breakdown
+  - Frontend: Admin-Seite `/admin/ext-token` mit 4 Tabs (Overview, Timeline, Per-User, User Limits)
+  - CORE #10 (AdminSidebar.tsx): "Token Usage"-Link mit SvgActivity-Icon
+  - Feature Flag: `EXT_TOKEN_LIMITS_ENABLED` (AND-gated mit `EXT_ENABLED`)
+  - Unit Tests: Schemas, Logging (fire-and-forget), Enforcement (429), Null-User
 - [Feature] **Phase 4b: ext-branding — Whitelabel Module** (2026-03-08)
   - Backend: REST-API fuer Branding-Konfiguration (5 Endpoints: GET/PUT Config + Logo)
   - Datenbank: `ext_branding_config` Tabelle (Alembic Migration `ff7273065d0d`)

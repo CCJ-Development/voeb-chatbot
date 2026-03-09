@@ -71,7 +71,7 @@
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
-  - 4c: 📋 ext-token — LLM Usage Tracking + Limits. **JETZT STARTBAR**, keine Blocker.
+  - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **Implementiert, Docker-getestet (2026-03-09).** Lokal approved, Commit + DEV-Deploy ausstehend.
   - 4d: 📋 ext-prompts — Custom System Prompts. **JETZT STARTBAR**, keine Blocker.
   - 4e: 📋 ext-analytics — Nutzungsstatistiken + Dashboard. **JETZT STARTBAR**, keine Blocker.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
