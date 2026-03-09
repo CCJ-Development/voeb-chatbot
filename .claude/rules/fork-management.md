@@ -205,9 +205,9 @@ git checkout --theirs deployment/docker_compose/env.template
 
 **Risiko:** Niedrig — Appends am Dateiende mergen fast immer automatisch.
 
-### `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10, seit ext-branding)
+### `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10, seit ext-branding + ext-token)
 
-2 Stellen: Import-Zeile (SvgPaintBrush hinzufuegen) + Settings-Section (~12 Zeilen: Billing durch Branding ersetzen).
+3 Stellen: Import-Zeilen (SvgPaintBrush + SvgActivity hinzufuegen) + Settings-Section (~16 Zeilen: Billing durch Branding ersetzen + Token Usage Link).
 
 **Bei Upstream-Konflikt:**
 ```bash
@@ -216,7 +216,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 # Pruefen ob Patch sauber angewendet wurde
 ```
 
-**Risiko:** Mittel — Upstream aendert Admin-Sidebar aktiv (neue Features, Restrukturierung). Patch-Stelle (Settings-Section) ist relativ stabil, aber Import-Zeile kann sich verschieben.
+**Risiko:** Mittel — Upstream aendert Admin-Sidebar aktiv (neue Features, Restrukturierung). Patch-Stelle (Settings-Section) ist relativ stabil, aber Import-Zeilen koennen sich verschieben.
 
 ### Vollständige Liste aller Upstream-Änderungen
 
@@ -227,7 +227,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/src/lib/constants.ts` (CORE #6) | 1 Zeile | 1 | Niedrig |
 | `web/src/app/auth/login/LoginText.tsx` (CORE #8) | Conditional | ~8 | Niedrig |
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |
-| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Billing→Branding | ~12 | Mittel |
+| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage | ~16 | Mittel |
 | `backend/Dockerfile` | COPY | 3 | Mittel |
 | `deployment/docker_compose/env.template` | Append | 25 | Niedrig |
 
