@@ -17,7 +17,7 @@ git checkout -b feature/<thema>
 ### Wann wird der Branch gemergt?
 - Feature-Branch lebt bis das Thema FERTIG ist (kann über mehrere Sessions gehen)
 - Wenn ein Branch bereits existiert: `git checkout feature/<thema>` (NICHT neu erstellen)
-- Am Ende: PR gegen `main` → Review → Merge → auto-deploy DEV
+- Am Ende: Lokal auf `main` mergen → push → auto-deploy DEV (kein PR nötig)
 
 ### Session-Start Checkliste
 1. `git status` — Bin ich auf einem Feature-Branch? Wenn ja, weiterarbeiten.
@@ -47,21 +47,16 @@ git checkout -b feature/<thema>
 ```bash
 git add <spezifische Dateien>  # NICHT git add .
 git commit -m "<type>(<scope>): <description>"
-git push origin feature/{thema}
-# PR gegen main erstellen (gh pr create)
+
+# Feature-Branch auf main mergen (lokal, kein PR nötig)
+git checkout main
+git merge feature/{thema}
+git push origin main
+git branch -d feature/{thema}  # Lokalen Branch aufräumen
 ```
 
-## PR-Workflow
-```bash
-# PR erstellen — IMMER -R Flag angeben (sonst geht PR an upstream/onyx-foss!)
-gh pr create --base main -R CCJ-Development/voeb-chatbot \
-  --title "<type>(<scope>): <Beschreibung>" --body "..."
-
-# Nach Nikos Freigabe: Merge
-gh pr merge <PR-NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
-```
-
-> **WICHTIG:** Ohne `-R CCJ-Development/voeb-chatbot` erstellt `gh` den PR gegen das Parent-Repo (onyx-foss), nicht gegen unseren Fork. Das ist ein bekanntes `gh`-CLI-Verhalten bei Forks.
+> **Warum kein PR?** Solo-Dev — PR wäre Selbst-Approval ohne Mehrwert. CI-Checks laufen auf Push-to-main.
+> **Ausnahme:** Upstream-Syncs nutzen weiterhin PRs (Diff-Inspektion). Siehe `fork-management.md`.
 
 ---
 

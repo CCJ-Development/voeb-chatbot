@@ -995,7 +995,7 @@ kubectl get clusterissuer
 | 1 | Subdomain-Name festlegen | **ERLEDIGT** — `chatbot` (2026-03-04) | Pascal/Leif (VoeB) |
 | 2 | DNS A-Records in Cloudflare anlegen (DNS-only) | **ERLEDIGT** (2026-03-05) — DNS-only verifiziert | Leif (VoeB) |
 | 3 | Cloudflare API Token erstellen + uebermitteln | **ERLEDIGT** (2026-03-07) — Permissions korrigiert, ClusterIssuers READY | Leif (VoeB) |
-| 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **OFFEN — AKTUELLER BLOCKER** (siehe Diagnose 2) | Leif (VoeB) |
+| 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **✅ ERLEDIGT** (2026-03-09) — CNAMEs gesetzt, Zertifikate ausgestellt | Leif (VoeB) |
 | 5 | ACME-Email-Adresse — Team-Adresse statt persoenliche? | Empfehlung: Team-Adresse | CCJ + VoeB |
 | 6 | PROD: LoadBalancer IP + A-Record | Spaeter (PROD nicht provisioniert) | CCJ + VoeB |
 | 7 | Let's Encrypt Zertifikat-Renewal verifizieren | Nach 60 Tagen pruefen (auto-renew) | CCJ |

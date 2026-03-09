@@ -67,7 +67,7 @@
   - ✅ Celery: 8 separate Worker-Deployments (Lightweight Mode entfernt, Upstream PR #9014)
   - ✅ DEV: 16 Pods Running | TEST: 15 Pods Running (redeployed 2026-03-06)
   - ✅ PR-CI-Workflow (PR #4): helm-validate + build-backend + build-frontend (2026-03-06)
-  - ✅ Branch Protection auf main: PR required, 3 Required Status Checks, kein Review-Requirement (Solo-Dev) (2026-03-07)
+  - ✅ CI-Checks: helm-validate + build-backend + build-frontend (auf Push-to-main). Kein PR-Requirement (Solo-Dev, 2026-03-09 vereinfacht)
   - ✅ K8s v1.32 → v1.33 Upgrade (2026-03-08): v1.33.8, Flatcar 4459.2.1, Terraform apply 9m40s, DEV 16/16 + TEST 15/15 Pods Running
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
