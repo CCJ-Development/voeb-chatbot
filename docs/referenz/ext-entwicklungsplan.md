@@ -19,10 +19,10 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           │     Whitelabel: Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent
           │     Offen: Favicon, Farben/Theme (Kundenabstimmung)
           │
-          ├── Phase 4c: ext-token ← JETZT STARTBAR
+          ├── Phase 4c: ✅ ext-token (implementiert + DEV/TEST deployed 2026-03-09)
           │     LLM-Nutzung tracken, Limits pro User/Gruppe
           │
-          ├── Phase 4d: ext-prompts ← JETZT STARTBAR
+          ├── Phase 4d: ✅ ext-prompts (implementiert 2026-03-09, DEV/TEST Deploy offen)
           │     Custom System Prompts pro Gruppe/Persona
           │
           ├── Phase 4e: ext-analytics ← JETZT STARTBAR
@@ -51,7 +51,7 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
    ┌───────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐
    │ext-branding│ │ext-token │ │ext-prompts│ │ext-analytics│
    │ Phase 4b  │ │ Phase 4c │ │ Phase 4d  │ │ Phase 4e  │
-   │ STARTBAR  │ │ STARTBAR │ │ STARTBAR  │ │ STARTBAR  │
+   │ ✅ ERLED. │ │ ✅ ERLED.│ │ ✅ ERLED. │ │ STARTBAR  │
    └───────────┘ └─────┬────┘ └───────────┘ └─────┬─────┘
                         │                           │
                         │      ┌──────────┐         │
@@ -253,6 +253,9 @@ alembic upgrade head
 | #5 | `header/` | ✅ | — | — | — | — |
 | #6 | `constants.ts` | ✅ | — | — | — | — |
 | #7 | `prompt_utils.py` | — | — | ✅ | — | — |
+| #8 | `LoginText.tsx` | ✅ | — | — | — | — |
+| #9 | `AuthFlowContainer.tsx` | ✅ | — | — | — | — |
+| #10 | `AdminSidebar.tsx` | ✅ | ✅ | ✅ | — | — |
 
 > CORE #1 (`main.py`) ist bereits gepatcht (Extension Framework Hook, Phase 4a).
 > Alle Patches folgen dem try/except-Pattern aus `.claude/rules/core-dateien.md`.

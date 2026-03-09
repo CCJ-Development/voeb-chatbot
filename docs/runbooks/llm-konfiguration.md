@@ -8,7 +8,7 @@
 ## Voraussetzungen
 
 - Onyx-Instanz laeuft (alle Pods 1/1 Running)
-- Admin-Zugang zur Onyx-UI (`http://<IP>/admin`)
+- Admin-Zugang zur Onyx-UI (`https://dev.chatbot.voeb-service.de/admin` bzw. `https://test.chatbot.voeb-service.de/admin`)
 - StackIT AI Model Serving Token vorhanden
 
 ---
@@ -270,7 +270,7 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 
 | Feld | DEV | TEST | PROD |
 |------|-----|------|------|
-| URL | `http://188.34.74.187` | `http://188.34.118.201` | TBD |
+| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` | TBD |
 | Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | TBD |
 | Chat Default | GPT-OSS 120B | GPT-OSS 120B | TBD |
 | Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | TBD |

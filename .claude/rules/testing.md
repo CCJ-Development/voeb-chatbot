@@ -10,7 +10,7 @@ paths:
 Ohne Tests kein Merge.
 
 ## Test-Lokation
-- Backend: `backend/tests/ext/` (pytest)
+- Backend: `backend/ext/tests/` (pytest)
 - Frontend: `web/src/ext/__tests__/` (Jest/Vitest — prüfe was Onyx nutzt)
 
 ## Pflicht-Kategorien pro Modul

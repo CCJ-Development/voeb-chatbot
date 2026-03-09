@@ -222,23 +222,6 @@ def build_system_prompt(
     )
     system_prompt += user_info_section
 
-    # ext-prompts: Prepend custom global prompts if configured
-    try:
-        from ext.config import EXT_CUSTOM_PROMPTS_ENABLED
-
-        if EXT_CUSTOM_PROMPTS_ENABLED:
-            from ext.services.prompt_manager import get_cached_global_prompt
-
-            ext_prompt = get_cached_global_prompt()
-            if ext_prompt:
-                system_prompt = ext_prompt + "\n\n" + system_prompt
-    except ImportError:
-        pass
-    except Exception:
-        import logging
-
-        logging.getLogger("ext").error("ext-prompts hook failed", exc_info=True)
-
     # Append citation guidance after company context if placeholder was not present
     # This maintains backward compatibility and ensures citations are always enforced when needed
     if should_append_citation_guidance:

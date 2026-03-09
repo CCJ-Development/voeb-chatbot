@@ -19,7 +19,7 @@
 | Kubernetes-Version | v1.33.8 (SKE-zugewiesen, upgraded 2026-03-08) |
 | Namespaces | `onyx-dev`, `onyx-test` (PROD: geplant eigener Cluster, ADR-004) |
 | Ingress Controller | NGINX via Essential Network Load Balancer (NLB-10) |
-| TLS | Let's Encrypt via cert-manager (installiert, ClusterIssuers READY). Blockiert: DNS-Architektur (voeb-service.de bei GlobVill) — wartet auf 2 ACME-Challenge CNAMEs |
+| TLS | Let's Encrypt via cert-manager (v1.19.4), LIVE seit 2026-03-09. ECDSA P-384, TLSv1.3, HTTP/2. DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill |
 | Network Policies | IMPLEMENTIERT (SEC-03, 2026-03-05): 5 Policies (Default-Deny, DNS, Intra-NS, Ingress, Egress) auf DEV+TEST. PROD: zusätzlich granulare per-Pod-Rules geplant |
 
 ### Worker Nodes (Compute Engine g1a-Serie, AMD, kein Overprovisioning)
@@ -154,7 +154,7 @@
 | TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05) |
 | PROD | `chatbot.voeb-service.de` | — | Geplant |
 
-Cloudflare: DNS-only (kein Proxy). TLS: cert-manager installiert, ClusterIssuers READY. Blockiert durch DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Wartet auf 2 ACME-Challenge CNAMEs.
+Cloudflare: DNS-only (kein Proxy). TLS: LIVE seit 2026-03-09. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv.
 
 ---
 

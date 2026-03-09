@@ -12,7 +12,7 @@ backend/onyx/
   configs/app_configs.py     ← Konfiguration (READ-ONLY)
   server/auth_check.py       ← Route-Auth-Prüfung (READ-ONLY, aber relevant für ext)
 backend/tests/               ← Onyx-Tests (READ-ONLY)
-backend/alembic/             ← Onyx-Migrationen (READ-ONLY)
+backend/alembic/             ← Onyx-Migrationen + ext_-Migrationen (ext nutzt Onyx-Alembic mit)
 backend/requirements/        ← Onyx-Dependencies (READ-ONLY)
 ```
 
@@ -36,7 +36,6 @@ backend/ext/                 ← Backend-Extensions
   models/                    ← DB Models (ext_-Prefix)
   schemas/                   ← Pydantic Schemas
   services/                  ← Business Logic
-  migrations/versions/       ← Alembic (eigener Branch)
   tests/                     ← Backend-Tests
   _core_originals/           ← Backups vor Core-Änderungen
 web/src/ext/                 ← Frontend-Extensions

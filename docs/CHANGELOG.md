@@ -9,6 +9,32 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Feature] **Phase 4d: ext-prompts — Custom System Prompts** (2026-03-09)
+  - Backend: REST-API fuer globale System Prompts (5 Endpoints unter `/api/ext/prompts/`)
+  - Datenbank: `ext_custom_prompts` Tabelle (Alembic Migration `c7f2e8a3d105`)
+  - Core-Hook CORE #7 (prompt_utils.py): Prepend aktiver Prompts vor Base System Prompt
+  - In-Memory-Cache mit TTL (60s), thread-safe, stale-fallback bei DB-Fehler
+  - CRUD: Erstellen, Bearbeiten, Loeschen, Aktiv/Inaktiv-Toggle, Preview
+  - Kategorien: Compliance, Tonalitaet, Kontext, Anweisungen, Allgemein
+  - Prioritaets-Sortierung (niedrigerer Wert = wird zuerst eingefuegt)
+  - Soft-Limits: 20 aktive Prompts / 50.000 Zeichen (Warnung, kein Hard-Block)
+  - Frontend: Admin-Seite `/admin/ext-prompts` mit Prompt-Liste, Edit-Form, Preview
+  - CORE #10 (AdminSidebar.tsx): "System Prompts"-Link mit SvgFileText-Icon
+  - Feature Flag: `EXT_CUSTOM_PROMPTS_ENABLED` (AND-gated mit `EXT_ENABLED`)
+  - Docker: `prompt_utils.py` Mount in `docker-compose.voeb.yml` (api_server + background)
+  - Unit Tests: 29 Tests (Schemas, Service, Cache, Feature Flags, Edge Cases) — alle bestanden
+- [Infra] **TLS/HTTPS fuer DEV + TEST aktiviert** (2026-03-09)
+  - DEV: `https://dev.chatbot.voeb-service.de` (vorher `http://188.34.74.187`)
+  - TEST: `https://test.chatbot.voeb-service.de` (vorher `http://188.34.118.201`)
+  - Zertifikate: Let's Encrypt ECDSA P-384 (BSI TR-02102-2 konform), Issuer E8, auto-renewal
+  - Protokoll: TLSv1.3 / TLS_AES_256_GCM_SHA384, HTTP/2
+  - cert-manager DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill
+  - ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` (Production ACME)
+  - Ingress: DEV (IngressClass `nginx`) + TEST (IngressClass `nginx-test`)
+  - Helm Values: DOMAIN/WEB_DOMAIN auf FQDN+HTTPS, ingress.enabled=true
+  - Fix: Image-Repos (StackIT Registry) fest in `values-common.yaml` hinterlegt (vorher nur CI/CD `--set`)
+  - Fix: Redis-Passwort in `values-dev-secrets.yaml` + `values-test-secrets.yaml` ergaenzt
+  - Runbook aktualisiert: `docs/runbooks/dns-tls-setup.md`
 - [Feature] **Phase 4c: ext-token — LLM Usage Tracking + Token Limits** (2026-03-09)
   - Backend: REST-API fuer Token-Usage + Per-User Limits (6 Endpoints unter `/api/ext/token/`)
   - Datenbank: `ext_token_usage` + `ext_token_user_limit` Tabellen (Alembic Migration `b3e4a7d91f08`)
@@ -133,8 +159,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Node Pool auf 2 Nodes skaliert (DEV + TEST im shared Cluster)
   - PG Flex `vob-test` + Bucket `vob-test` provisioniert
   - Namespace `onyx-test`, GitHub Environment `test` + 5 Secrets
-  - Helm Release `onyx-test`: 9 Pods Running, Health Check OK
-  - Erreichbar unter `http://188.34.118.201`
+  - Helm Release `onyx-test`: 9 Pods Running (historisch, jetzt 15 Pods), Health Check OK
+  - Erreichbar unter `https://test.chatbot.voeb-service.de` (HTTPS seit 2026-03-09)
   - Eigene IngressClass `nginx-test` (Conflict mit DEV vermieden)
   - Separate S3-Credentials für TEST erstellt (Enterprise-Trennung)
 - [Infra] **TEST-Umgebung vorbereitet** (2026-03-02)
@@ -270,9 +296,12 @@ Beispiel: `1.2.3`
 - [ ] Updated Dokumentation nach Implementation
 
 ### Phase 4 – Extensions (M3-M4)
-- [ ] Token Limits Release
-- [ ] RBAC Release
-- [ ] Advanced Features Release
+- [x] Branding/Whitelabel Release (DEV+TEST deployed 2026-03-08)
+- [x] Token Limits Release (DEV+TEST deployed 2026-03-09)
+- [x] Custom Prompts Release (implementiert 2026-03-09, Deploy offen)
+- [ ] Analytics Release
+- [ ] RBAC Release (blockiert: Entra ID)
+- [ ] Access Control Release (blockiert: RBAC)
 
 ### Phase 5 – Go-Live Readiness (M5)
 - [ ] Final Testing Release Notes
@@ -334,7 +363,9 @@ docs/
 ├── technisches-feinkonzept/
 │   ├── template-modulspezifikation.md           (Template)
 │   ├── ext-framework.md                         (Extension Framework Spec)
-│   └── ext-branding.md                          (Whitelabel Branding Spec)
+│   ├── ext-branding.md                          (Whitelabel Branding Spec)
+│   ├── ext-token.md                             (Token Limits + Usage Tracking Spec)
+│   └── ext-custom-prompts.md                    (Custom System Prompts Spec)
 ├── adr/
 │   ├── adr-001-onyx-foss-als-basis.md           (Platform Choice)
 │   ├── adr-002-extension-architektur.md         (Extension Architecture)
@@ -343,6 +374,7 @@ docs/
 │   └── adr-005-node-upgrade-g1a8d.md              (Node-Upgrade g1a.8d)
 ├── abnahme/
 │   ├── abnahmeprotokoll-template.md             (Acceptance Protocol)
+│   ├── abnahmeprotokoll-m1.md                   (M1 Abnahmeprotokoll)
 │   └── meilensteinplan.md                       (Milestone Plan)
 ├── runbooks/
 │   ├── README.md                                (Runbook Index)
@@ -359,7 +391,11 @@ docs/
 └── referenz/
     ├── stackit-implementierungsplan.md          (DEV+TEST Step-by-Step)
     ├── stackit-infrastruktur.md                 (Infra Specs + Sizing)
-    └── stackit-container-registry.md            (Container Registry)
+    ├── stackit-container-registry.md            (Container Registry)
+    ├── ee-foss-abgrenzung.md                    (EE/FOSS-Lizenzabgrenzung)
+    ├── ext-entwicklungsplan.md                  (Extension-Module Reihenfolge)
+    ├── rbac-rollenmodell.md                     (RBAC Rollenmodell-Entwurf)
+    └── compliance-research.md                   (Compliance-Research DSGVO/BAIT/BSI)
 ```
 
 ---

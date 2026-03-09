@@ -1,7 +1,7 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** BLOCKIERT — DNS-Architektur: `voeb-service.de` liegt bei GlobVill (nicht Cloudflare). ACME Challenge CNAME-Delegation bei GlobVill noetig. Wartet auf Leif.
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-07 (Tiefenanalyse DNS + HTTP-01)
+**Status:** ✅ LIVE — DEV + TEST HTTPS aktiv seit 2026-03-09. ACME-Challenge CNAME-Delegation bei GlobVill erledigt (Leif, 2026-03-09).
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-09 (TLS LIVE auf DEV + TEST)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 
 ---
@@ -12,8 +12,8 @@
 
 | Environment | Zugriff | Status |
 |-------------|---------|--------|
-| DEV | `http://188.34.74.187` | HTTP-only, IP-basiert |
-| TEST | `http://188.34.118.201` | HTTP-only, IP-basiert |
+| DEV | `https://dev.chatbot.voeb-service.de` | ✅ HTTPS LIVE (TLSv1.3, ECDSA P-384, HTTP/2) |
+| TEST | `https://test.chatbot.voeb-service.de` | ✅ HTTPS LIVE (TLSv1.3, ECDSA P-384, HTTP/2) |
 | PROD | Noch nicht provisioniert | — |
 
 ### Zielzustand
@@ -180,11 +180,9 @@ cert-manager benoetigt einen Cloudflare API Token um DNS-TXT-Records fuer die Ze
 | 1 | Subdomain-Name festlegen | Pascal/Leif | **ERLEDIGT** — `chatbot` |
 | 2 | 2x DNS A-Record anlegen (DNS-only!) | Leif | **ERLEDIGT** (2026-03-05) |
 | 3 | Cloudflare API Token erstellen | Leif | **ERLEDIGT** (2026-03-05, Permissions korrigiert 2026-03-07) |
-| 4 | 2x ACME Challenge CNAME bei GlobVill | Leif | **OFFEN — AKTUELLER BLOCKER** |
+| 4 | 2x ACME Challenge CNAME bei GlobVill | Leif | **✅ ERLEDIGT** (2026-03-09) |
 
-**Punkt 4 ist der letzte Blocker.** Die Domain `voeb-service.de` liegt bei GlobVill (nicht Cloudflare). cert-manager setzt TXT-Records bei Cloudflare, aber DNS-Queries gehen an GlobVill. Leif muss 2 CNAME-Records bei GlobVill anlegen, die die ACME-Challenge-Subdomains an Cloudflare delegieren. Details: siehe Diagnose 2 weiter unten.
-
-**Sobald die CNAMEs stehen, koennen wir HTTPS innerhalb von ~30 Minuten aktivieren.**
+**Alle Punkte erledigt.** TLS ist seit 2026-03-09 LIVE auf DEV + TEST.
 
 ---
 
@@ -895,7 +893,7 @@ kubectl get clusterissuer
 | 1 | Subdomain-Name festlegen | **ERLEDIGT** — `chatbot` (2026-03-04) | Pascal/Leif (VoeB) |
 | 2 | DNS A-Records in Cloudflare anlegen (DNS-only) | **ERLEDIGT** (2026-03-05) — DNS-only verifiziert | Leif (VoeB) |
 | 3 | Cloudflare API Token erstellen + uebermitteln | **ERLEDIGT** (2026-03-07) — Permissions korrigiert, ClusterIssuers READY | Leif (VoeB) |
-| 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **OFFEN — AKTUELLER BLOCKER** (siehe Diagnose 2) | Leif (VoeB) |
+| 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **✅ ERLEDIGT** (2026-03-09) — CNAMEs gesetzt, Zertifikate ausgestellt | Leif (VoeB) |
 | 5 | ACME-Email-Adresse — Team-Adresse statt persoenliche? | Empfehlung: Team-Adresse | CCJ + VoeB |
 | 6 | PROD: LoadBalancer IP + A-Record | Spaeter (PROD nicht provisioniert) | CCJ + VoeB |
 | 7 | Let's Encrypt Zertifikat-Renewal verifizieren | Nach 60 Tagen pruefen (auto-renew) | CCJ |

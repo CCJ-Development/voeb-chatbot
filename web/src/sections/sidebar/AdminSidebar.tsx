@@ -19,7 +19,7 @@ import { usePaidEnterpriseFeaturesEnabled } from "@/components/settings/usePaidE
 import { CombinedSettings } from "@/interfaces/settings";
 import SidebarTab from "@/refresh-components/buttons/SidebarTab";
 import SidebarBody from "@/sections/sidebar/SidebarBody";
-import { SvgActivity, SvgArrowUpCircle, SvgPaintBrush } from "@opal/icons";
+import { SvgActivity, SvgArrowUpCircle, SvgFileText, SvgPaintBrush } from "@opal/icons";
 import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 
@@ -162,6 +162,10 @@ const collections = (
               // ext-token: Token usage dashboard when VÖB extension is active
               ...(settings?.enterpriseSettings && !hasSubscription
                 ? [{ name: "Token Usage", icon: SvgActivity, link: "/admin/ext-token" }]
+                : []),
+              // ext-prompts: System Prompts management when VÖB extension is active
+              ...(settings?.enterpriseSettings && !hasSubscription
+                ? [{ name: "System Prompts", icon: SvgFileText, link: "/admin/ext-prompts" }]
                 : []),
               // ext-branding: Hide billing/upgrade when using VÖB branding (no Onyx license)
               ...(hasSubscription || !settings?.enterpriseSettings

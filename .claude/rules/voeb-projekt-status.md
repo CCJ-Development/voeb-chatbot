@@ -26,7 +26,7 @@
   - ✅ PostgreSQL: DB `onyx` angelegt, `db_readonly_user` per Terraform
   - ✅ Object Storage: Credentials erstellt, in Helm Secrets konfiguriert
   - ✅ Helm Release `onyx-dev`: Alle 16 Pods (8 Celery-Worker, Standard Mode) 1/1 Running
-  - ✅ API Health OK, Login funktioniert unter `http://188.34.74.187`
+  - ✅ API Health OK, Login funktioniert unter `https://dev.chatbot.voeb-service.de`
   - ✅ Runbooks: stackit-projekt-setup.md, stackit-postgresql.md, helm-deploy.md
   - ✅ CI/CD Pipeline: Produktionsreif (2026-03-02) — Parallel-Build ~8 Min, SHA-gepinnte Actions, Smoke Tests, Concurrency
   - ✅ Upstream-Workflows: 21 Onyx-Workflows deaktiviert, nur StackIT Deploy + Upstream Check aktiv
@@ -34,7 +34,8 @@
   - ✅ EE-Crash gelöst: `LICENSE_ENFORCEMENT_ENABLED: "false"` in values-common.yaml
   - ✅ DNS: A-Records gesetzt (2026-03-05): `dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`
   - ✅ DNS: Cloudflare Proxy auf DNS-only umgestellt und verifiziert (2026-03-05)
-  - ⏳ TLS/HTTPS: Blockiert — DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen. Token-Fix erledigt, ClusterIssuers READY. HTTP-01 nicht moeglich (Onyx Chart containerPort 1024). Details: docs/runbooks/dns-tls-setup.md
+  - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
+  - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: nomic-embed-text-v1 (self-hosted). Wechsel auf Qwen3-VL-Embedding 8B steht aus.
   - 📋 Scope: DEV live, TEST live.
@@ -45,7 +46,7 @@
   - ✅ Namespace `onyx-test` + Image Pull Secret + DB `onyx` angelegt
   - ✅ GitHub Environment `test` + 5 Secrets (PG, Redis, S3)
   - ✅ Helm Release `onyx-test`: 15 Pods Running (8 Celery-Worker, Standard Mode) (+ redis-operator im default NS), Health Check OK
-  - ✅ TEST erreichbar unter `http://188.34.118.201`
+  - ✅ TEST erreichbar unter `https://test.chatbot.voeb-service.de`
   - ✅ Eigene IngressClass `nginx-test` (Conflict mit DEV vermieden)
   - ✅ values-test.yaml Commit + Push (2026-03-03)
   - ✅ CI/CD workflow_dispatch TEST verifiziert — Build + Deploy grün (2026-03-03)
@@ -56,7 +57,8 @@
   - ✅ Fork-Management Doku überarbeitet (8-Schritte-Anleitung)
   - ✅ Embedding TEST: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-08, 4096 Dim, multilingual). DEV: nomic-embed-text-v1 (self-hosted).
   - ✅ DNS: A-Records gesetzt + Cloudflare DNS-only verifiziert (2026-03-05)
-  - ⏳ TLS/HTTPS: Blockiert — DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen. Token-Fix erledigt, ClusterIssuers READY. HTTP-01 nicht moeglich (Onyx Chart containerPort 1024). Details: docs/runbooks/dns-tls-setup.md
+  - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
+  - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ Cloud-Infrastruktur-Audit durchgeführt (2026-03-04): 10 CRITICAL, 18 HIGH, ~20 MEDIUM, ~12 LOW
   - ✅ 3 Security Quick Wins deployed (2026-03-05): C6 (DB_READONLY→Secret), H8 (Security-Header), H11 (Script Injection Fix)
   - ✅ C5/SEC-03: NetworkPolicies auf DEV + TEST applied (2026-03-05) — 5 Policies, Cross-NS-Isolation verifiziert
@@ -72,7 +74,7 @@
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch `feature/ext-token` offen für Nachbesserungen.
-  - 4d: 📋 ext-prompts — Custom System Prompts. **JETZT STARTBAR**, keine Blocker.
+  - 4d: ✅ ext-prompts — Custom System Prompts. **Implementiert (2026-03-09).** Branch `feature/ext-prompts`, lokal getestet (29 Unit Tests, API funktional). DEV + TEST Deploy offen.
   - 4e: 📋 ext-analytics — Nutzungsstatistiken + Dashboard. **JETZT STARTBAR**, keine Blocker.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
@@ -80,19 +82,19 @@
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. Extension-Module: ext-prompts → ext-analytics (alle unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 2. TLS aktivieren (Leif muss 2 ACME-Challenge CNAMEs bei GlobVill setzen, Details: docs/runbooks/dns-tls-setup.md) → 3. M1-Abnahmeprotokoll ausfuellen → 4. Entra ID (wartet auf VÖB) → 5. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
+**1. ext-prompts DEV + TEST deployen (Branch `feature/ext-prompts`, Frontend-Rebuild noetig) → 2. Extension-Module: ext-analytics (unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 3. M1-Abnahmeprotokoll ausfuellen → 4. Entra ID (wartet auf VÖB) → 5. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
-| TLS/HTTPS: 2 ACME-Challenge CNAMEs bei GlobVill | Leif (GlobVill DNS-Admin) | TLS fuer DEV + TEST |
 | Entra ID Zugangsdaten | VÖB IT | Phase 3 |
 
 ## Erledigte Blocker
 | Blocker | Gelöst | Datum |
 |---------|--------|-------|
-| StackIT Zugang | ✅ Zugang vorhanden | Feb 2026 |
-| SA `project.admin`-Rolle | ✅ Rolle erteilt | 2026-02-22 |
-| LLM API Keys | ✅ StackIT AI Model Serving Token erstellt, GPT-OSS 120B konfiguriert | 2026-02-27 |
-| Embedding-Wechsel blockiert (PR #7541) | ✅ Upstream PR #9005 — Search Settings Swap re-enabled | 2026-03-06 |
+| TLS/HTTPS: ACME-Challenge CNAMEs bei GlobVill | ✅ Leif hat CNAMEs gesetzt, DEV HTTPS LIVE | 2026-03-09 |
 | Cloudflare API Token Auth Error (10000) | ✅ Leif hat Permissions erweitert, ClusterIssuers READY | 2026-03-07 |
+| Embedding-Wechsel blockiert (PR #7541) | ✅ Upstream PR #9005 — Search Settings Swap re-enabled | 2026-03-06 |
+| LLM API Keys | ✅ StackIT AI Model Serving Token erstellt, GPT-OSS 120B konfiguriert | 2026-02-27 |
+| SA `project.admin`-Rolle | ✅ Rolle erteilt | 2026-02-22 |
+| StackIT Zugang | ✅ Zugang vorhanden | Feb 2026 |

@@ -41,7 +41,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [stackit-postgresql.md](./runbooks/stackit-postgresql.md) | Verifiziert | PostgreSQL Flex Setup, User-Verwaltung, DB anlegen |
 | [helm-deploy.md](./runbooks/helm-deploy.md) | Verifiziert | Helm Values, Deploy, Troubleshooting |
 | [ci-cd-pipeline.md](./runbooks/ci-cd-pipeline.md) | Verifiziert | CI/CD Pipeline Setup, Secrets, Debugging |
-| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | Blockiert (DNS-Architektur) | DNS/TLS Setup — cert-manager, Let's Encrypt, Cloudflare |
+| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | ✅ Verifiziert (LIVE seit 2026-03-09) | DNS/TLS Setup — cert-manager, Let's Encrypt, Cloudflare |
 | [llm-konfiguration.md](./runbooks/llm-konfiguration.md) | Verifiziert | LLM-Konfiguration — Chat + Embedding Modelle |
 | [rollback-verfahren.md](./runbooks/rollback-verfahren.md) | Verifiziert | Rollback-Runbook — Entscheidungsbaum, Helm/DB-Rollback, Post-Mortem |
 
@@ -62,6 +62,8 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [template-modulspezifikation.md](./technisches-feinkonzept/template-modulspezifikation.md) | Final | Template fuer Modulspezifikationen |
 | [ext-framework.md](./technisches-feinkonzept/ext-framework.md) | Final | Extension Framework Basis (Phase 4a) |
 | [ext-branding.md](./technisches-feinkonzept/ext-branding.md) | Final | Branding/Whitelabel Modul (Phase 4b) |
+| [ext-token.md](./technisches-feinkonzept/ext-token.md) | Final | Token Limits + Usage Tracking (Phase 4c) |
+| [ext-custom-prompts.md](./technisches-feinkonzept/ext-custom-prompts.md) | Final | Custom System Prompts (Phase 4d) |
 
 ## Kontakt
 
