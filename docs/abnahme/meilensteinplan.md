@@ -1,7 +1,7 @@
 # Meilensteinplan -- VÖB Service Chatbot
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-07
+**Letzte Aktualisierung**: 2026-03-08
 **Version**: 0.3
 
 ---
@@ -25,7 +25,7 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 |-------------|-------|--------|--------|--------|
 | **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen |
 | **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | [TBD] | Blockiert (Entra ID) |
-| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | Geplant |
+| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08) |
 | **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Geplant |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
@@ -170,7 +170,7 @@ Phase 4a (Extension Framework Basis) ist bereits abgeschlossen. Die Entra ID Int
   - Session Management (Onyx-nativ)
   - Login/Logout ueber Onyx UI
 
-- **Core-Aenderungen (7 erlaubte Dateien)**
+- **Core-Aenderungen (10 erlaubte Dateien)**
   - `backend/onyx/main.py` -- Router-Registrierung (bereits implementiert in Phase 4a)
   - `backend/onyx/llm/multi_llm.py` -- Token Hook (Phase 4c)
   - `backend/onyx/access/access.py` -- Access Control Hook (Phase 4f, 4g)
@@ -300,11 +300,11 @@ Analytics, Branding und System Prompts Management Module sind implementiert.
 
 ### Liefergegenstände
 
-- **Branding Modul (`ext_branding`)**
+- **Branding Modul (`ext_branding`)** — ✅ bereits deployed (DEV+TEST, 2026-03-08, vorgezogen aus M3)
   - Logo/Titel via Config in `web/src/components/header/` (Core-Datei #5) mit Fallback auf Original
   - CSS Variables mit `--ext-` Prefix in `web/src/lib/constants.ts` (Core-Datei #6)
   - Nav-Items in `web/src/app/layout.tsx` (Core-Datei #4)
-  - DB-Tabelle: `ext_branding_config`
+  - Login-Tagline, Login-Logo, Admin-Sidebar (Core-Dateien #8-10)
 
 - **System Prompts Modul (`ext_custom_prompts`)**
   - Prompt Injection Hook in `backend/onyx/chat/prompt_utils.py` (Core-Datei #7)
@@ -579,5 +579,5 @@ Falls Abnahme verweigert wird:
 ---
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-07
+**Letzte Aktualisierung**: 2026-03-08
 **Version**: 0.3

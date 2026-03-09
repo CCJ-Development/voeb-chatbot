@@ -39,7 +39,7 @@ variable "cluster_name" {
 variable "kubernetes_version" {
   description = "Minimum Kubernetes version"
   type        = string
-  default     = "1.32"
+  default     = "1.33"
 }
 
 variable "availability_zones" {
@@ -66,10 +66,10 @@ variable "node_pool" {
     volume_type  = string
   })
   default = {
-    machine_type = "g1a.4d"  # 4 vCPU, 16 GB RAM
-    minimum      = 1
-    maximum      = 1
-    volume_size  = 50
+    machine_type = "g1a.8d"  # 8 vCPU, 32 GB RAM (upgraded 2026-03-06, ADR-005)
+    minimum      = 2
+    maximum      = 2
+    volume_size  = 100
     volume_type  = "storage_premium_perf2"
   }
 }

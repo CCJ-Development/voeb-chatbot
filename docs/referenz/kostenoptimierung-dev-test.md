@@ -1,8 +1,9 @@
 # Kostenoptimierung: DEV/TEST-Environments parken
 
-**Stand:** 2026-03-06
+**Stand:** 2026-03-06 (Preise basieren auf g1a.4d, historisch)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 **Zweck:** Optionen zur Kostenreduktion bei Nichtnutzung von DEV- und TEST-Umgebungen
+**Hinweis:** Seit 2026-03-06 laufen die Nodes auf g1a.8d (868 EUR/Mo). Die Tabellen unten zeigen die historischen g1a.4d-Preise.
 
 ---
 

@@ -188,7 +188,7 @@ Das Modul in `deployment/terraform/modules/stackit/main.tf` provisioniert:
 
 **SKE Cluster** (`vob-chatbot`):
 - 1 Node Pool `devtest` mit 2× g1a.8d (min=2, max=2)
-- Kubernetes v1.32.12 (SKE weist nächst-verfügbare Version zu)
+- Kubernetes v1.33.8 (upgraded 2026-03-08, Flatcar 4459.2.1)
 - Flatcar OS
 - Maintenance-Window: 02:00–04:00 UTC
 - ACL: offen (wird später eingeschränkt)
@@ -463,7 +463,7 @@ Separater Custom LLM Provider in der Admin UI:
 
 ### 6.3 Embedding-Modell konfigurieren
 
-> ⚠️ Blocker aufgehoben (Upstream PR #9005). Fallback: nomic-embed-text-v1 aktiv.
+> ✅ TEST: Qwen3-VL-Embedding 8B aktiv (seit 2026-03-08). DEV: nomic-embed-text-v1 als Fallback.
 
 Gleicher Provider, gleiche API Base, gleicher Auth Token. Separater Provider-Eintrag in der Admin UI.
 
@@ -484,12 +484,10 @@ Gleicher Provider, gleiche API Base, gleicher Auth Token. Separater Provider-Ein
 |--------|------------------|---------|--------|
 | **GPT-OSS 120B** | `openai/gpt-oss-120b` | 131K | ✅ Verifiziert |
 | **Qwen3-VL 235B** | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | 218K | ✅ Verifiziert |
-| Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128K | Verfügbar |
-
-> **TODO (H3):** Llama 3.3 Model-ID ist inkonsistent: hier `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` (FP8-Quantisierung), im [LLM-Runbook](../runbooks/llm-konfiguration.md) `meta-llama/Llama-3.3-70B-Instruct` (Standard). Korrekte StackIT Model-ID verifizieren und vereinheitlichen.
-| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | Verfügbar |
-| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | Verfügbar |
-| Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128K | Verfügbar |
+| Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128K | ✅ Verifiziert (TEST, 2026-03-08) |
+| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | Nicht kompatibel (kein Tool Calling) |
+| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | Nicht kompatibel (kein Tool Calling) |
+| Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128K | ✅ Verifiziert (TEST, 2026-03-08) |
 
 > Bei Modellwechsel: Die **volle StackIT Model ID** als Model Name eintragen (s. Abschnitt 6.2).
 
@@ -646,7 +644,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | Onyx UI erreichbar | `http://188.34.74.187/auth/login` → Login-Seite | [x] ✅ (2026-02-27) |
 | LLM Chat-Modell (GPT-OSS) | GPT-OSS 120B antwortet über Onyx Chat | [x] ✅ (2026-02-27) |
 | LLM Chat-Modell (Qwen3-VL) | Qwen3-VL 235B antwortet über Onyx Chat | [x] ✅ (2026-02-27) |
-| LLM Embedding-Modell | Qwen3-VL-Embedding 8B fuer Dokumenten-Suche | [ ] ⚠️ Blocker aufgehoben (Upstream PR #9005). Fallback: nomic-embed-text-v1 aktiv. |
+| LLM Embedding-Modell | Qwen3-VL-Embedding 8B fuer Dokumenten-Suche | [x] ✅ TEST aktiv (2026-03-08). DEV: nomic-embed-text-v1 als Fallback. |
 | CI/CD funktioniert | Push auf main → Pods updated | [x] ✅ Run #5 (2026-03-02): 10 Min, 10/10 Pods, Health OK |
 
 ---
@@ -673,8 +671,8 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | Schritt | Wann | Was | Status |
 |---------|------|-----|--------|
 | TEST Environment | Nach DEV-Validierung | Phase 7: Node Pool skalieren, PG + Bucket + Namespace + Helm | ✅ LIVE (2026-03-03) |
-| Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ⚠️ Blocker aufgehoben (Upstream PR #9005). nomic-embed-text-v1 als Fallback aktiv. |
-| Branding | Nach TEST-Setup | Logo-Dateien ersetzen, ext/-Komponenten | ⏳ Offen |
+| Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ✅ TEST aktiv (2026-03-08). DEV: nomic-embed-text-v1. |
+| Branding | Nach TEST-Setup | Logo-Dateien ersetzen, ext/-Komponenten | ✅ Deployed (DEV+TEST, 2026-03-08) |
 | Entra ID (Auth) | Sobald Credentials von VÖB | `AUTH_TYPE: oidc` in Helm Values | Blockiert |
 | DNS + TLS | Nach DNS-Setup | Let's Encrypt oder StackIT-CA | Blockiert (VÖB IT) |
 | Security-Härtung P0 | Vor TEST-Deploy | SEC-01: PG ACL einschränken (30 Min) | ✅ Erledigt (2026-03-03) |
@@ -715,7 +713,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | 25 | **SEC-05**: Separate Kubeconfigs | Niko | **Zurückgestellt** (2026-03-08) → P3 (opportunistisch bei Kubeconfig-Renewal) |
 | 26 | **SEC-06**: Container SecurityContext (`privileged: true` entfernen) | Niko | **Phase 1 ✅** (2026-03-08) — `privileged: false` deployed. Phase 2 (runAsNonRoot) vor PROD |
 | 27 | **SEC-07**: Encryption-at-Rest verifizieren | Niko | ✅ Erledigt (2026-03-08) — StackIT Default |
-| 28 | **H3**: Llama 3.3 Model-ID vereinheitlichen (FP8 vs Standard) | Niko | ⏳ Klärung mit StackIT |
+| 28 | **H3**: Llama 3.3 Model-ID vereinheitlichen (FP8 vs Standard) | Niko | ✅ Erledigt (2026-03-08) — korrekte ID: `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` |
 | 29 | **M3**: IP-Ownership in ADR-001 klären ("CCJ oder VÖB" → eindeutig) | Niko | ⏳ Klärung mit VÖB |
 | 30 | **C5**: DSGVO-Dokumente erstellen (DSFA, Löschkonzept, AVV) | Niko | ⏳ P2 (vor Abnahme) |
 | 31 | **M5**: PROD OIDC-Secrets in GitHub Environment `prod` vorbereiten | Niko | ⏳ Nach Entra ID |

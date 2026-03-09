@@ -91,18 +91,21 @@ Wie bauen wir **Custom Features** (Token Limits, RBAC, Branding, Analytics) für
   - Injection Points für Custom UI (z. B. in Chat-Sidebar)
   - Nicht: Bestehende Komponenten modifizieren
 
-#### 2. Minimale Core-Änderungen (7 nur)
+#### 2. Minimale Core-Änderungen (10 Dateien)
 
-Nur folgende **7 Files** dürfen im Core modifiziert werden:
+Nur folgende **10 Files** dürfen im Core modifiziert werden:
 
 ```
-1. backend/onyx/main.py                (Extension Routes registrieren)
-2. backend/onyx/llm/multi_llm.py       (Token Hook nach LLM-Response)
-3. backend/onyx/access/access.py        (Additiver Permission-Check)
-4. backend/onyx/chat/prompt_utils.py    (Custom Prompt Injection)
-5. web/src/app/layout.tsx               (Nav-Items für ext/-Seiten)
-6. web/src/components/header/           (Branding mit Fallback)
-7. web/src/lib/constants.ts             (CSS Variables mit --ext- Prefix)
+1. backend/onyx/main.py                     (Extension Routes registrieren)
+2. backend/onyx/llm/multi_llm.py            (Token Hook nach LLM-Response)
+3. backend/onyx/access/access.py             (Additiver Permission-Check)
+4. backend/onyx/chat/prompt_utils.py         (Custom Prompt Injection)
+5. web/src/app/layout.tsx                    (Nav-Items für ext/-Seiten)
+6. web/src/components/header/                (Branding mit Fallback)
+7. web/src/lib/constants.ts                  (CSS Variables mit --ext- Prefix)
+8. web/src/app/auth/login/LoginText.tsx      (Login-Tagline, seit ext-branding)
+9. web/src/components/auth/AuthFlowContainer.tsx (Login-Logo + App-Name, seit ext-branding)
+10. web/src/sections/sidebar/AdminSidebar.tsx (Billing→Branding, seit ext-branding)
 ```
 
 > Details zu erlaubten Änderungen pro Datei: siehe `.claude/rules/core-dateien.md`

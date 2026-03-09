@@ -16,10 +16,10 @@
 | Parameter | Wert |
 |-----------|------|
 | Cluster | 1 (shared für alle Environments) |
-| Kubernetes-Version | v1.32.12 (SKE-zugewiesen) — deprecated laut StackIT, Update einplanen |
+| Kubernetes-Version | v1.33.8 (SKE-zugewiesen, upgraded 2026-03-08) |
 | Namespaces | `onyx-dev`, `onyx-test` (PROD: geplant eigener Cluster, ADR-004) |
 | Ingress Controller | NGINX via Essential Network Load Balancer (NLB-10) |
-| TLS | Let's Encrypt via cert-manager (installiert, Cloudflare DNS-01 geplant). Aktuell: Blockiert durch Cloudflare API Token Error |
+| TLS | Let's Encrypt via cert-manager (installiert, ClusterIssuers READY). Blockiert: DNS-Architektur (voeb-service.de bei GlobVill) — wartet auf 2 ACME-Challenge CNAMEs |
 | Network Policies | IMPLEMENTIERT (SEC-03, 2026-03-05): 5 Policies (Default-Deny, DNS, Intra-NS, Ingress, Egress) auf DEV+TEST. PROD: zusätzlich granulare per-Pod-Rules geplant |
 
 ### Worker Nodes (Compute Engine g1a-Serie, AMD, kein Overprovisioning)
@@ -91,8 +91,8 @@
 | Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | Chat + Vision/OCR, 218K Kontext | ✅ Verifiziert (DEV + TEST) |
 | Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | Chat, 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
 | Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | Chat (leichtgewichtig), 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
-| nomic-embed-text-v1 | `nomic-ai/nomic-embed-text-v1` | Embedding (self-hosted auf Model Server) | ✅ Aktiv |
-| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding (multilingual, 32k Context) | ⏳ Geplant |
+| nomic-embed-text-v1 | `nomic-ai/nomic-embed-text-v1` | Embedding (self-hosted auf Model Server) | ✅ Aktiv (DEV) |
+| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding (multilingual, 32k Context, 4096 Dim) | ✅ Aktiv (TEST, seit 2026-03-08) |
 
 **Nicht kompatibel mit Onyx** (kein Tool Calling auf StackIT vLLM): `google/gemma-3-27b-it` (Gemma 3 27B), `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` (Mistral-Nemo 12B). Details: [LLM-Runbook](../runbooks/llm-konfiguration.md#chat-modelle--nicht-kompatibel-mit-onyx).
 
@@ -154,7 +154,7 @@
 | TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05) |
 | PROD | `chatbot.voeb-service.de` | — | Geplant |
 
-Cloudflare: DNS-only (kein Proxy). TLS: cert-manager + Let's Encrypt geplant (blockiert durch Cloudflare API Token Error).
+Cloudflare: DNS-only (kein Proxy). TLS: cert-manager installiert, ClusterIssuers READY. Blockiert durch DNS-Architektur (voeb-service.de bei GlobVill, nicht Cloudflare). Wartet auf 2 ACME-Challenge CNAMEs.
 
 ---
 

@@ -1,7 +1,7 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-07
+**Letzte Aktualisierung**: 2026-03-08
 **Version**: 0.5
 
 ---
@@ -28,7 +28,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │ Internet / Benutzer                                               │
 └───────────────────────────┬───────────────────────────────────────┘
                             │
-                            ↓ HTTP (TLS geplant, aktuell noch nicht aktiv)
+                            ↓ HTTP (TLS blockiert — wartet auf ACME-Challenge CNAMEs bei GlobVill)
 
 ┌───────────────────────────────────────────────────────────────────┐
 │ StackIT Cloud -- Region EU01 (Frankfurt)                          │
@@ -37,7 +37,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ SKE Kubernetes Cluster "vob-chatbot"                        │ │
 │  │ Node Pool "devtest": 2× g1a.8d (8 vCPU, 32 GB RAM)        │ │
-│  │ Kubernetes 1.32, Flatcar OS                                 │ │
+│  │ Kubernetes 1.33.8, Flatcar 4459.2.1                          │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
 │  │  │ Namespace: onyx-dev (DEV)                             │  │ │
@@ -97,10 +97,10 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ StackIT AI Model Serving (LLM)                             │ │
 │  │                                                             │ │
-│  │  DEV: GPT-OSS 120B + Qwen3-VL 235B (konfiguriert)         │ │
-│  │  TEST: GPT-OSS 120B + Qwen3-VL 235B (konfiguriert seit 2026-03-03) │ │
-│  │  Embedding: nomic-embed-text-v1 (self-hosted, aktiv).         │ │
-│  │    Ziel: Qwen3-VL-Embedding 8B (Blocker aufgehoben, Upstream PR #9005)│ │
+│  │  DEV+TEST: 4 Chat-Modelle konfiguriert (2026-03-08):       │ │
+│  │    GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B │ │
+│  │  Embedding DEV: nomic-embed-text-v1 (self-hosted, aktiv).     │ │
+│  │  Embedding TEST: Qwen3-VL-Embedding 8B (aktiv seit 2026-03-08)│ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
@@ -634,7 +634,7 @@ Der Monitoring-Ausbau ist für die PROD-Vorbereitung geplant und umfasst:
    - Required Reviewers Approval
 ```
 
-**Warum "Extend, don't modify" funktioniert**: Max. 7 vorhersagbare Merge-Konflikte. Der `ext/`-Code existiert nicht in Upstream und erzeugt keine Konflikte.
+**Warum "Extend, don't modify" funktioniert**: Max. 10 vorhersagbare Merge-Konflikte (10 Core-Dateien). Der `ext/`-Code existiert nicht in Upstream und erzeugt keine Konflikte.
 
 ### Extension Updates
 
@@ -862,7 +862,7 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 | 2 | [StackIT PostgreSQL](./runbooks/stackit-postgresql.md) | Verifiziert | DB anlegen, Readonly-User, Managed PG Einschränkungen |
 | 3 | [Helm Deploy](./runbooks/helm-deploy.md) | Verifiziert | Helm Install/Upgrade, Secrets, Redis, Troubleshooting |
 | 4 | [CI/CD Pipeline](./runbooks/ci-cd-pipeline.md) | Verifiziert | Deploy, Rollback, Secrets, Troubleshooting |
-| 5 | [DNS/TLS Setup](./runbooks/dns-tls-setup.md) | Bereit zur Umsetzung | cert-manager, Let's Encrypt, Cloudflare DNS-01, BSI-konform |
+| 5 | [DNS/TLS Setup](./runbooks/dns-tls-setup.md) | Blockiert (DNS-Architektur, wartet auf ACME-Challenge CNAMEs) | cert-manager, Let's Encrypt, Cloudflare DNS-01, BSI-konform |
 | 6 | [LLM-Konfiguration](./runbooks/llm-konfiguration.md) | Verifiziert | StackIT AI Model Serving, Embedding, Admin UI Setup |
 | 7 | [Rollback-Verfahren](./runbooks/rollback-verfahren.md) | Verifiziert | Entscheidungsbaum, Helm/DB-Rollback, Kommunikation, Post-Mortem |
 
@@ -887,5 +887,5 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-07
+**Letzte Aktualisierung**: 2026-03-08
 **Version**: 0.5

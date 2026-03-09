@@ -41,7 +41,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [stackit-postgresql.md](./runbooks/stackit-postgresql.md) | Verifiziert | PostgreSQL Flex Setup, User-Verwaltung, DB anlegen |
 | [helm-deploy.md](./runbooks/helm-deploy.md) | Verifiziert | Helm Values, Deploy, Troubleshooting |
 | [ci-cd-pipeline.md](./runbooks/ci-cd-pipeline.md) | Verifiziert | CI/CD Pipeline Setup, Secrets, Debugging |
-| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | Bereit zur Umsetzung | DNS/TLS Setup — cert-manager, Let's Encrypt, Cloudflare |
+| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | Blockiert (DNS-Architektur) | DNS/TLS Setup — cert-manager, Let's Encrypt, Cloudflare |
 | [llm-konfiguration.md](./runbooks/llm-konfiguration.md) | Verifiziert | LLM-Konfiguration — Chat + Embedding Modelle |
 | [rollback-verfahren.md](./runbooks/rollback-verfahren.md) | Verifiziert | Rollback-Runbook — Entscheidungsbaum, Helm/DB-Rollback, Post-Mortem |
 
@@ -52,6 +52,8 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [stackit-implementierungsplan.md](./referenz/stackit-implementierungsplan.md) | Aktuell | Step-by-Step DEV+TEST Infrastruktur (Phase 1-7) |
 | [stackit-infrastruktur.md](./referenz/stackit-infrastruktur.md) | Aktuell | StackIT Specs, Sizing, Environments-Tabelle |
 | [stackit-container-registry.md](./referenz/stackit-container-registry.md) | Aktuell | Container Registry Konzepte, Auth, Robot Accounts |
+| [ee-foss-abgrenzung.md](./referenz/ee-foss-abgrenzung.md) | Aktuell | EE/FOSS-Lizenzabgrenzung, was erlaubt/verboten ist |
+| [ext-entwicklungsplan.md](./referenz/ext-entwicklungsplan.md) | Aktuell | Extension-Module Reihenfolge, Workflow, Dependencies |
 
 ## Technisches Feinkonzept
 
@@ -59,6 +61,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 |----------|--------|-------------|
 | [template-modulspezifikation.md](./technisches-feinkonzept/template-modulspezifikation.md) | Final | Template fuer Modulspezifikationen |
 | [ext-framework.md](./technisches-feinkonzept/ext-framework.md) | Final | Extension Framework Basis (Phase 4a) |
+| [ext-branding.md](./technisches-feinkonzept/ext-branding.md) | Final | Branding/Whitelabel Modul (Phase 4b) |
 
 ## Kontakt
 
@@ -68,4 +71,4 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | Projektmanagement | CCJ / Coffee Studios | Benito-Miguel Schwankhart |
 | Auftraggeber | VÖB | Luca Koenes |
 
-Letzte Aktualisierung: 2026-03-07
+Letzte Aktualisierung: 2026-03-08
