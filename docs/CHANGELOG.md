@@ -93,7 +93,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - 1 Konflikt (AGENTS.md, --ours), Core-Patch main.py auto-merged, ext-Hook intakt
   - Wichtige Upstream-Aenderungen: PR #9005 (Embedding-Swap re-enabled), PR #9014 (Lightweight entfernt), PR #9001 (SCIM Token Management)
 - [CI/CD] **PR-Validierung vor Merge** (2026-03-06)
-  - `.github/workflows/pr-checks.yml` mit 3 parallelen Jobs: helm-validate, build-backend, build-frontend
+  - `.github/workflows/ci-checks.yml` (ehem. pr-checks.yml) mit 3 parallelen Jobs: helm-validate, build-backend, build-frontend
   - Merged via PR #4
 - [Infra] **Branch Protection auf main aktiviert** (2026-03-06)
   - PR required (kein Direct Push), 3 Required Status Checks. Review-Requirement entfernt (Solo-Dev, 2026-03-07)

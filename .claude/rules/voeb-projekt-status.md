@@ -12,7 +12,7 @@
 - Helm: Value-Overlays (`deployment/helm/values/`) — Onyx Chart READ-ONLY
 - CI/CD: `.github/workflows/stackit-deploy.yml` (Build → StackIT Registry → Helm Deploy)
 - CI: `upstream-check.yml` (wöchentlicher Merge-Kompatibilitäts-Check)
-- CI: `.github/workflows/pr-checks.yml` (PR-Validierung: Helm + Docker Build)
+- CI: `.github/workflows/ci-checks.yml` (Push-to-main Validierung: Helm + Docker Build)
 - Docker: `deployment/docker_compose/` (.env mit EXT_-Feature Flags)
 - Enterprise-Docs: `docs/` (Sicherheitskonzept, Testkonzept, Betriebskonzept, ADRs, Abnahme)
 

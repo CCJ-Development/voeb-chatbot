@@ -1,7 +1,7 @@
 # ===========================================================
-# PR Checks — Validierung vor Merge nach main
+# CI Checks — Validierung auf Push nach main
 # ===========================================================
-# Trigger: Pull Request gegen main
+# Trigger: Push auf main (inkl. Merge von Feature-Branches)
 #
 # Checks:
 #   1. Helm Template: Validiert dass Chart mit unseren Values rendert
@@ -9,13 +9,13 @@
 #   3. Docker Build Frontend: Kompiliert ohne Push (validates Code)
 #
 # Kein Push, kein Deploy — reine Validierung.
-# Wird als Required Status Check in Branch Protection verwendet.
+# Solo-Dev: Kein PR-Requirement, CI laeuft direkt auf main.
 # ===========================================================
 
-name: PR Checks
+name: CI Checks
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-checks-${{ github.event.pull_request.number }}
+  group: ci-checks-${{ github.sha }}
   cancel-in-progress: true
 
 env:

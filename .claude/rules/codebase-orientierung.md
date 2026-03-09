@@ -84,7 +84,7 @@ Deployment via CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgr
 .github/workflows/
   stackit-deploy.yml         ← Build → StackIT Registry → Helm Deploy (DEV/TEST/PROD)
   upstream-check.yml         ← Wöchentlicher Upstream-Merge-Check
-  pr-checks.yml              ← PR-Validierung: helm-validate + Docker Build (Backend + Frontend)
+  ci-checks.yml              ← Push-to-main Validierung: helm-validate + Docker Build (Backend + Frontend)
 ```
 
 ## Enterprise-Docs
