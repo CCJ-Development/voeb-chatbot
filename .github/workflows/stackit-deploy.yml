@@ -226,7 +226,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=${{ secrets.S3_ACCESS_KEY_ID }}" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --set "auth.dbreadonly.values.db_readonly_password=${{ secrets.DB_READONLY_PASSWORD }}" \
-            --timeout 10m
+            --wait --timeout 15m
 
       # DEV: Recreate-Strategie per kubectl patch fuer Deployments ohne strategy-Block in Values.
       # Seit g1a.8d Upgrade (2026-03-06) waere RollingUpdate moeglich, aber Recreate
@@ -346,7 +346,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=${{ secrets.S3_ACCESS_KEY_ID }}" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --set "auth.dbreadonly.values.db_readonly_password=${{ secrets.DB_READONLY_PASSWORD }}" \
-            --atomic --timeout 10m
+            --wait --timeout 15m
 
       - name: Smoke test
         run: |
@@ -437,7 +437,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=${{ secrets.S3_ACCESS_KEY_ID }}" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --set "auth.dbreadonly.values.db_readonly_password=${{ secrets.DB_READONLY_PASSWORD }}" \
-            --atomic --timeout 15m
+            --wait --timeout 15m
 
       - name: Smoke test
         run: |
