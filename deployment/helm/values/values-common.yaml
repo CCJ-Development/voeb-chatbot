@@ -29,17 +29,17 @@ api:
     httpGet:
       path: /health
       port: 8080
-    initialDelaySeconds: 15
+    initialDelaySeconds: 30
     periodSeconds: 10
-    failureThreshold: 3
+    failureThreshold: 6
     timeoutSeconds: 5
   livenessProbe:
     httpGet:
       path: /health
       port: 8080
-    initialDelaySeconds: 30
+    initialDelaySeconds: 60
     periodSeconds: 15
-    failureThreshold: 5
+    failureThreshold: 8
     timeoutSeconds: 5
 
 webserver:
