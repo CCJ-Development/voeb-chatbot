@@ -44,7 +44,7 @@ prometheus:
         metrics_path: "/metrics"
         scrape_interval: "30s"
         static_configs:
-          - targets: ["onyx-dev-api.onyx-dev.svc.cluster.local:8080"]
+          - targets: ["onyx-dev-api-service.onyx-dev.svc.cluster.local:8080"]
             labels:
               environment: "dev"
               service: "api"
@@ -52,7 +52,7 @@ prometheus:
         metrics_path: "/metrics"
         scrape_interval: "30s"
         static_configs:
-          - targets: ["onyx-test-api.onyx-test.svc.cluster.local:8080"]
+          - targets: ["onyx-test-api-service.onyx-test.svc.cluster.local:8080"]
             labels:
               environment: "test"
               service: "api"
