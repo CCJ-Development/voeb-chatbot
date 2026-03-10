@@ -1,0 +1,26 @@
+# Ingress von redis_exporter (monitoring-NS) auf Redis-Pods in App-Namespaces
+# Separate Policy (nicht bestehende 06 erweitern — Least Privilege).
+# Muss in BEIDEN App-Namespaces angewendet werden:
+#   kubectl apply -f 07-allow-redis-exporter-ingress.yaml -n onyx-dev
+#   kubectl apply -f 07-allow-redis-exporter-ingress.yaml -n onyx-test
+# (namespace wird beim Apply ueberschrieben)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-exporter-ingress
+spec:
+  podSelector:
+    matchLabels:
+      redis_setup_type: standalone
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app: redis-exporter
+      ports:
+        - port: 6379
+          protocol: TCP

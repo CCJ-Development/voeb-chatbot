@@ -34,28 +34,38 @@ fi
 echo "=== Monitoring NetworkPolicies anwenden (Namespace: $NAMESPACE) ==="
 
 # 1. Allow-Policies zuerst
-echo "[1/5] DNS Egress..."
+echo "[1/7] DNS Egress..."
 kubectl apply -f "$SCRIPT_DIR/02-allow-dns-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[2/5] Scrape Egress..."
+echo "[2/7] Scrape Egress..."
 kubectl apply -f "$SCRIPT_DIR/03-allow-scrape-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[3/5] Intra-Namespace..."
+echo "[3/7] Intra-Namespace..."
 kubectl apply -f "$SCRIPT_DIR/04-allow-intra-namespace.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[4/5] K8s API Egress..."
+echo "[4/7] K8s API Egress..."
 kubectl apply -f "$SCRIPT_DIR/05-allow-k8s-api-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
+echo "[5/7] PG Exporter Egress (Port 5432)..."
+kubectl apply -f "$SCRIPT_DIR/06-allow-pg-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
+echo "[6/7] Redis Exporter Egress (Port 6379)..."
+kubectl apply -f "$SCRIPT_DIR/07-allow-redis-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
 # 2. Default-Deny zuletzt
-echo "[5/5] Default-Deny (Zero-Trust Baseline)..."
+echo "[7/7] Default-Deny (Zero-Trust Baseline)..."
 kubectl apply -f "$SCRIPT_DIR/01-default-deny-all.yaml" -n "$NAMESPACE" $DRY_RUN
 
 echo ""
-echo "=== App-Namespace Scrape-Policy anwenden ==="
-echo "[+] onyx-dev..."
+echo "=== App-Namespace Policies anwenden ==="
+echo "[+] onyx-dev: Monitoring Scrape..."
 kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n onyx-dev $DRY_RUN
-echo "[+] onyx-test..."
+echo "[+] onyx-test: Monitoring Scrape..."
 kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n onyx-test $DRY_RUN
+echo "[+] onyx-dev: Redis Exporter Ingress..."
+kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n onyx-dev $DRY_RUN
+echo "[+] onyx-test: Redis Exporter Ingress..."
+kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n onyx-test $DRY_RUN
 
 echo ""
 echo "=== Fertig. Policies pruefen: ==="

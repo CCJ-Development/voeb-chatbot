@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-3 live, Phase 4 (Exporters + Dashboards) offen
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting offen (Teams)
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster), PROD-Vorbereitung
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
@@ -623,6 +623,13 @@ Für PROD zusätzlich:
 | 23 | Fix: Recreate-Strategie via `kubectl patch deployment` auf alle 10 Deployments | ✅ Alle Pods terminiert + neu gestartet |
 | 24 | CI/CD Fix: Recreate-Patch-Step in TEST Deploy-Job (analog DEV) | ✅ Commit `784577f` |
 | 25 | TEST Re-Deploy mit Recreate-Strategie | ✅ **Alle 15 Pods Running, Smoke Test grün** |
+| 26 | **Phase 4: Exporter-Deploy** — Secrets erstellt (4x im monitoring-NS) | ✅ pg-exporter-dev/test, redis-exporter-dev/test |
+| 27 | NetworkPolicies: 2 neue Egress (PG:5432, Redis:6379) + 2 App-NS Ingress | ✅ 7 Policies in monitoring, +2 in App-NS |
+| 28 | K8s Manifeste applied: 4 Deployments + 4 Services im monitoring-NS | ✅ Alle 4 Exporter 1/1 Running |
+| 29 | PG Exporter Health Probe Fix: `/healthz` → `/` (kein /healthz Endpoint) | ✅ Re-apply, Pods 1/1 |
+| 30 | PG Exporter WAL Collector: `permission denied for pg_ls_waldir` → `--no-collector.wal` | ✅ Keine Fehler mehr |
+| 31 | Helm Upgrade: 4 Scrape-Configs + 11 Alert-Rules in values-monitoring.yaml | ✅ Revision 3, 6 Targets UP, 20 Rules OK |
+| 32 | Grafana Dashboards importiert: PostgreSQL (ID 14114) + Redis (ID 763) | ✅ Beide sichtbar in Grafana |
 
 ### Lessons Learned
 
@@ -676,33 +683,48 @@ Fix: **Recreate-Strategie** für alle Onyx-Deployments. Alle alten Pods werden z
 | RollingUpdate | Zero-Downtime | Connection-Pool-Exhaustion bei DB-intensiven Apps | ❌ Nicht geeignet |
 | Recreate | Sauberer Neustart, kein Connection-Konflikt | Kurze Downtime | ✅ **Gewählt** |
 
+**9. postgres_exporter Health Probe `/healthz` existiert nicht (niedrig)**
+
+postgres_exporter (prometheuscommunity) hat keinen `/healthz` Endpoint. `/` liefert eine Landing-Page (HTTP 200). Readiness/Liveness Probes muessen auf `/` zeigen, nicht `/healthz`. redis_exporter hat dagegen `/healthz` (funktioniert).
+
+**10. postgres_exporter WAL Collector braucht pg_monitor (mittel)**
+
+Der WAL Collector ruft `pg_ls_waldir()` auf — braucht `pg_monitor` Rolle. StackIT Managed PG Flex unterstuetzt nur `login` + `createdb` via Terraform. Fix: `--no-collector.wal` als Container-Argument. Alle anderen Collectors (stat_database, stat_user_tables, locks, database_size) funktionieren ohne pg_monitor. `pg_stat_activity` zeigt nur eigene Sessions — daher `pg_stat_database_numbackends` fuer Connection-Monitoring.
+
 ### Deployed Pods
 
 ```
-$ kubectl get pods -n monitoring
+$ kubectl get pods -n monitoring  (nach Phase 4 Exporter-Deploy)
 NAME                                                     READY   STATUS    AGE
-alertmanager-monitoring-kube-prometheus-alertmanager-0   2/2     Running   ~5m
-monitoring-grafana-5548f645df-cclq8                      3/3     Running   ~5m
-monitoring-kube-prometheus-operator-78fbcc9cdb-pxp82     1/1     Running   ~5m
-monitoring-kube-state-metrics-6b4845b878-5lznr           1/1     Running   ~5m
-monitoring-prometheus-node-exporter-x2gzh                1/1     Running   ~5m (Node 1)
-monitoring-prometheus-node-exporter-x2xn9                1/1     Running   ~5m (Node 2)
-prometheus-monitoring-kube-prometheus-prometheus-0       2/2     Running   ~5m
+alertmanager-monitoring-kube-prometheus-alertmanager-0   2/2     Running   ~5h
+monitoring-grafana-5548f645df-cclq8                      3/3     Running   ~5h
+monitoring-kube-prometheus-operator-78fbcc9cdb-pxp82     1/1     Running   ~5h
+monitoring-kube-state-metrics-6b4845b878-5lznr           1/1     Running   ~5h
+monitoring-prometheus-node-exporter-x2gzh                1/1     Running   ~5h (Node 1)
+monitoring-prometheus-node-exporter-x2xn9                1/1     Running   ~5h (Node 2)
+postgres-exporter-dev-748c958db6-wt7hw                   1/1     Running   ~10m
+postgres-exporter-test-9ff8dd4fd-xflqk                   1/1     Running   ~10m
+prometheus-monitoring-kube-prometheus-prometheus-0       2/2     Running   ~5h
+redis-exporter-dev-74c6f94956-ndd7j                      1/1     Running   ~10m
+redis-exporter-test-7648fc9f-cvzdb                       1/1     Running   ~10m
 ```
 
 ### NetworkPolicies
 
 ```
 $ kubectl get networkpolicies -n monitoring
-NAME                        POD-SELECTOR                        AGE
-allow-dns-egress            <none>                              ~5m
-allow-intra-namespace       <none>                              ~5m
-allow-k8s-api-egress        <none>                              ~5m
-allow-prometheus-scrape     app.kubernetes.io/name=prometheus    ~5m
-default-deny-all            <none>                              ~5m
+NAME                           POD-SELECTOR                        AGE
+allow-dns-egress               <none>                              ~5h
+allow-intra-namespace          <none>                              ~5h
+allow-k8s-api-egress           <none>                              ~5h
+allow-pg-exporter-egress       app=postgres-exporter               ~10m  (Phase 4)
+allow-prometheus-scrape        app.kubernetes.io/name=prometheus    ~5h
+allow-redis-exporter-egress    app=redis-exporter                  ~10m  (Phase 4)
+default-deny-all               <none>                              ~5h
 
-$ kubectl get networkpolicies -n onyx-dev | grep monitoring
-allow-monitoring-scrape     <none>                              ~5m
+$ kubectl get networkpolicies -n onyx-dev | grep -E "monitoring|redis-exporter"
+allow-monitoring-scrape        <none>                              ~5h
+allow-redis-exporter-ingress   redis_setup_type=standalone         ~10m  (Phase 4)
 # Analog in onyx-test
 ```
 
@@ -717,10 +739,21 @@ allow-monitoring-scrape     <none>                              ~5m
 | `deployment/k8s/network-policies/monitoring/03-allow-scrape-egress.yaml` | Neu | Prometheus → onyx-dev/test:8080 |
 | `deployment/k8s/network-policies/monitoring/04-allow-intra-namespace.yaml` | Neu | Intra-Namespace |
 | `deployment/k8s/network-policies/monitoring/05-allow-k8s-api-egress.yaml` | Neu | K8s API (443) |
-| `deployment/k8s/network-policies/monitoring/apply.sh` | Neu | Sichere Apply-Reihenfolge |
+| `deployment/k8s/network-policies/monitoring/apply.sh` | Geändert | Sichere Apply-Reihenfolge (5→7 Steps + App-NS Policies) |
 | `deployment/k8s/network-policies/06-allow-monitoring-scrape.yaml` | Neu | App-NS: Ingress von monitoring:8080 |
+| `deployment/k8s/monitoring-exporters/pg-exporter-dev.yaml` | Neu (Phase 4) | postgres_exporter DEV (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/pg-exporter-test.yaml` | Neu (Phase 4) | postgres_exporter TEST (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/redis-exporter-dev.yaml` | Neu (Phase 4) | redis_exporter DEV (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/redis-exporter-test.yaml` | Neu (Phase 4) | redis_exporter TEST (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/apply.sh` | Neu (Phase 4) | Deploy-Script mit Secret-Prüfung |
+| `deployment/k8s/network-policies/monitoring/06-allow-pg-exporter-egress.yaml` | Neu (Phase 4) | PG Exporter → StackIT PG:5432 |
+| `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Neu (Phase 4) | Redis Exporter → onyx-dev/test:6379 |
+| `deployment/k8s/network-policies/07-allow-redis-exporter-ingress.yaml` | Neu (Phase 4) | App-NS: Ingress von Redis Exporter |
+| `docs/technisches-feinkonzept/monitoring-exporter.md` | Neu (Phase 4) | Modulspezifikation v0.3 |
 
 ### Commits
+
+#### Phase 1-3 (Monitoring-Stack)
 
 | SHA | Nachricht |
 |-----|-----------|
@@ -731,6 +764,12 @@ allow-monitoring-scrape     <none>                              ~5m
 | `9cc09e2` | `fix(ci): Helm Deploy Timeout auf 15m erhöhen, --atomic durch --wait ersetzen` |
 | `8d4b9a6` | `fix(helm): API Health Probe Timeouts erhöhen (Liveness killt Pod vor Startup)` |
 | `784577f` | `fix(ci): Recreate-Strategie für TEST Deploy (analog DEV)` |
+| `155975e` | `docs(monitoring): Deployment-Protokoll + Recreate-Fix dokumentieren` |
+| `635391e` | `spec(monitoring): Modulspezifikation postgres_exporter + redis_exporter (v0.2)` |
+
+#### Phase 4 (Exporters + Dashboards)
+
+Commit noch ausstehend — Dateien auf Feature-Branch `feature/monitoring-exporter`.
 
 ### Zusätzliche Änderungen (gleiche Session)
 
@@ -738,5 +777,30 @@ allow-monitoring-scrape     <none>                              ~5m
 |-----|-----------|-------|
 | `7947862` | `chore(stackit-infra): prevent_destroy für kritische Ressourcen` | Terraform Safety |
 | `6d7592e` | `docs(ext-entwicklungsplan): ext-analytics als übersprungen markieren` | Phase 4e |
-| `21dceba` | `fix(helm): HSTS-Header ergänzen (BSI TR-02102)` | Security Header |
-| `6d7592e` | `docs(ext-entwicklungsplan): ext-analytics als übersprungen markieren` | Phase 4e |
+
+### Verifizierte Metriken (Phase 4, 2026-03-10)
+
+| Metrik | DEV | TEST |
+|--------|-----|------|
+| PG Active Backends | 52 | 52 |
+| PG DB Size | 17.0 MB | 17.3 MB |
+| PG Cache Hit Ratio | 100% | 100% |
+| Redis Memory Used | 4.4 MB | 4.5 MB |
+| Redis Connected Clients | 126 | 146 |
+
+### Grafana Dashboards
+
+| Dashboard | Grafana UID | Quelle |
+|-----------|------------|--------|
+| PostgreSQL Exporter (VÖB) | `pg-exporter-dashboard` | grafana.com ID 14114 |
+| Redis Dashboard for Prometheus Redis Exporter 1.x | auto-generated | grafana.com ID 763 |
+
+**Hinweis:** Dashboards sind manuell importiert (nicht als ConfigMap persistent). Bei Grafana-Pod-Restart gehen sie verloren. Fuer PROD: Dashboards als ConfigMap provisionieren.
+
+### Alerting-Kanal
+
+**Entscheidung (Niko, 2026-03-10): Microsoft Teams statt SMTP.**
+
+Aktuell: AlertManager-Config hat Platzhalter (`localhost:25`). Alerts sind in Prometheus/Grafana sichtbar, werden aber nicht zugestellt. Teams Incoming Webhook muss konfiguriert werden.
+
+Naechster Schritt: Teams Webhook-URL erstellen → in `values-monitoring.yaml` als `msteams_configs` eintragen → `helm upgrade monitoring`.

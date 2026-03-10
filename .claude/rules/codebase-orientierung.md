@@ -83,6 +83,12 @@ Monitoring: `helm upgrade monitoring prometheus-community/kube-prometheus-stack 
 
 ## Monitoring
 ```
+deployment/k8s/monitoring-exporters/   ← postgres_exporter + redis_exporter (4 Deployments + Services)
+  pg-exporter-dev.yaml
+  pg-exporter-test.yaml
+  redis-exporter-dev.yaml
+  redis-exporter-test.yaml
+  apply.sh                   ← Deploy-Script mit Secret-Prüfung
 deployment/k8s/network-policies/
   monitoring/                ← NetworkPolicies fuer monitoring-Namespace
     01-default-deny-all.yaml
@@ -90,8 +96,11 @@ deployment/k8s/network-policies/
     03-allow-scrape-egress.yaml
     04-allow-intra-namespace.yaml
     05-allow-k8s-api-egress.yaml
-    apply.sh                 ← Sichere Apply-Reihenfolge (Allow zuerst, Deny zuletzt)
-  06-allow-monitoring-scrape.yaml  ← Ingress von monitoring auf Port 8080 (fuer App-NS)
+    06-allow-pg-exporter-egress.yaml    ← PG Exporter → StackIT PG:5432
+    07-allow-redis-exporter-egress.yaml ← Redis Exporter → Redis:6379
+    apply.sh                 ← Sichere Apply-Reihenfolge (7 Steps + App-NS Policies)
+  06-allow-monitoring-scrape.yaml       ← App-NS: Ingress von monitoring:8080
+  07-allow-redis-exporter-ingress.yaml  ← App-NS: Ingress von Redis Exporter:6379
 ```
 Zugriff: `kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80` → `http://localhost:3001`
 Konzept: `docs/referenz/monitoring-konzept.md`

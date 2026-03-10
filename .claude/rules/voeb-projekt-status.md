@@ -69,9 +69,11 @@
   - ✅ PR-CI-Workflow (PR #4): helm-validate + build-backend + build-frontend (2026-03-06)
   - ✅ CI-Checks: helm-validate + build-backend + build-frontend (auf Push-to-main). Kein PR-Requirement (Solo-Dev, 2026-03-09 vereinfacht)
   - ✅ K8s v1.32 → v1.33 Upgrade (2026-03-08): v1.33.8, Flatcar 4459.2.1, Terraform apply 9m40s, DEV 16/16 + TEST 15/15 Pods Running
-  - ✅ **Monitoring-Stack deployed** (2026-03-10): kube-prometheus-stack (Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter). 7 Pods in `monitoring` NS, 20 Targets, 9 Alert-Rules. Details: `docs/referenz/monitoring-konzept.md`
-  - ✅ Health Probes aktiviert (2026-03-10): API httpGet `/health:8080`, Webserver tcpSocket `:3000`. DEV deployed, TEST-Deploy ausstehend. Lesson: Next.js hat keinen HTTP-Health-Endpoint.
-  - ✅ Monitoring NetworkPolicies (2026-03-10): 5 Policies in `monitoring` NS + 1 Scrape-Policy in `onyx-dev`/`onyx-test`
+  - ✅ **Monitoring-Stack deployed** (2026-03-10): kube-prometheus-stack (Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter). 11 Pods in `monitoring` NS, 6 Targets, 20 Alert-Rules. Details: `docs/referenz/monitoring-konzept.md`
+  - ✅ Health Probes aktiviert (2026-03-10): API httpGet `/health:8080`, Webserver tcpSocket `:3000`. DEV + TEST deployed. Lesson: Next.js hat keinen HTTP-Health-Endpoint.
+  - ✅ Monitoring NetworkPolicies (2026-03-10): 7 Policies in `monitoring` NS + 3 Policies in `onyx-dev`/`onyx-test`
+  - ✅ **Monitoring Exporter deployed** (2026-03-10): postgres_exporter v0.19.1 + redis_exporter v1.82.0. 4 Exporter-Pods, 4 Scrape-Targets UP, 11 neue Alert-Rules. PG + Redis Metriken fließen. Grafana Dashboards importiert (ID 14114 + 763).
+  - ✅ Alerting: Teams statt SMTP (Entscheidung Niko, 2026-03-10). Webhook-URL noch offen.
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
@@ -85,7 +87,7 @@
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. M1-Abnahmeprotokoll ausfuellen → 2. Entra ID (wartet auf VÖB) → 3. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 4. Grafana Dashboards (Phase 4 Monitoring) → 5. SMTP fuer AlertManager klaeren → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack live (2026-03-10). Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
+**1. Teams Webhook-URL erstellen + AlertManager konfigurieren → 2. M1-Abnahmeprotokoll ausfuellen → 3. Entra ID (wartet auf VÖB) → 4. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 5. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack komplett (2026-03-10): kube-prometheus-stack + postgres_exporter + redis_exporter + Grafana Dashboards. Alerting auf Teams (Webhook offen). Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

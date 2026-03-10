@@ -56,6 +56,42 @@ prometheus:
             labels:
               environment: "test"
               service: "api"
+      # PostgreSQL Exporter (StackIT Managed PG Flex)
+      - job_name: "postgres-dev"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        scrape_timeout: "15s"
+        static_configs:
+          - targets: ["postgres-exporter-dev.monitoring.svc.cluster.local:9187"]
+            labels:
+              environment: "dev"
+              service: "postgresql"
+      - job_name: "postgres-test"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        scrape_timeout: "15s"
+        static_configs:
+          - targets: ["postgres-exporter-test.monitoring.svc.cluster.local:9187"]
+            labels:
+              environment: "test"
+              service: "postgresql"
+      # Redis Exporter (In-Cluster Redis)
+      - job_name: "redis-dev"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["redis-exporter-dev.monitoring.svc.cluster.local:9121"]
+            labels:
+              environment: "dev"
+              service: "redis"
+      - job_name: "redis-test"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["redis-exporter-test.monitoring.svc.cluster.local:9121"]
+            labels:
+              environment: "test"
+              service: "redis"
     # ServiceMonitor Namespace Selector (alle Namespaces)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -98,19 +134,18 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
-      receiver: "email-niko"
+      receiver: "teams-niko"
       routes:
         - match:
             severity: critical
           repeat_interval: 1h
-          receiver: "email-niko"
+          receiver: "teams-niko"
     receivers:
-      - name: "email-niko"
-        email_configs:
-          - to: "nikolaj.ivanov@coffee-studios.de"
-            from: "alertmanager@voeb-chatbot.local"
-            smarthost: "localhost:25"  # TODO: SMTP-Server konfigurieren
-            require_tls: false
+      - name: "teams-niko"
+        msteams_configs:
+          - webhook_url: ""  # TODO: Teams Incoming Webhook URL eintragen
+            title: '{{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }} — {{ .Annotations.description }}{{ end }}'
             send_resolved: true
 
 # --- kube-state-metrics ---
@@ -155,7 +190,7 @@ kubeProxy:
   enabled: false
 
 # --- Alert Rules ---
-# 9 Regeln aus dem Monitoring-Konzept (Abschnitt 4, Phase 3)
+# 20 Regeln: 9 Basis (Monitoring-Konzept Phase 3) + 11 Exporter (Phase 4)
 additionalPrometheusRulesMap:
   voeb-chatbot-alerts:
     groups:
@@ -250,3 +285,117 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "TLS-Zertifikat {{ $labels.name }} laeuft in weniger als 14 Tagen ab"
               description: "Namespace {{ $labels.namespace }}, verbleibend: {{ $value | humanizeDuration }}."
+
+      # --- Exporter Alert Rules (Phase 4) ---
+      - name: voeb-exporter.rules
+        rules:
+          # 10. Exporter-Health: PG Exporter nicht erreichbar
+          - alert: PGExporterDown
+            expr: up{job=~"postgres-.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL Exporter nicht erreichbar ({{ $labels.environment }})"
+              description: "Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 11. Exporter-Health: Redis Exporter nicht erreichbar
+          - alert: RedisExporterDown
+            expr: up{job=~"redis-.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Redis Exporter nicht erreichbar ({{ $labels.environment }})"
+              description: "Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 12. PG Connections >80% von max_connections
+          # Nutzt pg_stat_database_numbackends (braucht kein pg_monitor)
+          - alert: PGConnectionsHigh
+            expr: sum by (job,server)(pg_stat_database_numbackends{datname="onyx"}) > on(job,server) pg_settings_max_connections * 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Connections >80% ({{ $labels.environment }})"
+              description: "Aktive Backends: {{ $value }}. max_connections koennte bald erschoepft sein."
+
+          # 13. PG Deadlocks (>5 in 5min)
+          - alert: PGDeadlocks
+            expr: increase(pg_stat_database_deadlocks{datname="onyx"}[5m]) > 5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Deadlocks ({{ $labels.environment }})"
+              description: "Mehr als 5 Deadlocks in den letzten 5 Minuten."
+
+          # 14. PG Rollback-Rate >5%
+          - alert: PGHighRollbackRate
+            expr: rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) / (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m])) > 0.05
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Rollback-Rate >5% ({{ $labels.environment }})"
+              description: "Hohe Rollback-Rate: {{ $value | humanizePercentage }}."
+
+          # 15. PG Database-Groesse >10 GB
+          - alert: PGDatabaseGrowing
+            expr: pg_database_size_bytes{datname="onyx"} > 10e9
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL DB >10 GB ({{ $labels.environment }})"
+              description: "Aktuelle Groesse: {{ $value | humanize1024 }}B."
+
+          # 16. Redis Memory >80% von maxmemory
+          - alert: RedisMemoryHigh
+            expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8 and on(instance) redis_memory_max_bytes > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis Memory >80% ({{ $labels.environment }})"
+              description: "Verbrauch: {{ $value | humanizePercentage }}."
+
+          # 17. Redis hohe Evictions
+          - alert: RedisHighEvictions
+            expr: increase(redis_evicted_keys_total[5m]) > 100
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis hohe Evictions ({{ $labels.environment }})"
+              description: "Mehr als 100 Keys evicted in 5 Minuten."
+
+          # 18. Redis Cache Hit Rate <80%
+          - alert: RedisCacheHitRateLow
+            expr: rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.8
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis Cache Hit Rate <80% ({{ $labels.environment }})"
+              description: "Hit Rate: {{ $value | humanizePercentage }}."
+
+          # 19. Redis Rejected Connections (kritisch fuer Celery)
+          - alert: RedisRejectedConnections
+            expr: increase(redis_rejected_connections_total[5m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Redis lehnt Connections ab ({{ $labels.environment }})"
+              description: "Celery-Worker koennten ausfallen."
+
+          # 20. PG Cache Hit Ratio <90% (Shared Buffers ineffektiv)
+          - alert: PGCacheHitRateLow
+            expr: rate(pg_stat_database_blks_hit{datname="onyx"}[5m]) / (rate(pg_stat_database_blks_hit{datname="onyx"}[5m]) + rate(pg_stat_database_blks_read{datname="onyx"}[5m])) < 0.9
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Cache Hit Ratio <90% ({{ $labels.environment }})"
+              description: "Hit Ratio: {{ $value | humanizePercentage }}. Shared Buffers koennte zu klein sein."

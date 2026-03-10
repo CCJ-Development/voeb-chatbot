@@ -1,6 +1,6 @@
 # Modulspezifikation: Monitoring Exporter (postgres_exporter + redis_exporter)
 
-> **Status:** Entwurf v0.2 — Review-Findings eingearbeitet, wartet auf Freigabe
+> **Status:** Entwurf v0.3 — Implementierung, Redis-Labels korrigiert, pg_monitor-Workaround
 > **Typ:** Infrastruktur (kein ext/-Code, kein Feature Flag)
 > **Aufwand:** ~0,5 PT (Puffer: 0,75 PT bei PG-ACL-Debugging)
 > **Prioritaet:** Hoch — schliesst groesste Luecke im Monitoring-Stack
@@ -88,9 +88,10 @@ Prometheus ──scrape──> Onyx API :8080/metrics
 - `PGConnectionsHigh` Alert waere nutzlos (zeigt immer nur 1 Connection)
 - `pg_stat_user_tables` eingeschraenkt sichtbar ist
 
-**Vor Implementierung klaeren:**
-1. Kann `onyx_app` User `GRANT pg_monitor TO db_readonly_user` ausfuehren? (hat `createdb`, vermutlich nicht `CREATEROLE`)
-2. Falls nicht: StackIT Support kontaktieren oder dedizierten Monitoring-User per Terraform anlegen
+**Ergebnis Recherche (2026-03-10):**
+StackIT PG Flex unterstuetzt nur `login` + `createdb` als Terraform-Rollen. `pg_monitor` ist ein PostgreSQL predefined Role (GRANT via SQL), nicht ueber die StackIT API verfuegbar. Managed PG erlaubt kein CREATEROLE → GRANT nicht moeglich.
+
+**Workaround:** `pg_stat_database_numbackends` statt `pg_stat_activity_count` fuer Connection-Monitoring. Braucht kein pg_monitor und ist zuverlaessig. `PGConnectionsHigh` Alert nutzt `numbackends`. Spaeter: StackIT Support kontaktieren fuer pg_monitor (Nice-to-have, nicht Blocker).
 
 **Passwort:** Bereits als K8s Secret vorhanden (`onyx-dbreadonly` in `onyx-dev`/`onyx-test`). Muss als Secret im `monitoring`-Namespace gespiegelt werden.
 
@@ -279,7 +280,7 @@ Neue Regeln in `additionalPrometheusRulesMap`. Alle mit `annotations` (konsisten
 
 | Alert | PromQL | for | Severity |
 |-------|--------|-----|----------|
-| `PGConnectionsHigh` | `sum by (instance,job,server)(pg_stat_activity_count{datname!~"template.*\|postgres"}) > min by (instance,job,server)(pg_settings_max_connections * 0.8)` | 5m | warning |
+| `PGConnectionsHigh` | `sum by (job,server)(pg_stat_database_numbackends{datname="onyx"}) > on(job,server) pg_settings_max_connections * 0.8` | 5m | warning |
 | `PGDeadlocks` | `increase(pg_stat_database_deadlocks{datname="onyx"}[5m]) > 5` | 5m | warning |
 | `PGHighRollbackRate` | `rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) / (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m])) > 0.05` | 10m | warning |
 | `PGDatabaseGrowing` | `pg_database_size_bytes{datname="onyx"} > 10e9` | 30m | warning |
@@ -303,7 +304,7 @@ Neue Regeln in `additionalPrometheusRulesMap`. Alle mit `annotations` (konsisten
 - `RedisCacheHitRateLow`: `rate()` statt rohe Counter (zeigt aktuelle Rate, nicht Lifetime-Durchschnitt). Schwellwert 0.9 → 0.8 (Redis ist primaer Celery-Broker, nicht Cache — niedrigere Hit Rate normal)
 - `RedisRejectedConnections`: NEU — kritisch fuer Celery-Betrieb
 
-**Hinweis:** Alle Alerts nutzen den bestehenden AlertManager-Kanal (`email-niko`). Alerts werden erst zugestellt wenn SMTP konfiguriert ist (Monitoring-Konzept Frage #5, aktuell Platzhalter `localhost:25`). Alerts sind aber sofort in Prometheus/Grafana sichtbar.
+**Hinweis:** Alle Alerts nutzen den bestehenden AlertManager-Kanal (`teams-niko`). Alerts werden erst zugestellt wenn die Teams Webhook-URL konfiguriert ist (`values-monitoring.yaml` → `msteams_configs` → `webhook_url`). Alerts sind aber sofort in Prometheus/Grafana sichtbar.
 
 ---
 
@@ -356,19 +357,19 @@ spec:
               kubernetes.io/metadata.name: onyx-dev
           podSelector:
             matchLabels:
-              app.kubernetes.io/name: redis
+              redis_setup_type: standalone
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: onyx-test
           podSelector:
             matchLabels:
-              app.kubernetes.io/name: redis
+              redis_setup_type: standalone
       ports:
         - port: 6379
           protocol: TCP
 ```
 
-**Hinweis:** Redis-Pod-Labels (`app.kubernetes.io/name: redis`) vor Implementierung mit `kubectl get pods -n onyx-dev --show-labels` verifizieren.
+**Hinweis:** Redis-Pod-Labels verifiziert (2026-03-10): `redis_setup_type: standalone` (konsistent auf DEV + TEST). `app.kubernetes.io/name` ist env-spezifisch (`onyx-dev` / `onyx-test`), daher nicht als Selector geeignet.
 
 ### 7.3 App-Namespaces: Ingress von redis_exporter (NEU)
 
@@ -384,7 +385,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: redis
+      redis_setup_type: standalone
   policyTypes: [Ingress]
   ingress:
     - from:
@@ -509,7 +510,7 @@ PROD-spezifische Haertung:
 
 | Risiko | Wahrscheinlichkeit | Impact | Mitigation |
 |--------|-------------------|--------|-----------|
-| **pg_monitor fehlt** (Metriken falsch) | Hoch | Hoch — Alerts nutzlos | Schritt 1: GRANT testen, ggf. StackIT Support |
+| **pg_monitor fehlt** (eingeschraenkte Sichtbarkeit) | Hoch | Niedrig — Workaround `numbackends` | StackIT Support kontaktieren (Nice-to-have) |
 | PG Exporter erhoecht DB-Last | Niedrig (1 Query/30s, Read-Only) | Niedrig | Read-Only User, keine Write-Rechte |
 | Redis Exporter erhoecht Latenz | Sehr niedrig (INFO Command) | Vernachlaessigbar | Redis verarbeitet INFO in <1ms |
 | Secret-Drift (Passwort aendert sich) | Niedrig | Mittel — Exporter verliert Verbindung | Alerts `PGExporterDown` / `RedisExporterDown` feuern sofort |
@@ -522,7 +523,7 @@ PROD-spezifische Haertung:
 | # | Frage | Wer | Status |
 |---|-------|-----|--------|
 | 1 | ~~StackIT PG ACL: Erlaubt die aktuelle ACL auch Cluster-interne Pod-IPs?~~ | Niko | ✅ **Beantwortet:** Pods nutzen Cluster-Egress-IP `188.34.93.194` (SNAT). Ist in ACL. Verifizierung beim Deploy. |
-| 2 | **pg_monitor-Rolle:** Kann `onyx_app` die Rolle an `db_readonly_user` delegieren? Oder StackIT Support noetig? | Niko | **Offen — Showstopper** |
+| 2 | ~~pg_monitor-Rolle: Kann `onyx_app` die Rolle delegieren?~~ | Niko | ✅ **Beantwortet:** StackIT PG Flex unterstuetzt nur login+createdb. Workaround: `numbackends` statt `activity_count`. Spaeter StackIT Support fuer pg_monitor (Nice-to-have). |
 | 3 | Soll Vespa Exporter gleich mit deployed werden (+0,1 PT)? | Niko | Offen |
 | 4 | Grafana Dashboards als ConfigMap (persistent) oder manueller Import (einfacher)? | Niko | Offen |
 
@@ -542,3 +543,4 @@ PROD-spezifische Haertung:
 |---------|-------|-------|-----------|
 | 0.1 | 2026-03-10 | Claude (CCJ) | Erster Entwurf |
 | 0.2 | 2026-03-10 | Claude (CCJ) | Review-Findings eingearbeitet: Image-Versionen aktualisiert (H2), pg_monitor-Risiko dokumentiert (H1), PromQL-Bugs behoben (M1-M4), fehlende Alerts ergaenzt (M5), securityContext ergaenzt (M6), NetworkPolicies verschaerft (M7-M8), Redis-Credentials getrennt (M9), apply.sh + App-NS-Policy im Plan ergaenzt (M10-M11), PG ACL beantwortet (L1), scrape_timeout ergaenzt (L2), Dashboard-ID 9628→14114 (L3), PG Schwellwert angepasst (L4), Implementierungsreihenfolge korrigiert (L5), SMTP-Hinweis ergaenzt (L6), Passwort-Beschaffung dokumentiert (L8) |
+| 0.3 | 2026-03-10 | Claude (CCJ) | Implementierung: Redis-Labels korrigiert (`redis_setup_type: standalone` statt `app.kubernetes.io/name: redis`), pg_monitor-Recherche abgeschlossen (StackIT unterstuetzt nur login+createdb), PGConnectionsHigh auf `numbackends` umgestellt, H1 von Showstopper zu Nice-to-have heruntergestuft |

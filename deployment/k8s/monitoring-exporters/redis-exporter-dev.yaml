@@ -1,0 +1,86 @@
+# redis_exporter DEV — Metriken von In-Cluster Redis (onyx-dev NS)
+# Secret: redis-exporter-dev im monitoring-NS (manuell erstellen, siehe docs/technisches-feinkonzept/monitoring-exporter.md)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter-dev
+  namespace: monitoring
+  labels:
+    app: redis-exporter
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-exporter
+      environment: dev
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+        environment: dev
+    spec:
+      containers:
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.82.0
+          ports:
+            - containerPort: 9121
+              name: metrics
+              protocol: TCP
+          env:
+            - name: REDIS_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: redis-exporter-dev
+                  key: REDIS_ADDR
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-exporter-dev
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter-dev
+  namespace: monitoring
+  labels:
+    app: redis-exporter
+    environment: dev
+spec:
+  selector:
+    app: redis-exporter
+    environment: dev
+  ports:
+    - port: 9121
+      targetPort: metrics
+      protocol: TCP
+      name: metrics

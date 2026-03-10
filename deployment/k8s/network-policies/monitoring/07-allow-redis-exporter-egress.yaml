@@ -1,0 +1,29 @@
+# redis_exporter Egress zu Redis in onyx-dev und onyx-test (Port 6379)
+# Redis-Pods haben Label redis_setup_type=standalone (verifiziert 2026-03-10).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-redis-exporter-egress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: redis-exporter
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-dev
+          podSelector:
+            matchLabels:
+              redis_setup_type: standalone
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-test
+          podSelector:
+            matchLabels:
+              redis_setup_type: standalone
+      ports:
+        - port: 6379
+          protocol: TCP

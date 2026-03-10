@@ -1,0 +1,17 @@
+# postgres_exporter Egress zu StackIT Managed PG Flex (Port 5432)
+# Ziel bewusst nicht eingeschraenkt: StackIT PG Flex IPs koennen sich bei Maintenance aendern.
+# podSelector schraenkt auf Exporter-Pods ein (Least Privilege).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pg-exporter-egress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres-exporter
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - port: 5432
+          protocol: TCP

@@ -1,0 +1,83 @@
+# postgres_exporter TEST — Metriken von StackIT Managed PG Flex (vob-test)
+# Secret: pg-exporter-test im monitoring-NS (manuell erstellen, siehe docs/technisches-feinkonzept/monitoring-exporter.md)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-exporter-test
+  namespace: monitoring
+  labels:
+    app: postgres-exporter
+    environment: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-exporter
+      environment: test
+  template:
+    metadata:
+      labels:
+        app: postgres-exporter
+        environment: test
+    spec:
+      containers:
+        - name: postgres-exporter
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+          ports:
+            - containerPort: 9187
+              name: metrics
+              protocol: TCP
+          args:
+            - "--no-collector.wal"   # pg_ls_waldir braucht pg_monitor (StackIT Managed PG)
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: pg-exporter-test
+                  key: DATA_SOURCE_NAME
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-exporter-test
+  namespace: monitoring
+  labels:
+    app: postgres-exporter
+    environment: test
+spec:
+  selector:
+    app: postgres-exporter
+    environment: test
+  ports:
+    - port: 9187
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
