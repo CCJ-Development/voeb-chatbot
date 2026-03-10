@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-3 live, Phase 4 (Dashboards) offen
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-3 live, Phase 4 (Exporters + Dashboards) offen
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster), PROD-Vorbereitung
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
@@ -143,7 +143,7 @@ StackIT bietet `Observability-Starter-EU01` (70 EUR/Mo) mit Prometheus + Grafana
 
 ### Phase 1: Health Probes aktivieren (0,25 PT) — ✅ DEPLOYED
 
-**Status:** ✅ Deployed auf DEV (2026-03-10). TEST-Deploy ausstehend (`gh workflow run stackit-deploy.yml -f environment=test`).
+**Status:** ✅ Deployed auf DEV (2026-03-10). TEST-Deploy: Probe-Timeouts korrigiert (Liveness 105s → 180s), Re-Deploy läuft.
 
 **values-common.yaml — finale Konfiguration:**
 
@@ -154,17 +154,17 @@ api:
     httpGet:
       path: /health
       port: 8080
-    initialDelaySeconds: 15
+    initialDelaySeconds: 30
     periodSeconds: 10
-    failureThreshold: 3
+    failureThreshold: 6
     timeoutSeconds: 5
   livenessProbe:
     httpGet:
       path: /health
       port: 8080
-    initialDelaySeconds: 30
+    initialDelaySeconds: 60      # API braucht >30s bei Alembic Migrations
     periodSeconds: 15
-    failureThreshold: 5
+    failureThreshold: 8           # 60s + 8×15s = 180s Gnadenfrist
     timeoutSeconds: 5
 
 webserver:
@@ -611,6 +611,18 @@ Für PROD zusätzlich:
 | 11 | NetworkPolicies applied via `apply.sh` | ✅ 7 Policies erstellt |
 | 12 | Prometheus Targets erneut geprüft | ✅ **onyx-api-dev: UP, onyx-api-test: UP** |
 | 13 | Webserver Probe Fix: httpGet → tcpSocket auf Port 3000 | ✅ Commit + Push + Redeploy |
+| 14 | TEST Deploy (Nachmittag) — `--atomic --timeout 10m` | ❌ Timeout nach 10m, automatischer Rollback |
+| 15 | CI/CD Fix: `--atomic` → `--wait`, Timeout 10m → 15m (alle Environments) | ✅ Commit `9cc09e2` |
+| 16 | DEV + TEST Re-Deploy | ❌ StackIT Container Registry 503 (Outage ~15:15-16:50 UTC) |
+| 17 | DEV + TEST Re-Deploy (nach Registry-Recovery) | ✅ DEV grün, ❌ TEST: API Server CrashLoop (7 Restarts) |
+| 18 | Root Cause TEST: Liveness Probe killt Pod vor Startup (30s + 5×15s = 105s zu kurz) | Analyse via `kubectl describe pod` + `kubectl logs` |
+| 19 | Probe-Fix: Liveness initialDelay 30→60s, failureThreshold 5→8 (180s Gnadenfrist) | ✅ Commit `8d4b9a6` |
+| 20 | DEV Re-Deploy mit neuen Probe-Timeouts | ✅ DEV grün |
+| 21 | TEST Re-Deploy mit neuen Probe-Timeouts | ❌ API CrashLoop: `TooManyConnectionsError` (RollingUpdate hält alte Pods mit DB-Connections) |
+| 22 | Root Cause: RollingUpdate → alte + neue Pods gleichzeitig → PG Connection Pool erschöpft | Analyse via `kubectl logs` + `kubectl describe pod` |
+| 23 | Fix: Recreate-Strategie via `kubectl patch deployment` auf alle 10 Deployments | ✅ Alle Pods terminiert + neu gestartet |
+| 24 | CI/CD Fix: Recreate-Patch-Step in TEST Deploy-Job (analog DEV) | ✅ Commit `784577f` |
+| 25 | TEST Re-Deploy mit Recreate-Strategie | ✅ **Alle 15 Pods Running, Smoke Test grün** |
 
 ### Lessons Learned
 
@@ -633,6 +645,36 @@ prometheus-operator, kube-state-metrics und Prometheus Service Discovery brauche
 **4. StackIT/Gardener DNS-Port 8053 (niedrig)**
 
 CoreDNS auf StackIT mappt Port 53 → 8053 (DNAT). NetworkPolicy für DNS muss beide Ports erlauben. War bereits aus SEC-03 bekannt und korrekt implementiert.
+
+**5. `--atomic` ist kontraproduktiv bei langsamem Startup (kritisch)**
+
+`helm upgrade --atomic --timeout 10m` rollt automatisch zurück wenn der Timeout erreicht wird. Bei 15 Pods mit Cold Start (Alembic Migrations, Model Server Download) ist das kontraproduktiv — der Rollback verursacht einen weiteren Neustart-Zyklus. Fix: `--wait --timeout 15m` — wartet auf Readiness, rollt aber bei Timeout nicht zurück. Der Release bleibt stehen und kann debuggt werden.
+
+**6. Liveness Probe darf Pod nicht vor Startup killen (kritisch)**
+
+Ursprüngliche API Liveness Probe: `initialDelaySeconds: 30`, `failureThreshold: 5`, `periodSeconds: 15`. Das bedeutet: nach 30s + 5×15s = **105s** wird der Pod gekillt. Auf TEST braucht der API Server aber länger (Alembic Migrations + FastAPI Startup + Extension-Hooks). Resultat: CrashLoop mit 7 Restarts, `connection refused` in Probe-Logs.
+
+Fix: `initialDelaySeconds: 60`, `failureThreshold: 8` → **180s Gnadenfrist**. Faustregel: Liveness Timeout sollte mindestens 2× die beobachtete Startup-Zeit sein.
+
+| Probe | Vorher | Nachher | Max Startup-Zeit |
+|-------|--------|---------|-----------------|
+| Readiness | 15s + 3×10s = 45s | 30s + 6×10s = 90s | 90s bis ready |
+| Liveness | 30s + 5×15s = 105s | 60s + 8×15s = 180s | 180s bis Kill |
+
+**7. StackIT Container Registry Outage (informativ)**
+
+Am 2026-03-10 ~15:15-16:50 UTC war `registry.onstackit.cloud` nicht erreichbar (HTTP 503). Docker Login schlug fehl, Build-Jobs scheiterten. Kein Einfluss auf laufende Pods (Images bereits gepullt). Recovery ohne eigenes Zutun. Empfehlung: `imagePullPolicy: IfNotPresent` (bereits gesetzt) schützt laufende Deployments vor Registry-Ausfällen.
+
+**8. RollingUpdate erschöpft DB Connection Pool (kritisch)**
+
+Bei RollingUpdate laufen alte und neue Pods gleichzeitig. Jeder API-Server-Pod hält ~20 DB-Connections (SQLAlchemy Pool). Bei 2 gleichzeitigen Pods → 40 Connections auf StackIT Managed PG Flex (Default `max_connections = 100`, abzüglich Reserved + System). Resultat: `TooManyConnectionsError` / `pg_use_reserved_connections` → neuer Pod startet nicht → CrashLoop.
+
+Fix: **Recreate-Strategie** für alle Onyx-Deployments. Alle alten Pods werden zuerst terminiert, dann starten neue Pods. Kurze Downtime (~30-60s), dafür keine Connection-Konflikte. Wird im CI/CD via `kubectl patch` nach `helm upgrade` angewendet (Helm setzt Strategy auf RollingUpdate, Patch überschreibt).
+
+| Strategie | Vorteil | Nachteil | Onyx-Eignung |
+|-----------|---------|----------|-------------|
+| RollingUpdate | Zero-Downtime | Connection-Pool-Exhaustion bei DB-intensiven Apps | ❌ Nicht geeignet |
+| Recreate | Sauberer Neustart, kein Connection-Konflikt | Kurze Downtime | ✅ **Gewählt** |
 
 ### Deployed Pods
 
@@ -685,3 +727,16 @@ allow-monitoring-scrape     <none>                              ~5m
 | `4a0d262` | `feat(helm): Monitoring-Stack vorbereiten (Health Probes + kube-prometheus-stack)` |
 | `91e6987` | `fix(helm): Prometheus scrape targets auf korrekte Service-Namen anpassen` |
 | `7fe7e8e` | `fix(helm): Webserver Health Probes auf tcpSocket umstellen` |
+| `21dceba` | `fix(helm): HSTS-Header ergänzen (BSI TR-02102)` |
+| `9cc09e2` | `fix(ci): Helm Deploy Timeout auf 15m erhöhen, --atomic durch --wait ersetzen` |
+| `8d4b9a6` | `fix(helm): API Health Probe Timeouts erhöhen (Liveness killt Pod vor Startup)` |
+| `784577f` | `fix(ci): Recreate-Strategie für TEST Deploy (analog DEV)` |
+
+### Zusätzliche Änderungen (gleiche Session)
+
+| SHA | Nachricht | Bezug |
+|-----|-----------|-------|
+| `7947862` | `chore(stackit-infra): prevent_destroy für kritische Ressourcen` | Terraform Safety |
+| `6d7592e` | `docs(ext-entwicklungsplan): ext-analytics als übersprungen markieren` | Phase 4e |
+| `21dceba` | `fix(helm): HSTS-Header ergänzen (BSI TR-02102)` | Security Header |
+| `6d7592e` | `docs(ext-entwicklungsplan): ext-analytics als übersprungen markieren` | Phase 4e |
