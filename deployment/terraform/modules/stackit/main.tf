@@ -54,6 +54,10 @@ resource "stackit_ske_cluster" "main" {
       allowed_cidrs = var.cluster_acl
     }
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Kubeconfig für kubectl/Helm Zugriff
@@ -117,4 +121,8 @@ resource "stackit_postgresflex_user" "readonly" {
 resource "stackit_objectstorage_bucket" "main" {
   project_id = var.project_id
   name       = var.bucket_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

@@ -62,4 +62,8 @@ resource "stackit_postgresflex_user" "readonly" {
 resource "stackit_objectstorage_bucket" "main" {
   project_id = var.project_id
   name       = var.bucket_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
