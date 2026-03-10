@@ -1,0 +1,51 @@
+# NetworkPolicy: Allow Prometheus Scrape Egress — Monitoring Namespace
+#
+# Erlaubt Prometheus Egress zu:
+# - onyx-dev und onyx-test Namespaces (Port 8080 fuer /metrics)
+# - Kubelet Metrics (Port 10250 fuer cAdvisor)
+# - node-exporter (Port 9100)
+# - kube-state-metrics + AlertManager + Grafana im eigenen Namespace
+#
+# Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+# Anwendung: kubectl apply -f 03-allow-scrape-egress.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-scrape
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  policyTypes:
+    - Egress
+  egress:
+    # Onyx API /metrics (Port 8080) in DEV + TEST
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-dev
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-test
+      ports:
+        - port: 8080
+          protocol: TCP
+    # Intra-Namespace (kube-state-metrics, node-exporter Proxy, AlertManager)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+    # Kubelet Metrics (cAdvisor) — auf allen Nodes
+    - ports:
+        - port: 10250
+          protocol: TCP
+    # node-exporter — DaemonSet auf allen Nodes
+    - ports:
+        - port: 9100
+          protocol: TCP

@@ -22,10 +22,48 @@ global:
 api:
   image:
     repository: registry.onstackit.cloud/voeb-chatbot/onyx-backend
+  # --- Health Probes ---
+  # /health ist PUBLIC_ENDPOINT (keine Auth), existiert bereits in Onyx FOSS.
+  # Konservative Timeouts: Pod wird erst nach 5 Fehlschlägen (75s) neugestartet.
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    failureThreshold: 5
+    timeoutSeconds: 5
 
 webserver:
   image:
     repository: registry.onstackit.cloud/voeb-chatbot/onyx-web-server
+  # --- Health Probes ---
+  # /api/health proxied durch Next.js zum Backend. / prüft Next.js selbst.
+  # failureThreshold 6 = 60s Toleranz (Next.js Start kann langsam sein).
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    failureThreshold: 6
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 15
+    failureThreshold: 5
+    timeoutSeconds: 5
 
 # --- PostgreSQL: DEAKTIVIERT ---
 # Wir nutzen StackIT Managed PostgreSQL Flex (extern).

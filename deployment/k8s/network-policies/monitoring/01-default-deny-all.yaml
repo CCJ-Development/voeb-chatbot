@@ -1,0 +1,22 @@
+# NetworkPolicy: Default-Deny (Zero-Trust Baseline) — Monitoring Namespace
+#
+# Blockiert JEGLICHEN Ingress und Egress fuer alle Pods im monitoring-Namespace.
+# Alle erlaubten Verbindungen muessen explizit durch weitere Policies definiert werden.
+#
+# Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+# Anwendung: kubectl apply -f 01-default-deny-all.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: baseline
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

@@ -1,0 +1,33 @@
+# NetworkPolicy: Allow Monitoring Scrape — App Namespaces (onyx-dev, onyx-test)
+#
+# Erlaubt Ingress von Prometheus (monitoring-Namespace) auf Port 8080.
+# Wird in onyx-dev und onyx-test angewendet, damit Prometheus die
+# /metrics Endpoints der Onyx API scrapen kann.
+#
+# WICHTIG: Diese Policy muss in JEDEM App-Namespace angewendet werden:
+#   kubectl apply -f 06-allow-monitoring-scrape.yaml -n onyx-dev
+#   kubectl apply -f 06-allow-monitoring-scrape.yaml -n onyx-test
+#
+# Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  # Namespace wird beim Apply per -n gesetzt (onyx-dev oder onyx-test)
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 8080
+          protocol: TCP

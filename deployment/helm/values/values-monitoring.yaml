@@ -1,0 +1,252 @@
+# ===========================================================
+# VÖB Service Chatbot — Monitoring Stack Values
+# ===========================================================
+# kube-prometheus-stack auf shared DEV+TEST Cluster
+# Ressourcen-Budget: 1,1 vCPU Requests, 1,9 Gi RAM Requests
+#
+# Install:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     -f deployment/helm/values/values-monitoring.yaml \
+#     --set grafana.adminPassword=<PASSWORD>
+#
+# Upgrade:
+#   helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring -f deployment/helm/values/values-monitoring.yaml
+#
+# Konzept: docs/referenz/monitoring-konzept.md
+# ===========================================================
+
+# --- Prometheus ---
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: "15GB"
+    scrapeInterval: "30s"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    # Scrape Onyx API in beiden Namespaces
+    additionalScrapeConfigs:
+      - job_name: "onyx-api-dev"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["onyx-dev-api.onyx-dev.svc.cluster.local:8080"]
+            labels:
+              environment: "dev"
+              service: "api"
+      - job_name: "onyx-api-test"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["onyx-test-api.onyx-test.svc.cluster.local:8080"]
+            labels:
+              environment: "test"
+              service: "api"
+    # ServiceMonitor Namespace Selector (alle Namespaces)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+# --- Grafana ---
+grafana:
+  enabled: true
+  adminPassword: ""  # Muss per --set oder K8s Secret gesetzt werden
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+  # Kein Ingress — Zugriff per kubectl port-forward:
+  #   kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
+  # Fuer PROD: Ingress mit Auth evaluieren
+  ingress:
+    enabled: false
+  # Persistence deaktiviert — Dashboards kommen per ConfigMap/Provisioning
+  persistence:
+    enabled: false
+
+# --- AlertManager ---
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: "email-niko"
+      routes:
+        - match:
+            severity: critical
+          repeat_interval: 1h
+          receiver: "email-niko"
+    receivers:
+      - name: "email-niko"
+        email_configs:
+          - to: "nikolaj.ivanov@coffee-studios.de"
+            from: "alertmanager@voeb-chatbot.local"
+            smarthost: "localhost:25"  # TODO: SMTP-Server konfigurieren
+            require_tls: false
+            send_resolved: true
+
+# --- kube-state-metrics ---
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- node-exporter ---
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- prometheus-operator ---
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Unnoetige Komponenten deaktivieren ---
+# Etcd, Scheduler, Controller-Manager, Proxy = StackIT-managed, kein Zugriff
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# --- Alert Rules ---
+# 9 Regeln aus dem Monitoring-Konzept (Abschnitt 4, Phase 3)
+additionalPrometheusRulesMap:
+  voeb-chatbot-alerts:
+    groups:
+      - name: voeb-chatbot.rules
+        rules:
+          # 1. API nicht erreichbar
+          - alert: APIDown
+            expr: up{job=~"onyx-api.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Onyx API ist nicht erreichbar ({{ $labels.environment }})"
+              description: "Der Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 2. Pod restartet wiederholt
+          - alert: PodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total{namespace=~"onyx-.*"}[1h]) > 3
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} crashed wiederholt ({{ $labels.namespace }})"
+              description: "{{ $labels.pod }} hat in der letzten Stunde >3 Restarts."
+
+          # 3. Hohe Error-Rate (>5% Server Errors)
+          - alert: HighErrorRate
+            expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Hohe HTTP 5xx Error-Rate ({{ $labels.environment }})"
+              description: "Mehr als 5% aller Requests enden mit Server Error."
+
+          # 4. DB Connection Pool Overflow
+          - alert: DBPoolExhausted
+            expr: onyx_db_pool_overflow > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "DB Connection Pool Overflow ({{ $labels.environment }})"
+              description: "PostgreSQL Connection Pool nutzt Overflow-Connections seit 5 Minuten."
+
+          # 5. Zu viele langsame Requests (>1/s ueber 10min)
+          - alert: HighSlowRequests
+            expr: rate(onyx_api_slow_requests_total[5m]) > 1
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Hohe Slow-Request-Rate ({{ $labels.environment }})"
+              description: "Mehr als 1 Slow Request pro Sekunde seit 10 Minuten (Threshold: {{ $value | printf \"%.2f\" }}/s)."
+
+          # 6. Node Memory knapp (<10%)
+          - alert: NodeMemoryPressure
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.instance }} hat weniger als 10% freien RAM"
+              description: "Verfuegbar: {{ $value | humanizePercentage }}. Pods koennten OOM-killed werden."
+
+          # 7. Node Disk knapp (<15%)
+          - alert: NodeDiskPressure
+            expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes < 0.15
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node {{ $labels.instance }} hat weniger als 15% freien Disk"
+              description: "Verfuegbar: {{ $value | humanizePercentage }}."
+
+          # 8. Vespa PVC voll (<20%)
+          - alert: VespaStorageFull
+            expr: kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Vespa PVC fast voll ({{ $labels.namespace }})"
+              description: "PVC {{ $labels.persistentvolumeclaim }} hat weniger als 20% freien Speicher."
+
+          # 9. TLS-Zertifikat laeuft bald ab (<14 Tage)
+          - alert: CertExpiringSoon
+            expr: certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 24 * 3600
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "TLS-Zertifikat {{ $labels.name }} laeuft in weniger als 14 Tagen ab"
+              description: "Namespace {{ $labels.namespace }}, verbleibend: {{ $value | humanizeDuration }}."

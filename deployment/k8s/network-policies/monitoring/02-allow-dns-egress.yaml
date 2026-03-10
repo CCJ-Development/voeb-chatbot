@@ -1,0 +1,33 @@
+# NetworkPolicy: Allow DNS Egress — Monitoring Namespace
+#
+# Erlaubt DNS-Aufloesung via CoreDNS (Port 53 + 8053).
+# Ohne diese Policy koennen Prometheus/Grafana/AlertManager keine
+# Service-Namen aufloesen (z.B. onyx-dev-api.onyx-dev.svc.cluster.local).
+#
+# Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+# Anwendung: kubectl apply -f 02-allow-dns-egress.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        # StackIT/Gardener CoreDNS mappt 53→8053
+        - port: 8053
+          protocol: UDP
+        - port: 8053
+          protocol: TCP

@@ -1,0 +1,32 @@
+# NetworkPolicy: Allow Intra-Namespace — Monitoring Namespace
+#
+# Erlaubt Pod-zu-Pod Kommunikation innerhalb des monitoring-Namespace.
+# Noetig fuer:
+# - Prometheus → AlertManager (Alerts senden)
+# - Prometheus → kube-state-metrics (Scraping)
+# - Grafana → Prometheus (Queries)
+# - Grafana → AlertManager (Alert-Status)
+#
+# Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+# Anwendung: kubectl apply -f 04-allow-intra-namespace.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}
