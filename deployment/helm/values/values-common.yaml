@@ -110,6 +110,9 @@ nginx:
         add_header X-Frame-Options "DENY" always;
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        # HSTS: Downgrade-Angriffe verhindern (BSI TR-02102). max-age=3600 (1h) für DEV/TEST.
+        # Für PROD auf 31536000 (1 Jahr) erhöhen.
+        add_header Strict-Transport-Security "max-age=3600; includeSubDomains" always;
         # Onyx custom config
         include /etc/nginx/custom-snippets/upstreams.conf;
         include /etc/nginx/custom-snippets/server.conf;
