@@ -25,8 +25,8 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           ├── Phase 4d: ✅ ext-prompts (DEV + TEST deployed + abgenommen 2026-03-09)
           │     Custom System Prompts (globale Anweisungen fuer jeden LLM-Aufruf)
           │
-          ├── Phase 4e: ext-analytics ← JETZT STARTBAR
-          │     Nutzungsstatistiken, Admin-Dashboard
+          ├── Phase 4e: ⏭️ ext-analytics — ÜBERSPRUNGEN
+          │     Funktionalität bereits in ext-token enthalten
           │
           ├── Phase 4f: ext-rbac ← BLOCKIERT (Entra ID)
           │     Rollen, Gruppen, Zugriffssteuerung
@@ -51,7 +51,7 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
    ┌───────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐
    │ext-branding│ │ext-token │ │ext-prompts│ │ext-analytics│
    │ Phase 4b  │ │ Phase 4c │ │ Phase 4d  │ │ Phase 4e  │
-   │ ✅ ERLED. │ │ ✅ ERLED.│ │ ✅ ERLED. │ │ STARTBAR  │
+   │ ✅ ERLED. │ │ ✅ ERLED.│ │ ✅ ERLED. │ │⏭️ÜBERSP. │
    └───────────┘ └─────┬────┘ └───────────┘ └─────┬─────┘
                         │                           │
                         │      ┌──────────┐         │
@@ -142,21 +142,9 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | **Aufwand** | Mittel — 1 Core-Patch + CRUD + Injection-Logik |
 | **Abhaengigkeit** | Keine |
 
-### Prioritaet 4: ext-analytics (Phase 4e)
+### ~~Prioritaet 4: ext-analytics (Phase 4e)~~ — ÜBERSPRUNGEN
 
-**Warum als viertes**: Baut auf Token-Daten auf, liefert Management-relevante Insights.
-
-| Aspekt | Detail |
-|--------|--------|
-| **Scope** | Nutzungsstatistiken aggregieren, Admin-Dashboard, CSV-Export |
-| **Core-Aenderungen** | Keine — liest aus bestehenden ext_-Tabellen |
-| **Backend** | `backend/ext/routers/analytics.py` — GET Statistiken, Export |
-| | `backend/ext/services/analytics.py` — Aggregation, Reporting |
-| **Frontend** | `web/src/ext/pages/admin/analytics.tsx` — Dashboard mit Charts |
-| **DB** | Keine eigene Tabelle — liest aus ext_token_usage + ggf. ext_chat_logs |
-| **Feature Flag** | `EXT_ANALYTICS_ENABLED` (existiert bereits in config.py) |
-| **Aufwand** | Mittel — Aggregation + Frontend-Dashboard |
-| **Abhaengigkeit** | Profitiert von ext-token (Token-Daten), funktioniert aber auch standalone |
+**Entscheidung (2026-03-09):** ext-token liefert bereits Usage Dashboard (Overview, Timeline, Per-User, Per-Model, User Limits). Ein eigenes Analytics-Modul haette keinen Mehrwert. Falls spaeter CSV-Export gewuenscht, wird er direkt in ext-token ergaenzt.
 
 ### Prioritaet 5: ext-rbac (Phase 4f) — BLOCKIERT
 
