@@ -9,6 +9,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Infra] **Monitoring-Stack deployed (kube-prometheus-stack)** (2026-03-10)
+  - Self-Hosted: Prometheus + Grafana + AlertManager + kube-state-metrics + node-exporter (7 Pods)
+  - Separater Helm Release `monitoring` in eigenem Namespace (nicht im Onyx Chart)
+  - Prometheus: 30d Retention, 20Gi PVC, 30s Scrape-Intervall, 20 Targets (inkl. DEV + TEST API)
+  - Grafana: port-forward only (kein externer Zugang, Enterprise Best Practice), admin/Passwort per K8s Secret
+  - AlertManager: 9 Alert-Rules (APIDown, PodCrashLooping, HighErrorRate, DBPoolExhausted, HighSlowRequests, NodeMemoryPressure, NodeDiskPressure, VespaStorageFull, CertExpiringSoon)
+  - AlertManager Email an `nikolaj.ivanov@coffee-studios.de` konfiguriert (SMTP-Server offen)
+  - Health Probes: API `httpGet /health:8080` + Webserver `tcpSocket :3000`
+  - Lesson Learned: Next.js hat keinen `/api/health` Endpoint (Proxy laeuft ueber NGINX Ingress, nicht Next.js)
+  - Lesson Learned: Onyx Service-Namen haben Suffix `-service` (`onyx-dev-api-service`, nicht `onyx-dev-api`)
+  - 5 NetworkPolicies fuer `monitoring` NS (deny-all, dns, scrape-egress, intra-ns, k8s-api)
+  - 1 NetworkPolicy fuer App-NS (allow-monitoring-scrape auf Port 8080)
+  - Ressourcen: 1,1 vCPU Requests, 1,9 Gi RAM Requests (Cluster: 47% CPU, 32% RAM nach Monitoring)
+  - StackIT-managed Komponenten deaktiviert: kubeEtcd, kubeScheduler, kubeControllerManager, kubeProxy
+  - Values: `deployment/helm/values/values-monitoring.yaml`
+  - Konzept: `docs/referenz/monitoring-konzept.md`
 - [Feature] **Phase 4d: ext-prompts — Custom System Prompts** (2026-03-09, DEV + TEST deployed + abgenommen)
   - Backend: REST-API fuer globale System Prompts (5 Endpoints unter `/api/ext/prompts/`)
   - Datenbank: `ext_custom_prompts` Tabelle (Alembic Migration `c7f2e8a3d105`)
@@ -395,7 +411,8 @@ docs/
     ├── ee-foss-abgrenzung.md                    (EE/FOSS-Lizenzabgrenzung)
     ├── ext-entwicklungsplan.md                  (Extension-Module Reihenfolge)
     ├── rbac-rollenmodell.md                     (RBAC Rollenmodell-Entwurf)
-    └── compliance-research.md                   (Compliance-Research DSGVO/BAIT/BSI)
+    ├── compliance-research.md                   (Compliance-Research DSGVO/BAIT/BSI)
+    └── monitoring-konzept.md                   (Monitoring Stack + Deployment-Protokoll)
 ```
 
 ---

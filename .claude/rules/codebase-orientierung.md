@@ -72,12 +72,29 @@ deployment/terraform/
 deployment/helm/
   charts/onyx/               ← Onyx Helm Chart (READ-ONLY, nicht verändern!)
   values/
-    values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, Vespa+Redis an)
+    values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, Vespa+Redis an, Health Probes)
     values-dev.yaml          ← DEV: 1 Replica, 8 Celery-Worker (Standard Mode), Auth disabled
     values-test.yaml         ← TEST: 1 Replica, 8 Celery-Worker, Auth disabled
     values-prod.yaml         ← PROD: Platzhalter (noch nicht deployed)
+    values-monitoring.yaml   ← kube-prometheus-stack (separater Helm Release in NS monitoring)
 ```
-Deployment via CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgrade --install -f values-common.yaml -f values-{env}.yaml`
+Onyx: CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgrade --install -f values-common.yaml -f values-{env}.yaml`
+Monitoring: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`
+
+## Monitoring
+```
+deployment/k8s/network-policies/
+  monitoring/                ← NetworkPolicies fuer monitoring-Namespace
+    01-default-deny-all.yaml
+    02-allow-dns-egress.yaml
+    03-allow-scrape-egress.yaml
+    04-allow-intra-namespace.yaml
+    05-allow-k8s-api-egress.yaml
+    apply.sh                 ← Sichere Apply-Reihenfolge (Allow zuerst, Deny zuletzt)
+  06-allow-monitoring-scrape.yaml  ← Ingress von monitoring auf Port 8080 (fuer App-NS)
+```
+Zugriff: `kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80` → `http://localhost:3001`
+Konzept: `docs/referenz/monitoring-konzept.md`
 
 ## CI/CD
 ```

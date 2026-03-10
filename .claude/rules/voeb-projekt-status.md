@@ -69,20 +69,23 @@
   - ✅ PR-CI-Workflow (PR #4): helm-validate + build-backend + build-frontend (2026-03-06)
   - ✅ CI-Checks: helm-validate + build-backend + build-frontend (auf Push-to-main). Kein PR-Requirement (Solo-Dev, 2026-03-09 vereinfacht)
   - ✅ K8s v1.32 → v1.33 Upgrade (2026-03-08): v1.33.8, Flatcar 4459.2.1, Terraform apply 9m40s, DEV 16/16 + TEST 15/15 Pods Running
+  - ✅ **Monitoring-Stack deployed** (2026-03-10): kube-prometheus-stack (Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter). 7 Pods in `monitoring` NS, 20 Targets, 9 Alert-Rules. Details: `docs/referenz/monitoring-konzept.md`
+  - ✅ Health Probes aktiviert (2026-03-10): API httpGet `/health:8080`, Webserver tcpSocket `:3000`. DEV deployed, TEST-Deploy ausstehend. Lesson: Next.js hat keinen HTTP-Health-Endpoint.
+  - ✅ Monitoring NetworkPolicies (2026-03-10): 5 Policies in `monitoring` NS + 1 Scrape-Policy in `onyx-dev`/`onyx-test`
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch `feature/ext-token` offen für Nachbesserungen.
   - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
-  - 4e: 📋 ext-analytics — Nutzungsstatistiken + Dashboard. **JETZT STARTBAR**, keine Blocker.
+  - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. Extension-Module: ext-analytics (unblockiert, Plan: `docs/referenz/ext-entwicklungsplan.md`) → 2. M1-Abnahmeprotokoll ausfuellen → 3. Entra ID (wartet auf VÖB) → 4. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 5. SEC-06 Phase 2: runAsNonRoot (vor PROD). SEC-06 Phase 1 erledigt (privileged: false deployed). SEC-02/04/05 zurückgestellt (P3). SEC-07 erledigt.** Plan: `docs/referenz/stackit-implementierungsplan.md`
+**1. M1-Abnahmeprotokoll ausfuellen → 2. Entra ID (wartet auf VÖB) → 3. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 4. Grafana Dashboards (Phase 4 Monitoring) → 5. SMTP fuer AlertManager klaeren → 6. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack live (2026-03-10). Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
