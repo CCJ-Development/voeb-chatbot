@@ -1,8 +1,8 @@
 # PROD-Bereitstellung — Planungsdokument
 
-**Status:** In Planung (Review-Runde 1 abgeschlossen: 2026-03-11)
+**Status:** Phase A-D abgeschlossen, PROD deployed (19 Pods, Health OK). DNS/TLS offen (wartet auf Leif/GlobVill).
 **Erstellt:** 2026-03-11
-**Letzte Aktualisierung:** 2026-03-11 — Alle Klaerungspunkte bearbeitet, Enterprise Best Practices angewendet
+**Letzte Aktualisierung:** 2026-03-11 — Terraform apply, K8s-Basis, GitHub Environment, erster Deploy, LB IP ermittelt
 **Autor:** CCJ / Coffee Studios (Nikolaj Ivanov)
 **Ziel-URL:** `https://chatbot.voeb-service.de`
 
@@ -18,14 +18,14 @@ Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem get
 
 | Komponente | DEV | TEST | PROD |
 |------------|-----|------|------|
-| SKE Cluster | `vob-chatbot` (shared) | `vob-chatbot` (shared) | **Nicht provisioniert** |
-| Namespace | `onyx-dev` (16 Pods) | `onyx-test` (15 Pods) | — |
-| PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 2.4 Single `vob-test` | — |
-| Object Storage | `vob-dev` | `vob-test` | — |
-| Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (geplant) |
-| TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | — |
-| Auth | Basic (kein OIDC) | Basic (kein OIDC) | OIDC (Entra ID) — geplant |
-| Monitoring | kube-prometheus-stack | (shared mit DEV) | — |
+| SKE Cluster | `vob-chatbot` (shared) | `vob-chatbot` (shared) | **`vob-prod`** (dedicated, seit 2026-03-11) |
+| Namespace | `onyx-dev` (16 Pods) | `onyx-test` (15 Pods) | `onyx-prod` (19 Pods) |
+| PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 2.4 Single `vob-test` | Flex 4.8 Replica HA `vob-prod` (3 Nodes) |
+| Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
+| Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`, DNS offen) |
+| TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | Wartet auf DNS (Leif/GlobVill) |
+| Auth | Basic (kein OIDC) | Basic (kein OIDC) | Basic (temporaer, Entra ID blockiert) |
+| Monitoring | kube-prometheus-stack | (shared mit DEV) | — (Phase F) |
 | CI/CD Job | `deploy-dev` (auto) | `deploy-test` (manuell) | `deploy-prod` (manuell, Review) |
 | Helm Values | `values-dev.yaml` | `values-test.yaml` | `values-prod.yaml` (Platzhalter) |
 | Terraform | `environments/dev/` | `environments/test/` | **`environments/prod/` fehlt** |
@@ -82,7 +82,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | Parameter | Wert |
 |-----------|------|
 | Domain | `chatbot.voeb-service.de` |
-| DNS A-Record | `chatbot.voeb-service.de` → `[PROD-LB-IP]` |
+| DNS A-Record | `chatbot.voeb-service.de` → `188.34.92.162` (angefragt 2026-03-11) |
 | TLS | Let's Encrypt, ECDSA P-384, TLSv1.3 (BSI TR-02102) |
 | cert-manager | DNS-01 via Cloudflare. **Version bei PROD-Deploy bewusst waehlen** (DEV/TEST: v1.19.4, nicht im Code fixiert) |
 | HSTS | `max-age=31536000; includeSubDomains` (1 Jahr, PROD-Wert) |
@@ -175,8 +175,8 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| C1 | PROD LoadBalancer IP ermitteln | [ ] | Erster Helm Deploy (D5) | NGINX Ingress Service → External IP |
-| C2 | DNS A-Record setzen | [ ] | C1 | `chatbot.voeb-service.de` → `[PROD-LB-IP]`. Bei GlobVill/Cloudflare |
+| C1 | PROD LoadBalancer IP ermitteln | [x] | Erster Helm Deploy (D5) | ✅ **Erledigt (2026-03-11).** LB IP: `188.34.92.162` (NGINX Ingress Service) |
+| C2 | DNS A-Record setzen | [ ] | C1 | `chatbot.voeb-service.de` → `188.34.92.162`. **Mail an Leif (GlobVill) gesendet (2026-03-11)** |
 | C3 | ACME-Challenge CNAME verifizieren | [ ] | B7, C2 | `dig _acme-challenge.chatbot.voeb-service.de CNAME` |
 | C4 | Certificate-Ressource erstellen | [ ] | B6, C3 | ECDSA P-384, DNS Names: `chatbot.voeb-service.de` |
 | C5 | HTTPS verifizieren | [ ] | C4 | `curl -vI https://chatbot.voeb-service.de`, TLSv1.3, HTTP/2 pruefen |
@@ -195,10 +195,10 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | D3 | GitHub Secrets anlegen (Environment: prod) | [x] | A9, B2 | ✅ **Erledigt (2026-03-11).** Alle 6 Secrets gesetzt: POSTGRES_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, DB_READONLY_PASSWORD, STACKIT_KUBECONFIG |
 | D4 | PROD-Kubeconfig als Environment-Secret anlegen | [x] | D3 | ✅ **Erledigt (2026-03-11).** STACKIT_KUBECONFIG als Environment-Secret unter `prod`. Kein Workflow-Code-Aenderung noetig |
 | D5 | `values-prod.yaml` vervollstaendigen | [x] | A9 | ✅ **Erledigt (2026-03-11).** POSTGRES_HOST eingetragen, AUTH_TYPE temporaer auf "basic" (O3), Header aktualisiert |
-| D6 | Erster PROD Deploy | [ ] | D1-D5, B3-B8 | `gh workflow run stackit-deploy.yml -f environment=prod` |
+| D6 | Erster PROD Deploy | [x] | D1-D5, B3-B8 | ✅ **Erledigt (2026-03-11).** 19 Pods Running, Health OK. Smoke-Test im CI schlug fehl (Timing: API crashte anfangs wegen korruptem S3-Secret, manuell gefixt). Re-Run noetig fuer gruenen CI-Lauf |
 | D7 | Recreate-Strategie patchen | [x] | D6 | ✅ **Geloest (2026-03-11).** "Patch deployment strategy and wait (PROD)"-Step in `stackit-deploy.yml` ergaenzt (analog DEV Z.234-260 / TEST Z.356-382). Patcht 10 Deployments auf Recreate-Strategie + wartet auf Rollout. Enterprise-Begruendung: RollingUpdate fuehrt bei Onyx zu DB-Connection-Pool-Exhaustion (monitoring-konzept.md Lesson Learned #8) |
-| D8 | Smoke Test verifizieren | [ ] | D6 | `/api/health` erreichbar, alle Pods Running |
-| D9 | DB-Migration pruefen | [ ] | D6 | Alembic-Migrationen (inkl. ext_-Tabellen) muessen auf PROD-DB laufen. Wird automatisch beim ersten API-Start ausgefuehrt |
+| D8 | Smoke Test verifizieren | [x] | D6 | ✅ **Erledigt (2026-03-11).** `curl http://188.34.92.162/api/health` → `{"success":true}`. 19/19 Pods Running, 0 CrashLoops |
+| D9 | DB-Migration pruefen | [x] | D6 | ✅ **Erledigt (2026-03-11).** Alembic-Migrationen (inkl. ext_-Tabellen) automatisch beim API-Start ausgefuehrt |
 
 **Offene Fragen Phase D:**
 
@@ -369,8 +369,8 @@ Phase H+I: LLM + Content (nach D8) ───────────────
 | Nr | Was | Wer | Status |
 |----|-----|-----|--------|
 | E-1 | Entra ID Zugangsdaten (Tenant ID, Client ID, Secret) | VoEB IT | **Blockiert** |
-| E-2 | ACME-Challenge CNAME fuer `chatbot.voeb-service.de` | Leif (GlobVill) | **Noch nicht angefragt** |
-| E-3 | DNS A-Record fuer `chatbot.voeb-service.de` | Leif (GlobVill) / Cloudflare | **Wartet auf LB IP** |
+| E-2 | ACME-Challenge CNAME fuer `chatbot.voeb-service.de` | Leif (GlobVill) | **Angefragt (2026-03-11)** |
+| E-3 | DNS A-Record `chatbot.voeb-service.de` → `188.34.92.162` | Leif (GlobVill) / Cloudflare | **Angefragt (2026-03-11)** |
 | E-4 | Datenquellen-Liste fuer Connectors | VoEB Fachbereich | **Noch nicht angefragt** |
 | E-5 | Personas / Use Cases fuer PROD | VoEB Fachbereich | **Noch nicht angefragt** |
 | E-6 | Token-/Request-Limits fuer PROD | VoEB Fachbereich | **Noch nicht geklaert** |

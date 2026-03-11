@@ -38,7 +38,23 @@
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: nomic-embed-text-v1 (self-hosted). Wechsel auf Qwen3-VL-Embedding 8B steht aus.
-  - 📋 Scope: DEV live, TEST live.
+  - 📋 Scope: DEV live, TEST live, PROD deployed (DNS/TLS offen).
+- **Phase 2 PROD:** ✅ **PROD DEPLOYED** (2026-03-11)
+  - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
+  - ✅ K8s v1.33.9, Flatcar 4459.2.3, 2x g1a.8d (8 vCPU, 32 GB RAM)
+  - ✅ cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY
+  - ✅ Redis Operator + Image Pull Secret in `onyx-prod`
+  - ✅ GitHub Environment `prod` + Required Reviewer + 6 Secrets
+  - ✅ Helm Release `onyx-prod`: 19 Pods Running (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa, Redis, 2×Model, NGINX)
+  - ✅ API Health OK: `http://188.34.92.162/api/health` → 200
+  - ✅ SEC-06 Phase 2: `runAsNonRoot: true` aktiv (Vespa = dokumentierte Ausnahme)
+  - ✅ PG ACL: Egress `188.34.73.72/32` + Admin
+  - ✅ Maintenance-Window: 03:00-05:00 UTC (O8, eigenes Fenster)
+  - ✅ Kubeconfig gueltig bis 2026-06-09 (90 Tage)
+  - ⏳ DNS: A-Record + ACME-CNAME bei Leif/GlobVill angefragt (2026-03-11)
+  - ⏳ TLS/HTTPS: Wartet auf DNS-Eintraege
+  - ⏳ Monitoring: Phase F (kube-prometheus-stack auf PROD-Cluster)
+  - ⏳ NetworkPolicies: Vorbereitet, Apply nach DNS/TLS
 - **Phase 2 TEST:** ✅ **TEST LIVE** (2026-03-03)
   - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
   - ✅ Node Pool auf 2 Nodes skaliert (DEV + TEST)
@@ -84,15 +100,16 @@
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
-- **Phase 5-6:** Geplant (Testing, Production)
+- **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. M1-Abnahmeprotokoll ausfuellen → 2. Entra ID (wartet auf VÖB) → 3. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 4. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack komplett (2026-03-11): kube-prometheus-stack + postgres_exporter + redis_exporter + Grafana Dashboards + Teams Alerting. Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
+**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD → 4. Monitoring PROD (kube-prometheus-stack) → 5. CI/CD Re-Run (gruener Lauf) → 6. M1-Abnahmeprotokoll.** PROD deployed (2026-03-11): 19 Pods, Health OK, LB `188.34.92.162`. SEC-06 Phase 2 aktiv. Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
 | Entra ID Zugangsdaten | VÖB IT | Phase 3 |
+| DNS PROD (A-Record + ACME-CNAME) | Leif (GlobVill), angefragt 2026-03-11 | HTTPS PROD |
 
 ## Erledigte Blocker
 | Blocker | Gelöst | Datum |
