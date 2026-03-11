@@ -30,6 +30,14 @@ module "stackit" {
     "0.0.0.0/0", # TODO: Nach erstem Apply auf spezifische IPs einschraenken
   ]
 
+  # Maintenance-Window: So 03:00-05:00 UTC (O8, eigenes Fenster)
+  # Kein Overlap mit DEV/TEST (02:00-04:00) und PG-Backups (01:00)
+  maintenance_start = "03:00:00Z"
+  maintenance_end   = "05:00:00Z"
+
+  # Kubeconfig: 90 Tage (Provider-Default ist nur 3600s = 1h!)
+  kubeconfig_expiration = 7776000
+
   # Node Pool "prod" — 2 dedizierte Nodes (nicht shared)
   node_pool_name = "prod"
   node_pool = {
@@ -53,8 +61,8 @@ module "stackit" {
   # Schritt 1: Apply mit Admin-IP only (PG braucht keine Cluster-IP beim Erstellen)
   # Schritt 2: Nach A10 (Egress-IP ermittelt) → hier eintragen + re-apply
   pg_acl = [
+    "188.34.73.72/32",   # PROD Cluster Egress (NAT Gateway)
     "109.41.112.160/32", # Admin (Nikolaj Ivanov)
-    # "x.x.x.x/32",     # PROD Cluster Egress — nach A10 eintragen
   ]
 
   # Object Storage

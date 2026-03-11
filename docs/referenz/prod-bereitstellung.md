@@ -134,12 +134,12 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | A2 | Cluster-Name festlegen | [x] | — | ✅ `vob-prod` (O2, entschieden 2026-03-11) |
 | A3 | Node Pool konfigurieren | [x] | A1 | ✅ Pool `prod`, 2x g1a.8d, `eu01-3`, Volume 100 GB `premium-perf2-stackit`. In `environments/prod/main.tf` |
 | A4 | PG Flex 4.8 Replica provisionieren | [x] | A1 | ✅ 3-Node HA, 4 CPU / 8 GB RAM, 50 GB Storage, Backup 01:00 UTC. In `environments/prod/main.tf` |
-| A5 | PG ACL konfigurieren | [ ] | A4, A3 | Cluster-Egress-IP (erst nach Cluster-Erstellung bekannt) + Admin-IP. **Achtung:** PROD-Cluster hat eigene Egress-IP! |
-| A6 | PG Datenbank `onyx` manuell anlegen | [ ] | A4 | Terraform erstellt nur Instanz + User, nicht die DB. `psql -h <host> -U onyx_app -c "CREATE DATABASE onyx;"` |
-| A7 | Object Storage Bucket `vob-prod` erstellen | [x] | A1 | ✅ In `environments/prod/main.tf` konfiguriert. Wird bei `terraform apply` erstellt |
-| A8 | S3 Credentials erstellen | [ ] | A7 | StackIT Console → Object Storage → Credentials. Fuer GitHub Secret |
-| A9 | `terraform apply` ausfuehren | [ ] | A1-A8 | Geschaetzte Dauer: ~10-15 Min. Outputs sichern: `pg_host`, `pg_password`, `pg_readonly_password`, `kubeconfig` |
-| A10 | PROD-Egress-IP ermitteln | [ ] | A9 | `kubectl get nodes -o wide` → ExternalIP, oder NAT Gateway IP aus StackIT Console. Wird fuer PG ACL (A5) und NetworkPolicies benoetigt |
+| A5 | PG ACL konfigurieren | [x] | A4, A3 | ✅ **Erledigt (2026-03-11).** PROD-Egress `188.34.73.72/32` + Admin `109.41.112.160/32`. Terraform re-apply 1s |
+| A6 | PG Datenbank `onyx` manuell anlegen | [x] | A4 | ✅ **Erledigt (2026-03-11).** Via temporaerem psql-Pod auf PROD-Cluster |
+| A7 | Object Storage Bucket `vob-prod` erstellen | [x] | A1 | ✅ Erstellt bei terraform apply (13s) |
+| A8 | S3 Credentials erstellen | [x] | A7 | ✅ **Erledigt (2026-03-11).** Via `stackit object-storage credentials create`. Access Key: WB44L7XM... Expire: Never |
+| A9 | `terraform apply` ausfuehren | [x] | A1-A8 | ✅ **Erledigt (2026-03-11).** 6 Ressourcen, ~8 Min. PG Host: `fdc7610c-...postgresql.eu01.onstackit.cloud` |
+| A10 | PROD-Egress-IP ermitteln | [x] | A9 | ✅ **Erledigt (2026-03-11).** Egress: `188.34.73.72` (aus Terraform State `egress_address_ranges`) |
 
 **Geloeste Fragen Phase A (2026-03-11):**
 
@@ -153,21 +153,21 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| B1 | Kubeconfig fuer PROD-Cluster holen | [ ] | A9 | `terraform output -raw kubeconfig > ~/.kube/config-prod`. Ablaufdatum notieren! |
-| B2 | Kubeconfig base64-encodieren | [ ] | B1 | Fuer GitHub Secret: `base64 -i config-prod` |
-| B3 | Image Pull Secret erstellen | [ ] | B1 | `kubectl create secret docker-registry stackit-registry --docker-server=registry.onstackit.cloud --docker-username=<USER> --docker-password=<TOKEN> -n onyx-prod` |
-| B4 | cert-manager installieren | [ ] | B1 | `helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true` |
-| B5 | Cloudflare API Token Secret erstellen | [ ] | B4 | `kubectl create secret generic cloudflare-api-token -n cert-manager --from-literal=api-token=<TOKEN>` — gleicher Token wie DEV/TEST |
-| B6 | ClusterIssuer erstellen | [ ] | B4, B5 | `onyx-prod-letsencrypt`, DNS-01 via Cloudflare, Production ACME Server. Analog DEV/TEST (siehe `docs/runbooks/dns-tls-setup.md`) |
-| B7 | ACME-Challenge CNAME bei GlobVill beantragen | [K] | B6 | `_acme-challenge.chatbot.voeb-service.de` → Cloudflare Zone. Muss Leif bei GlobVill setzen (wie bei DEV/TEST) |
-| B8 | Redis Operator installieren | [ ] | B1 | `helm install redis-operator ot-container-kit/redis-operator --namespace onyx-prod` |
-| B9 | Namespace `onyx-prod` erstellen | [ ] | B1 | Wird automatisch durch `helm upgrade --create-namespace` erstellt, kann aber vorab fuer Secrets noetig sein |
+| B1 | Kubeconfig fuer PROD-Cluster holen | [x] | A9 | ✅ **Erledigt (2026-03-11).** `~/.kube/config-prod`. Ablauf: 2026-06-09 (90 Tage) |
+| B2 | Kubeconfig base64-encodieren | [x] | B1 | ✅ **Erledigt (2026-03-11).** 10.157 Bytes, als GitHub Secret gesetzt |
+| B3 | Image Pull Secret erstellen | [x] | B1 | ✅ **Erledigt (2026-03-11).** Credentials von DEV-Cluster kopiert (gleiche Registry) |
+| B4 | cert-manager installieren | [x] | B1 | ✅ **Erledigt (2026-03-11).** cert-manager v1.19.4 in NS `cert-manager` |
+| B5 | Cloudflare API Token Secret erstellen | [x] | B4 | ✅ **Erledigt (2026-03-11).** Gleicher Token wie DEV/TEST |
+| B6 | ClusterIssuer erstellen | [x] | B4, B5 | ✅ **Erledigt (2026-03-11).** `onyx-prod-letsencrypt` — READY. DNS-01/Cloudflare, Production ACME |
+| B7 | ACME-Challenge CNAME bei GlobVill beantragen | [K] | B6 | `_acme-challenge.chatbot.voeb-service.de` → Cloudflare Zone. Muss Leif bei GlobVill setzen |
+| B8 | Redis Operator installieren | [x] | B1 | ✅ **Erledigt (2026-03-11).** In NS `onyx-prod` deployed |
+| B9 | Namespace `onyx-prod` erstellen | [x] | B1 | ✅ **Erledigt (2026-03-11).** Vorab erstellt fuer Image Pull Secret |
 
-**Offene Fragen Phase B:**
+**Geloeste Fragen Phase B (2026-03-11):**
 
-- [ ] **B5:** Reicht der bestehende Cloudflare API Token (gleicher wie DEV/TEST)? Oder braucht PROD einen eigenen?
-- [ ] **B7:** Leif (GlobVill) muss ACME-CNAME setzen — fruehzeitig anfragen!
-- [ ] **B1:** Kubeconfig-Ablauf — DEV/TEST laeuft am 2026-05-28 ab. PROD-Kubeconfig gleich mit laengerem Ablauf erstellen?
+- [x] **B5:** Gleicher Cloudflare API Token — funktioniert (gleiche DNS-Zone `voeb-service.de`)
+- [ ] **B7:** Leif (GlobVill) muss ACME-CNAME setzen — **NOCH NICHT ANGEFRAGT!**
+- [x] **B1:** Kubeconfig-Ablauf → 2026-06-09 (90 Tage). Terraform-Variable `kubeconfig_expiration` ergaenzt (Default war 3600s = 1h!)
 
 ---
 
@@ -190,11 +190,11 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| D1 | GitHub Environment `prod` erstellen | [ ] | — | Settings → Environments → New |
-| D2 | Required Reviewers aktivieren | [ ] | D1 | Mindestens 1 Reviewer (Niko) fuer PROD-Deployments |
-| D3 | GitHub Secrets anlegen (Environment: prod) | [ ] | A9, B2 | 6 Secrets: `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `DB_READONLY_PASSWORD`, `STACKIT_KUBECONFIG` |
-| D4 | PROD-Kubeconfig als Environment-Secret anlegen | [ ] | D3 | Der Workflow liest `secrets.STACKIT_KUBECONFIG` — GitHub resolved Environment-Secrets vor Repository-Secrets. Es reicht, `STACKIT_KUBECONFIG` als Secret im GitHub Environment `prod` anzulegen. **Kein Workflow-Code-Aenderung noetig.** DEV/TEST nutzen weiterhin das globale Repository-Secret |
-| D5 | `values-prod.yaml` vervollstaendigen | [~] | A9 | ✅ Celery Worker (6×) auf replicaCount: 1 gesetzt, HSTS auf 31536000 (1 Jahr), Ingress-Block ergaenzt, Extension-Flags ergaenzt (2026-03-11). ⏳ `POSTGRES_HOST` noch offen (braucht Terraform Output) |
+| D1 | GitHub Environment `prod` erstellen | [x] | — | ✅ **Erledigt (2026-03-11).** Via `gh api` erstellt |
+| D2 | Required Reviewers aktivieren | [x] | D1 | ✅ **Erledigt (2026-03-11).** Reviewer: nikolajIvanov (ID 62962459) |
+| D3 | GitHub Secrets anlegen (Environment: prod) | [x] | A9, B2 | ✅ **Erledigt (2026-03-11).** Alle 6 Secrets gesetzt: POSTGRES_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, DB_READONLY_PASSWORD, STACKIT_KUBECONFIG |
+| D4 | PROD-Kubeconfig als Environment-Secret anlegen | [x] | D3 | ✅ **Erledigt (2026-03-11).** STACKIT_KUBECONFIG als Environment-Secret unter `prod`. Kein Workflow-Code-Aenderung noetig |
+| D5 | `values-prod.yaml` vervollstaendigen | [x] | A9 | ✅ **Erledigt (2026-03-11).** POSTGRES_HOST eingetragen, AUTH_TYPE temporaer auf "basic" (O3), Header aktualisiert |
 | D6 | Erster PROD Deploy | [ ] | D1-D5, B3-B8 | `gh workflow run stackit-deploy.yml -f environment=prod` |
 | D7 | Recreate-Strategie patchen | [x] | D6 | ✅ **Geloest (2026-03-11).** "Patch deployment strategy and wait (PROD)"-Step in `stackit-deploy.yml` ergaenzt (analog DEV Z.234-260 / TEST Z.356-382). Patcht 10 Deployments auf Recreate-Strategie + wartet auf Rollout. Enterprise-Begruendung: RollingUpdate fuehrt bei Onyx zu DB-Connection-Pool-Exhaustion (monitoring-konzept.md Lesson Learned #8) |
 | D8 | Smoke Test verifizieren | [ ] | D6 | `/api/health` erreichbar, alle Pods Running |

@@ -1,8 +1,8 @@
 # ===========================================================
 # VÖB Service Chatbot — StackIT Terraform Variables
 # ===========================================================
-# Aktuell: Nur DEV-relevante Variablen.
-# PROD-spezifische Variablen kommen später dazu.
+# Shared-Modul fuer DEV und PROD Environments.
+# Defaults = DEV-Werte. PROD ueberschreibt in environments/prod/.
 # ===========================================================
 
 # --- Projekt ---
@@ -52,6 +52,28 @@ variable "cluster_acl" {
   description = "Cluster API ACL — allowed CIDRs"
   type        = list(string)
   default     = ["0.0.0.0/0"]
+}
+
+# --- Maintenance Window ---
+
+variable "maintenance_start" {
+  description = "Maintenance window start (HH:MM:SSZ)"
+  type        = string
+  default     = "02:00:00Z"
+}
+
+variable "maintenance_end" {
+  description = "Maintenance window end (HH:MM:SSZ)"
+  type        = string
+  default     = "04:00:00Z"
+}
+
+# --- Kubeconfig ---
+
+variable "kubeconfig_expiration" {
+  description = "Kubeconfig expiration in seconds (default 90 days)"
+  type        = number
+  default     = 7776000
 }
 
 # --- Node Pool ---

@@ -44,8 +44,8 @@ resource "stackit_ske_cluster" "main" {
   maintenance = {
     enable_kubernetes_version_updates    = true
     enable_machine_image_version_updates = true
-    start                                = "02:00:00Z"
-    end                                  = "04:00:00Z"
+    start                                = var.maintenance_start
+    end                                  = var.maintenance_end
   }
 
   extensions = {
@@ -64,6 +64,7 @@ resource "stackit_ske_cluster" "main" {
 resource "stackit_ske_kubeconfig" "main" {
   project_id   = var.project_id
   cluster_name = stackit_ske_cluster.main.name
+  expiration   = var.kubeconfig_expiration
 }
 
 # -----------------------------------------------------------

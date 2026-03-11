@@ -1,17 +1,14 @@
 # ===========================================================
 # VÖB Service Chatbot — PROD Environment Helm Values
 # ===========================================================
-# GRUNDGERUEST — Platzhalter fuer spaetere Befuellung.
-# PROD-Infrastruktur (Cluster, PG, S3) ist NOCH NICHT provisioniert.
+# PROD Environment Values — Infrastruktur provisioniert (2026-03-11).
+# Cluster: vob-prod (2x g1a.8d), PG: Flex 4.8 HA (3-Node), S3: vob-prod.
 #
 # Vor dem ersten PROD-Deploy:
-#   1. Separaten SKE-Cluster provisionieren (ADR-004)
-#   2. Terraform environments/prod/ ausfuellen + apply
-#   3. Alle [TBD]-Werte in dieser Datei ersetzen
-#   4. GitHub Environment "prod" mit Required Reviewers konfigurieren
-#   5. GitHub Secrets fuer Environment "prod" anlegen
-#   6. Namespace onyx-prod wird automatisch erstellt (--create-namespace im Workflow)
-#   7. NetworkPolicies anwenden (deployment/k8s/network-policies/)
+#   1. GitHub Environment "prod" mit Required Reviewers konfigurieren
+#   2. GitHub Secrets fuer Environment "prod" anlegen
+#   3. Namespace onyx-prod wird automatisch erstellt (--create-namespace im Workflow)
+#   4. NetworkPolicies anwenden (deployment/k8s/network-policies/)
 #
 # Referenz: docs/referenz/stackit-infrastruktur.md (Zeilen 99-136)
 # ===========================================================
@@ -48,11 +45,8 @@ auth:
       db_readonly_password: ""  # → GitHub Secret DB_READONLY_PASSWORD
 
 configMap:
-  # PostgreSQL (StackIT Managed Flex 4.8 Replica — PROD)
-  # ⚠️ PFLICHT VOR ERSTEM DEPLOY:
-  # 1. cd deployment/terraform/environments/prod && terraform apply
-  # 2. terraform output -raw pg_host → hier eintragen
-  POSTGRES_HOST: "[TBD]"  # → terraform output -raw pg_host
+  # PostgreSQL (StackIT Managed Flex 4.8 Replica — PROD, HA 3-Node)
+  POSTGRES_HOST: "fdc7610c-91dc-4d0a-9652-adafe1a509cd.postgresql.eu01.onstackit.cloud"
   POSTGRES_PORT: "5432"
   POSTGRES_DB: "onyx"
 
@@ -71,9 +65,9 @@ configMap:
   DOMAIN: "chatbot.voeb-service.de"
   WEB_DOMAIN: "https://chatbot.voeb-service.de"
 
-  # Auth: Entra ID (OIDC) — PFLICHT fuer PROD
-  # ⚠️ PFLICHT: Vor PROD-Go-Live muessen OIDC-Secrets konfiguriert sein.
-  AUTH_TYPE: "oidc"
+  # Auth: Temporaer "basic" bis Entra ID Zugangsdaten vorliegen (O3).
+  # Vor Go-Live auf "oidc" umstellen + OIDC-Secrets konfigurieren.
+  AUTH_TYPE: "basic"
   REQUIRE_EMAIL_VERIFICATION: "false"
 
   # Logging: PROD weniger verbose
