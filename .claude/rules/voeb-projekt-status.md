@@ -73,7 +73,7 @@
   - ✅ Health Probes aktiviert (2026-03-10): API httpGet `/health:8080`, Webserver tcpSocket `:3000`. DEV + TEST deployed. Lesson: Next.js hat keinen HTTP-Health-Endpoint.
   - ✅ Monitoring NetworkPolicies (2026-03-10): 7 Policies in `monitoring` NS + 3 Policies in `onyx-dev`/`onyx-test`
   - ✅ **Monitoring Exporter deployed** (2026-03-10): postgres_exporter v0.19.1 + redis_exporter v1.82.0. 4 Exporter-Pods, 4 Scrape-Targets UP, 11 neue Alert-Rules. PG + Redis Metriken fließen. Grafana Dashboards importiert (ID 14114 + 763).
-  - ✅ Alerting: Teams statt SMTP (Entscheidung Niko, 2026-03-10). Webhook-URL noch offen.
+  - ✅ Alerting: Microsoft Teams Webhook konfiguriert (2026-03-11). 20 Alert-Rules → Teams-Kanal. `send_resolved: true` für Entwarnung.
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
@@ -87,7 +87,7 @@
 - **Phase 5-6:** Geplant (Testing, Production)
 
 ## Nächster Schritt
-**1. Teams Webhook-URL erstellen + AlertManager konfigurieren → 2. M1-Abnahmeprotokoll ausfuellen → 3. Entra ID (wartet auf VÖB) → 4. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 5. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack komplett (2026-03-10): kube-prometheus-stack + postgres_exporter + redis_exporter + Grafana Dashboards. Alerting auf Teams (Webhook offen). Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
+**1. M1-Abnahmeprotokoll ausfuellen → 2. Entra ID (wartet auf VÖB) → 3. Embedding DEV auf Qwen3-VL umstellen (TEST bereits aktiv) → 4. SEC-06 Phase 2: runAsNonRoot (vor PROD).** Monitoring-Stack komplett (2026-03-11): kube-prometheus-stack + postgres_exporter + redis_exporter + Grafana Dashboards + Teams Alerting. Alle unblockierten Extensions erledigt (4a-4d). ext-analytics uebersprungen. ext-rbac + ext-access warten auf Entra ID.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

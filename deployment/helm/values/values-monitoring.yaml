@@ -143,7 +143,7 @@ alertmanager:
     receivers:
       - name: "teams-niko"
         msteams_configs:
-          - webhook_url: ""  # TODO: Teams Incoming Webhook URL eintragen
+          - webhook_url: "https://scale42ai.webhook.office.com/webhookb2/ae17ce3a-3647-4c8a-86f2-e0bd7b4703dc@a61ee147-68be-46ed-bc77-252610a484d5/IncomingWebhook/ea054240b78f4581be98ea34a1442177/98af9e43-092e-484a-b623-eaccbabbe80c/V2fOUh-8nAGwjgm4pOMnXLygngI26NeCTI3Jb6wJ4Z00s1"
             title: '{{ .GroupLabels.alertname }}'
             text: '{{ range .Alerts }}{{ .Annotations.summary }} — {{ .Annotations.description }}{{ end }}'
             send_resolved: true

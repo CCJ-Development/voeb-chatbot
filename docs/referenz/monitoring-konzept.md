@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting offen (Teams)
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster), PROD-Vorbereitung
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
@@ -54,7 +54,7 @@ Onyx hat ein produktives Prometheus-Monitoring. Der API-Server exponiert `/metri
 |---------|--------|--------|
 | Prometheus-Server (Scraping) | ✅ Deployed (2026-03-10) | 20 Targets, 30s Intervall |
 | Grafana (Dashboards) | ✅ Deployed (2026-03-10) | Zugang via port-forward |
-| AlertManager (Alerting) | ✅ Deployed (2026-03-10) | 9 Alert-Rules, Email-Kanal konfiguriert (SMTP offen) |
+| AlertManager (Alerting) | ✅ Deployed (2026-03-10), Teams Webhook (2026-03-11) | 20 Alert-Rules, Microsoft Teams Webhook aktiv |
 | Log-Aggregation | Nicht vorhanden | Pod-Logs gehen bei Restart verloren (Loki evaluieren) |
 | Health Probes in Helm Values | ✅ Konfiguriert (2026-03-10) | API: httpGet /health, Webserver: tcpSocket 3000 |
 | kube-state-metrics | ✅ Deployed (2026-03-10) | Pod/Node/Deployment-Level-Metriken |
@@ -315,19 +315,18 @@ alertmanager:
       group_wait: 30s
       group_interval: 5m
       repeat_interval: 4h
-      receiver: "email-niko"
+      receiver: "teams-niko"
       routes:
         - match:
             severity: critical
           repeat_interval: 1h
-          receiver: "email-niko"
+          receiver: "teams-niko"
     receivers:
-      - name: "email-niko"
-        email_configs:
-          - to: "nikolaj.ivanov@coffee-studios.de"
-            from: "alertmanager@voeb-chatbot.local"
-            smarthost: "localhost:25"  # TODO: SMTP-Server konfigurieren
-            require_tls: false
+      - name: "teams-niko"
+        msteams_configs:
+          - webhook_url: "<REDACTED>"  # Teams Incoming Webhook (Scale42 AI)
+            title: '{{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }} — {{ .Annotations.description }}{{ end }}'
             send_resolved: true
 
 # --- kube-state-metrics ---
@@ -489,9 +488,9 @@ spec:
 
 ### Phase 3: Alert-Rules (0,25 PT) — ✅ DEPLOYED
 
-**Status:** 9 Regeln aktiv in `values-monitoring.yaml` unter `additionalPrometheusRulesMap`. AlertManager konfiguriert mit Email an `nikolaj.ivanov@coffee-studios.de` (SMTP-Server noch zu konfigurieren).
+**Status:** 20 Regeln aktiv in `values-monitoring.yaml` unter `additionalPrometheusRulesMap`. AlertManager konfiguriert mit Microsoft Teams Webhook (Kanal: Scale42 AI).
 
-**Empfohlene Alert-Rules:**
+**Alert-Rules:**
 
 | Alert | PromQL | Severity | Beschreibung |
 |-------|--------|----------|-------------|
@@ -505,7 +504,7 @@ spec:
 | `VespaStorageFull` | `kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2` for 10m | warning | Vespa PVC <20% frei |
 | `CertExpiringSoon` | `certmanager_certificate_expiration_timestamp_seconds - time() < 14*24*3600` for 1h | warning | Zertifikat läuft in <14 Tagen ab |
 
-**Alerting-Kanal:** Noch zu klären (Email, Slack, Webhook). Wird in AlertManager-Config konfiguriert.
+**Alerting-Kanal:** Microsoft Teams Webhook (konfiguriert 2026-03-11).
 
 ### Phase 4: Grafana Dashboards (0,25 PT) — ⏳ OFFEN
 
@@ -572,11 +571,11 @@ Für PROD zusätzlich:
 
 | # | Frage | Wer | Status |
 |---|-------|-----|--------|
-| 1 | ~~Alerting-Kanal: Email, Slack, oder Webhook?~~ | Niko | ✅ Email konfiguriert (`nikolaj.ivanov@coffee-studios.de`). SMTP-Server fehlt noch (Platzhalter `localhost:25`). |
+| 1 | ~~Alerting-Kanal: Email, Slack, oder Webhook?~~ | Niko | ✅ Microsoft Teams Webhook konfiguriert (2026-03-11). Alerts werden an Teams-Kanal zugestellt. |
 | 2 | Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?) | Niko/VÖB | Entscheidung: port-forward für DEV/TEST (Enterprise Best Practice: kein externer Zugang). Für PROD: Ingress mit Entra ID evaluieren. |
 | 3 | ~~Grafana Admin-Passwort: Wie verwalten?~~ | Niko | ✅ Per `--set grafana.adminPassword=<SECRET>` beim Install. Passwort liegt in K8s Secret `monitoring-grafana`. |
 | 4 | Log-Aggregation (Loki) in Phase 2 oder später? | Niko | Offen |
-| 5 | SMTP-Server für AlertManager (Email-Versand)? | Niko | Neu. Optionen: StackIT Mailservice, externer SMTP, oder Webhook statt Email. |
+| 5 | ~~SMTP-Server für AlertManager (Email-Versand)?~~ | Niko | ✅ Entfällt — Teams Webhook statt Email gewählt (2026-03-10). Kein SMTP nötig. |
 
 ---
 
@@ -586,7 +585,7 @@ Für PROD zusätzlich:
 |-------|-----|---------|--------|
 | 1 | Health Probes aktivieren + `/metrics` verifizieren | 0,25 PT | ✅ Deployed (2026-03-10) |
 | 2 | kube-prometheus-stack deployen + NetworkPolicies | 0,75 PT | ✅ Deployed (2026-03-10) |
-| 3 | Alert-Rules konfigurieren | 0,25 PT | ✅ Deployed (2026-03-10), SMTP offen |
+| 3 | Alert-Rules konfigurieren | 0,25 PT | ✅ Deployed (2026-03-10), Teams Webhook konfiguriert (2026-03-11) |
 | 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ⏳ Offen |
 | **Gesamt** | | **1,5 PT** | **1,25 PT erledigt** |
 
@@ -801,6 +800,4 @@ Commit noch ausstehend — Dateien auf Feature-Branch `feature/monitoring-export
 
 **Entscheidung (Niko, 2026-03-10): Microsoft Teams statt SMTP.**
 
-Aktuell: AlertManager-Config hat Platzhalter (`localhost:25`). Alerts sind in Prometheus/Grafana sichtbar, werden aber nicht zugestellt. Teams Incoming Webhook muss konfiguriert werden.
-
-Naechster Schritt: Teams Webhook-URL erstellen → in `values-monitoring.yaml` als `msteams_configs` eintragen → `helm upgrade monitoring`.
+✅ **Konfiguriert (2026-03-11):** Teams Incoming Webhook in `values-monitoring.yaml` eingetragen. Receiver `teams-niko` mit `msteams_configs`. Alerts werden bei Trigger an den Teams-Kanal zugestellt (inkl. `send_resolved: true` für Entwarnung).

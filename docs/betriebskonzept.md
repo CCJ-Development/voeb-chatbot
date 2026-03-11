@@ -509,39 +509,49 @@ Für dringende Fixes auf einer bereits released Version:
 
 ### Aktueller Stand
 
-**Aktuell ist kein dediziertes Monitoring-Stack (Prometheus/Grafana/AlertManager) im Einsatz.** Die Überwachung erfolgt über:
+**Self-Hosted Monitoring-Stack deployed (2026-03-10).** kube-prometheus-stack im eigenen Namespace `monitoring` (separater Helm Release). Überwachung erfolgt über:
 
-1. **CI/CD Smoke Tests**: Jeder Deploy prüft `/api/health` (DEV/TEST: 12 Versuche à 10s = 120s, PROD: 18 Versuche à 10s = 180s)
-2. **Kubernetes-native Prüfungen**: `kubectl get pods`, `kubectl describe`, `kubectl logs`
-3. **Helm Status**: `helm status onyx-{env} -n onyx-{env}`
-4. **StackIT Console**: Managed-Service-Metriken für PostgreSQL und Object Storage
+1. **Prometheus**: 6 Scrape-Targets (Onyx API DEV+TEST, PostgreSQL Exporter DEV+TEST, Redis Exporter DEV+TEST), 30s Intervall, 30d Retention, 20 Gi PVC
+2. **Grafana**: Dashboards für Kubernetes, PostgreSQL (ID 14114), Redis (ID 763). Zugriff per `kubectl port-forward` (kein externer Ingress, Enterprise Best Practice)
+3. **AlertManager**: 20 Alert-Rules, Zustellung via Microsoft Teams Webhook (konfiguriert 2026-03-11), inkl. Entwarnung (`send_resolved: true`)
+4. **Exporters**: postgres_exporter v0.19.1 + redis_exporter v1.82.0 (4 Pods fuer DEV+TEST)
+5. **kube-state-metrics + node-exporter**: Cluster-weite Pod/Node/Deployment-Metriken
+6. **CI/CD Smoke Tests**: Jeder Deploy prueft `/api/health` (DEV/TEST: 12 Versuche a 10s = 120s, PROD: 18 Versuche a 10s = 180s)
+7. **StackIT Console**: Managed-Service-Metriken fuer PostgreSQL und Object Storage
 
 ### Health Checks (Kubernetes)
 
-Die Health Checks sind im Onyx Helm Chart definiert. Der API-Server exponiert:
+- **API Server**: `httpGet /health:8080` (Readiness: 30s+6x10s=90s, Liveness: 60s+8x15s=180s)
+- **Webserver**: `tcpSocket :3000` (Readiness: 20s+6x10s=80s, Liveness: 30s+5x15s=105s)
+- **Health Endpoint**: `GET /api/health` — prueft DB-Connectivity, gibt `{"success": true}` zurueck
+- **Lesson Learned**: Next.js hat keinen HTTP-Health-Endpoint — TCP Socket Probe statt httpGet
 
-- **Health Endpoint**: `GET /api/health` -- geprüft durch CI/CD Smoke Test nach jedem Deploy
-- **Liveness/Readiness Probes**: Konfiguriert im Helm Chart (Templates, READ-ONLY)
+### Monitoring-Ressourcen
 
-### Geplanter Monitoring-Ausbau
+| Komponente | CPU Request | RAM Request |
+|------------|-------------|-------------|
+| Prometheus | 500m | 1 Gi |
+| Grafana | 100m | 256 Mi |
+| AlertManager | 100m | 128 Mi |
+| kube-state-metrics | 100m | 128 Mi |
+| node-exporter (x2) | 200m | 256 Mi |
+| prometheus-operator | 100m | 128 Mi |
+| **Summe Monitoring** | **1.100m** | **~1,9 Gi** |
 
-[AUSSTEHEND -- Vor PROD-Go-Live zu implementieren]
+### Offene Punkte
 
-Der Monitoring-Ausbau ist für die PROD-Vorbereitung geplant und umfasst:
+| Thema | Status | Prioritaet |
+|-------|--------|-----------|
+| Log-Aggregation (Loki) | Zu evaluieren | Vor PROD |
+| Grafana Dashboards als ConfigMap | Offen (manuell importiert, nicht persistent) | Vor PROD |
+| Grafana Ingress mit Auth (PROD) | Geplant | Vor PROD |
 
-| Thema | Geplante Lösung | Priorität |
-|-------|----------------|-----------|
-| Metriken | Prometheus + Grafana | Vor PROD |
-| Alerting | AlertManager oder StackIT-native Lösung | Vor PROD |
-| Log-Aggregation | Zu evaluieren (ELK, Loki, StackIT-nativ) | Vor PROD |
-| Uptime-Monitoring | Zu evaluieren | Vor PROD |
-
-**Empfohlene Metriken für PROD** (noch nicht implementiert):
+**Alert-Rules (20 Stück):**
 
 | Metrik | Schwellwert | Aktion |
 |--------|------------|--------|
-| Pod Restart Count | > 0 in 5 Min | Alert |
-| Memory/CPU Usage | > 80% | Investigate |
+| Pod Restart Count | > 3 in 1h | Critical Alert |
+| Node Memory | < 10% frei | Critical Alert |
 | API Error Rate | > 1% | Alert |
 | Database Connections | Pool-Limit nahend | Alert |
 | Disk Usage | > 85% | Alert |

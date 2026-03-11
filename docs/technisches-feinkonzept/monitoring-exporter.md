@@ -304,7 +304,7 @@ Neue Regeln in `additionalPrometheusRulesMap`. Alle mit `annotations` (konsisten
 - `RedisCacheHitRateLow`: `rate()` statt rohe Counter (zeigt aktuelle Rate, nicht Lifetime-Durchschnitt). Schwellwert 0.9 → 0.8 (Redis ist primaer Celery-Broker, nicht Cache — niedrigere Hit Rate normal)
 - `RedisRejectedConnections`: NEU — kritisch fuer Celery-Betrieb
 
-**Hinweis:** Alle Alerts nutzen den bestehenden AlertManager-Kanal (`teams-niko`). Alerts werden erst zugestellt wenn die Teams Webhook-URL konfiguriert ist (`values-monitoring.yaml` → `msteams_configs` → `webhook_url`). Alerts sind aber sofort in Prometheus/Grafana sichtbar.
+**Hinweis:** Alle Alerts nutzen den bestehenden AlertManager-Kanal (`teams-niko`). Teams Webhook-URL konfiguriert (2026-03-11), Alerts werden an den Teams-Kanal zugestellt inkl. Entwarnung (`send_resolved: true`).
 
 ---
 

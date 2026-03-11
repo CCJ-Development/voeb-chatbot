@@ -87,7 +87,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 |-------------|--------|---------|
 | Kubernetes-Orchestrierung | IMPLEMENTIERT | SKE Cluster mit automatischem Pod-Restart |
 | Datenbank-Backups | IMPLEMENTIERT | PG Flex: tägliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, StackIT Managed) |
-| Monitoring und Alerting | GEPLANT | Prometheus/Grafana Stack geplant (Phase M5) |
+| Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed (2026-03-10): Prometheus, Grafana, AlertManager, 20 Alert-Rules, Teams Webhook. Konzept: `docs/referenz/monitoring-konzept.md` |
 | DDoS-Mitigation | OFFEN | Kein Rate Limiting und keine WAF implementiert |
 | Hochverfügbarkeit | OFFEN (DEV/TEST) | Single-Replica pro Service. HA geplant für PROD |
 
@@ -913,9 +913,12 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 ```
 Phase 1: ERKENNUNG
-├─ Aktuell: Manuelle Erkennung (kein automatisiertes Monitoring)
-├─ Geplant: Prometheus/Grafana Alerting (Phase M5)
-└─ Smoke Tests in CI/CD (implementiert)
+├─ Automatisiert: kube-prometheus-stack (deployed 2026-03-10)
+│  ├─ 20 Alert-Rules (Prometheus → AlertManager → Teams Webhook)
+│  ├─ postgres_exporter + redis_exporter (DB/Cache-Metriken)
+│  └─ Grafana Dashboards (Cluster, PostgreSQL, Redis)
+├─ Smoke Tests in CI/CD (implementiert)
+└─ Konzept: docs/referenz/monitoring-konzept.md
 
 Phase 2: EINDÄMMUNG
 ├─ Betroffene Pods isolieren (kubectl)

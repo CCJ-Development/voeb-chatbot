@@ -678,7 +678,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | Security-Härtung P0 | Vor TEST-Deploy | SEC-01: PG ACL einschränken (30 Min) | ✅ Erledigt (2026-03-03) |
 | Security-Härtung P1 | Nach TEST, vor PROD | SEC-06 Phase 1 ✅ (`privileged: false` deployed). Phase 2: `runAsNonRoot` (4-6h) + M7: Cluster-ACL. SEC-02/04/05 zurückgestellt. | ⏳ Teilweise |
 | PROD Cluster | Vor Go-Live | Eigener SKE-Cluster + 2× g1a.8d + PG 4.8 HA (ADR-004) | Geplant |
-| Monitoring | Phase M5 | Prometheus/Grafana Stack | Geplant |
+| Monitoring | Phase M5 | kube-prometheus-stack + Exporters + Teams Alerting | ✅ Erledigt (2026-03-10/11) |
 
 ---
 

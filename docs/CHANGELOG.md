@@ -14,8 +14,8 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Separater Helm Release `monitoring` in eigenem Namespace (nicht im Onyx Chart)
   - Prometheus: 30d Retention, 20Gi PVC, 30s Scrape-Intervall, 20 Targets (inkl. DEV + TEST API)
   - Grafana: port-forward only (kein externer Zugang, Enterprise Best Practice), admin/Passwort per K8s Secret
-  - AlertManager: 9 Alert-Rules (APIDown, PodCrashLooping, HighErrorRate, DBPoolExhausted, HighSlowRequests, NodeMemoryPressure, NodeDiskPressure, VespaStorageFull, CertExpiringSoon)
-  - AlertManager Email an `nikolaj.ivanov@coffee-studios.de` konfiguriert (SMTP-Server offen)
+  - AlertManager: 20 Alert-Rules (9 Basis + 11 Exporter: APIDown, PodCrashLooping, HighErrorRate, DBPoolExhausted, HighSlowRequests, NodeMemoryPressure, NodeDiskPressure, VespaStorageFull, CertExpiringSoon, PGExporterDown, RedisExporterDown, PGConnectionsHigh, PGDeadlocks, PGHighRollbackRate, PGDatabaseGrowing, RedisMemoryHigh, RedisHighEvictions, RedisCacheHitRateLow, RedisRejectedConnections, PGCacheHitRateLow)
+  - AlertManager: Microsoft Teams Webhook konfiguriert (2026-03-11), Alerts an Teams-Kanal inkl. Entwarnung (`send_resolved: true`)
   - Health Probes: API `httpGet /health:8080` + Webserver `tcpSocket :3000`
   - Lesson Learned: Next.js hat keinen `/api/health` Endpoint (Proxy laeuft ueber NGINX Ingress, nicht Next.js)
   - Lesson Learned: Onyx Service-Namen haben Suffix `-service` (`onyx-dev-api-service`, nicht `onyx-dev-api`)

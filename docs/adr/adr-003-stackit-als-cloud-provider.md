@@ -103,10 +103,11 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 │  │  ├── Lifecycle Policies (archive old data)                │ │
 │  │  └── Encryption at rest (AES-256)                         │ │
 │  │                                                            │ │
-│  │  Observability & Monitoring (geplant)                     │ │
-│  │  ├── Prometheus (geplant)                                 │ │
-│  │  ├── Log-Aggregation (geplant)                            │ │
-│  │  └── Alerting (geplant)                                   │ │
+│  │  Observability & Monitoring (deployed 2026-03-10)          │ │
+│  │  ├── Prometheus + Grafana (kube-prometheus-stack)          │ │
+│  │  ├── AlertManager → Microsoft Teams Webhook               │ │
+│  │  ├── postgres_exporter + redis_exporter                   │ │
+│  │  └── Log-Aggregation (offen, Loki evaluieren)             │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
@@ -325,7 +326,7 @@ Infrastruktur ist fuer DEV und TEST live. Details siehe `docs/referenz/stackit-i
 2. **Phase 2**: SKE Cluster (Flavor g1a.8d seit 2026-03-06, Region EU01 Frankfurt) via Terraform -- erledigt (siehe ADR-005)
 3. **Phase 3**: PostgreSQL Flex (Flavor Flex 2.4 Single), Object Storage Buckets via Terraform -- erledigt
 4. **Phase 4**: Namespace-Setup, Ingress (nginx), PG ACL (IP-Allowlisting) -- erledigt
-5. **Phase 5**: Monitoring & Observability -- geplant (wird vor PROD-Deployment ergaenzt)
+5. **Phase 5**: Monitoring & Observability -- erledigt (kube-prometheus-stack deployed 2026-03-10, Teams Alerting 2026-03-11, Konzept: `docs/referenz/monitoring-konzept.md`)
 6. **Phase 6**: CI/CD Pipeline (GitHub Actions -> StackIT Registry -> Helm Deploy) -- erledigt
 
 ### Kostenschätzung
