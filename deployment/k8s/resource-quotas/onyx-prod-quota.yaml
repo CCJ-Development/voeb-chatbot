@@ -1,0 +1,31 @@
+# ResourceQuota fuer onyx-prod Namespace
+#
+# Berechnung basierend auf values-prod.yaml (17 Pods):
+#   CPU Requests: 8750m (Summe aller Pod Requests)
+#   RAM Requests: 15250 Mi (~15.25 Gi)
+#   CPU Limits:   19500m
+#   RAM Limits:   43520 Mi (~42.5 Gi)
+#
+# Buffer: CPU +37%, RAM +31% auf Requests. Limits +13%.
+# Detailberechnung: docs/referenz/prod-bereitstellung.md Sektion 11.
+#
+# Anwendung:
+#   kubectl apply -f onyx-prod-quota.yaml
+#
+# Pruefen:
+#   kubectl describe resourcequota onyx-prod-quota -n onyx-prod
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: onyx-prod-quota
+  namespace: onyx-prod
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    environment: prod
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: "20Gi"
+    limits.cpu: "22"
+    limits.memory: "48Gi"

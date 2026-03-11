@@ -38,14 +38,21 @@ kubectl get networkpolicy -n "${NAMESPACE}" 2>/dev/null || echo "(keine)"
 echo ""
 
 # Schritt 1: Allow-Policies anwenden (ZUERST — bevor default-deny greift)
-echo "--- Schritt 1/2: Allow-Policies anwenden ---"
+echo "--- Schritt 1/3: Basis Allow-Policies anwenden ---"
 for policy in 02-allow-dns-egress.yaml 03-allow-intra-namespace.yaml 04-allow-external-ingress-nginx.yaml 05-allow-external-egress.yaml; do
     echo "  Applying: ${policy}"
     kubectl apply -f "${SCRIPT_DIR}/${policy}" -n "${NAMESPACE}"
 done
 
 echo ""
-echo "--- Schritt 2/2: Default-Deny anwenden ---"
+echo "--- Schritt 2/3: Monitoring Allow-Policies anwenden ---"
+for policy in 06-allow-monitoring-scrape.yaml 07-allow-redis-exporter-ingress.yaml; do
+    echo "  Applying: ${policy}"
+    kubectl apply -f "${SCRIPT_DIR}/${policy}" -n "${NAMESPACE}"
+done
+
+echo ""
+echo "--- Schritt 3/3: Default-Deny anwenden ---"
 kubectl apply -f "${SCRIPT_DIR}/01-default-deny-all.yaml" -n "${NAMESPACE}"
 
 echo ""
@@ -54,7 +61,7 @@ kubectl get networkpolicy -n "${NAMESPACE}"
 
 echo ""
 echo "============================================"
-echo "Alle 5 Policies angewendet auf: ${NAMESPACE}"
+echo "Alle 7 Policies angewendet auf: ${NAMESPACE}"
 echo "============================================"
 echo ""
 echo "Naechste Schritte — Verifikation:"

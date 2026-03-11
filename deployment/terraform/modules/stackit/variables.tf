@@ -56,6 +56,12 @@ variable "cluster_acl" {
 
 # --- Node Pool ---
 
+variable "node_pool_name" {
+  description = "Node pool name (max 15 chars)"
+  type        = string
+  default     = "devtest"
+}
+
 variable "node_pool" {
   description = "Node pool configuration"
   type = object({

@@ -130,22 +130,22 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| A1 | Terraform-Modul fuer PROD erstellen | [ ] | — | `environments/prod/main.tf` — nutzt `modules/stackit` (nicht `stackit-data`), da eigener Cluster |
-| A2 | Cluster-Name festlegen | [K] | — | Max 11 Zeichen. Optionen: `vob-prod`, `voeb-prod`, `vob-chat-p`. Muss eindeutig im StackIT-Projekt sein |
-| A3 | Node Pool konfigurieren | [ ] | A1 | Pool `prod`, 2x g1a.8d, `eu01-3`, Volume 100 GB `premium-perf2-stackit` |
-| A4 | PG Flex 4.8 Replica provisionieren | [ ] | A1 | 3-Node HA, 4 CPU / 8 GB RAM, 50 GB Storage, Backup 01:00 UTC |
+| A1 | Terraform-Modul fuer PROD erstellen | [x] | — | ✅ `environments/prod/main.tf` erstellt (2026-03-11). Nutzt `modules/stackit` mit PROD-Parametern. `node_pool_name` Variable im Modul ergaenzt (Default: devtest, PROD: prod) |
+| A2 | Cluster-Name festlegen | [x] | — | ✅ `vob-prod` (O2, entschieden 2026-03-11) |
+| A3 | Node Pool konfigurieren | [x] | A1 | ✅ Pool `prod`, 2x g1a.8d, `eu01-3`, Volume 100 GB `premium-perf2-stackit`. In `environments/prod/main.tf` |
+| A4 | PG Flex 4.8 Replica provisionieren | [x] | A1 | ✅ 3-Node HA, 4 CPU / 8 GB RAM, 50 GB Storage, Backup 01:00 UTC. In `environments/prod/main.tf` |
 | A5 | PG ACL konfigurieren | [ ] | A4, A3 | Cluster-Egress-IP (erst nach Cluster-Erstellung bekannt) + Admin-IP. **Achtung:** PROD-Cluster hat eigene Egress-IP! |
 | A6 | PG Datenbank `onyx` manuell anlegen | [ ] | A4 | Terraform erstellt nur Instanz + User, nicht die DB. `psql -h <host> -U onyx_app -c "CREATE DATABASE onyx;"` |
-| A7 | Object Storage Bucket `vob-prod` erstellen | [ ] | A1 | Per Terraform |
+| A7 | Object Storage Bucket `vob-prod` erstellen | [x] | A1 | ✅ In `environments/prod/main.tf` konfiguriert. Wird bei `terraform apply` erstellt |
 | A8 | S3 Credentials erstellen | [ ] | A7 | StackIT Console → Object Storage → Credentials. Fuer GitHub Secret |
 | A9 | `terraform apply` ausfuehren | [ ] | A1-A8 | Geschaetzte Dauer: ~10-15 Min. Outputs sichern: `pg_host`, `pg_password`, `pg_readonly_password`, `kubeconfig` |
 | A10 | PROD-Egress-IP ermitteln | [ ] | A9 | `kubectl get nodes -o wide` → ExternalIP, oder NAT Gateway IP aus StackIT Console. Wird fuer PG ACL (A5) und NetworkPolicies benoetigt |
 
-**Offene Fragen Phase A:**
+**Geloeste Fragen Phase A (2026-03-11):**
 
-- [ ] **A2:** Cluster-Name — Vorschlag `vob-prod` (7 Zeichen, passt)
-- [ ] **A5:** Admin-IP fuer PG ACL — gleiche wie DEV/TEST (`109.41.112.160/32`) oder andere?
-- [ ] Soll PROD im gleichen StackIT-Projekt laufen wie DEV/TEST, oder in einem separaten Projekt?
+- [x] **A2:** Cluster-Name → `vob-prod` (O2, entschieden)
+- [x] **A5:** Admin-IP fuer PG ACL → gleiche wie DEV/TEST (`109.41.112.160/32`). Cluster-Egress-IP wird nach A10 nachgetragen
+- [x] PROD im gleichen StackIT-Projekt (O1, entschieden) → shared Registry, einfacher
 
 ---
 
@@ -212,12 +212,12 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| E1 | SEC-06 Phase 2: `runAsNonRoot: true` | [ ] | D6 | `runAsUser: 1001` + `runAsNonRoot: true` fuer alle Container (ausser Vespa). Onyx Dockerfile definiert User `onyx` UID 1001. Zuerst auf DEV/TEST testen! |
-| E2 | NetworkPolicies PROD erstellen | [ ] | D6, A10 | Default-Deny + Allow-Policies. DEV/TEST haben aktuell 7 Policies im App-NS (5 Basis-SEC-03 + Monitoring-Scrape + Redis-Exporter-Ingress) + 7 im Monitoring-NS. PROD analog, ggf. granularer (per-Pod Egress fuer PG, S3, LLM API) |
+| E1 | SEC-06 Phase 2: `runAsNonRoot: true` | [x] | D6 | ✅ **Geloest (2026-03-11).** `values-prod.yaml`: `runAsUser: 1001` + `runAsNonRoot: true` fuer celery_shared, inferenceCapability, indexCapability. Vespa bleibt `runAsUser: 0` (dokumentierte Ausnahme). Helm template verifiziert. **WICHTIG:** Vor PROD-Deploy auf DEV/TEST validieren! |
+| E2 | NetworkPolicies PROD erstellen | [x] | D6, A10 | ✅ **Geloest (2026-03-11).** Bestehende Policy-YAMLs sind namespace-agnostisch → funktionieren fuer `onyx-prod`. `apply.sh` aktualisiert (7 Policies statt 5). `monitoring/apply.sh` aktualisiert (onyx-prod hinzugefuegt, dynamisch mit Namespace-Check) |
 | E3 | NetworkPolicies Monitoring-NS erstellen | [ ] | F1 | Analog `deployment/k8s/network-policies/monitoring/` |
 | E4 | Cluster ACL pruefen | [ ] | A9 | `cluster_acl` in Terraform — soll PROD-API-Server nur von bestimmten IPs erreichbar sein? |
 | E5 | HSTS Header auf 1 Jahr setzen | [x] | D5 | ✅ **Geloest (2026-03-11).** `values-prod.yaml` ueberschreibt `nginx.controller.config.http-snippet` mit `max-age=31536000` (1 Jahr). DEV/TEST bleiben bei `max-age=3600` (1h) aus `values-common.yaml`. BSI TR-02102: min. 6 Monate. OWASP: 1 Jahr + includeSubDomains. Env-spezifischer Override = Clean Architecture |
-| E6 | Resource Quotas setzen | [~] | D6 | **Korrigiert (2026-03-11):** CPU: 12, RAM: 20 Gi (statt CPU: 8, RAM: 24 GB). Alter CPU-Wert war UNTER dem berechneten Bedarf (8.75 CPU Requests)! Berechnung: Summe aller Pod CPU/RAM Requests aus values-prod.yaml + 30-37% Buffer. stackit-infrastruktur.md aktualisiert. ResourceQuota-Manifest muss bei PROD-Deploy erstellt werden |
+| E6 | Resource Quotas setzen | [x] | D6 | ✅ **Geloest (2026-03-11).** `deployment/k8s/resource-quotas/onyx-prod-quota.yaml` erstellt. CPU: 12, RAM: 20 Gi Requests. CPU: 22, RAM: 48 Gi Limits. Detailberechnung in Sektion 11 |
 | E7 | Vespa Security evaluieren | [K] | D6 | Vespa laeuft als root (runAsUser: 0). Upstream-Limitation. Akzeptieren oder Subchart-Default (UID 1000) testen? |
 
 **Offene Fragen Phase E:**

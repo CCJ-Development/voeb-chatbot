@@ -58,17 +58,20 @@ kubectl apply -f "$SCRIPT_DIR/01-default-deny-all.yaml" -n "$NAMESPACE" $DRY_RUN
 
 echo ""
 echo "=== App-Namespace Policies anwenden ==="
-echo "[+] onyx-dev: Monitoring Scrape..."
-kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n onyx-dev $DRY_RUN
-echo "[+] onyx-test: Monitoring Scrape..."
-kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n onyx-test $DRY_RUN
-echo "[+] onyx-dev: Redis Exporter Ingress..."
-kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n onyx-dev $DRY_RUN
-echo "[+] onyx-test: Redis Exporter Ingress..."
-kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n onyx-test $DRY_RUN
+for APP_NS in onyx-dev onyx-test onyx-prod; do
+  if kubectl get namespace "$APP_NS" &>/dev/null; then
+    echo "[+] ${APP_NS}: Monitoring Scrape..."
+    kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n "$APP_NS" $DRY_RUN
+    echo "[+] ${APP_NS}: Redis Exporter Ingress..."
+    kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n "$APP_NS" $DRY_RUN
+  else
+    echo "[-] ${APP_NS}: Namespace existiert nicht, ueberspringe."
+  fi
+done
 
 echo ""
 echo "=== Fertig. Policies pruefen: ==="
 echo "  kubectl get networkpolicies -n $NAMESPACE"
 echo "  kubectl get networkpolicies -n onyx-dev"
 echo "  kubectl get networkpolicies -n onyx-test"
+echo "  kubectl get networkpolicies -n onyx-prod"

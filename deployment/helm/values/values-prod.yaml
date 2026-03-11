@@ -98,6 +98,22 @@ configMap:
 #   - docprocessing: Indexing Pipeline (Embed → Vespa)
 #   - monitoring: System Health Metriken (Celery Queues, Memory)
 #   - user_file_processing: Benutzer-Uploads
+# --- SEC-06 Phase 2: Non-Root Container (BSI SYS.1.6.A10) ---
+# PROD laeuft von Tag 1 als non-root. Onyx Dockerfile definiert User 'onyx' UID 1001.
+# Ueberschreibt values-common.yaml (Phase 1: privileged=false, runAsUser=0).
+# Vespa bleibt root (runAsUser: 0) — Upstream-Limitation (vm.max_map_count).
+# WICHTIG: Vor PROD-Deploy auf DEV/TEST validieren (E1)!
+celery_shared:
+  securityContext:
+    privileged: false
+    runAsUser: 1001
+    runAsNonRoot: true
+
+vespa:
+  securityContext:
+    privileged: false
+    runAsUser: 0  # Dokumentierte Ausnahme: Vespa braucht root
+
 celery_beat:
   replicaCount: 1
   resources:
@@ -283,6 +299,10 @@ inferenceCapability:
   replicaCount: 1
   strategy:
     type: Recreate
+  securityContext:
+    privileged: false
+    runAsUser: 1001
+    runAsNonRoot: true
   resources:
     requests:
       cpu: 500m
@@ -295,6 +315,10 @@ indexCapability:
   replicaCount: 1
   strategy:
     type: Recreate
+  securityContext:
+    privileged: false
+    runAsUser: 1001
+    runAsNonRoot: true
   resources:
     requests:
       cpu: 500m

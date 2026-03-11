@@ -4,8 +4,8 @@
 # Provisioniert: SKE Cluster, PostgreSQL Flex, Object Storage
 # Region: EU01 (Frankfurt)
 #
-# Aktuell: Nur DEV-Setup (1 Node Pool, 1 PG Single, 1 Bucket)
-# PROD Node Pool wird später ergänzt, wenn wir so weit sind.
+# Provisioniert pro Environment: 1 Node Pool, 1 PG Instance, 1 Bucket.
+# Genutzt von DEV (vob-chatbot) und PROD (vob-prod).
 # ===========================================================
 
 provider "stackit" {
@@ -15,8 +15,8 @@ provider "stackit" {
 # -----------------------------------------------------------
 # 1. SKE Kubernetes Cluster
 # -----------------------------------------------------------
-# Ein Cluster mit einem Node Pool (devtest).
-# PROD Node Pool wird in einem späteren Schritt hinzugefügt.
+# Ein Cluster mit einem Node Pool.
+# Node Pool Name wird per Variable gesetzt (default: devtest).
 # -----------------------------------------------------------
 
 resource "stackit_ske_cluster" "main" {
@@ -26,7 +26,7 @@ resource "stackit_ske_cluster" "main" {
 
   node_pools = [
     {
-      name               = "devtest"
+      name               = var.node_pool_name
       machine_type       = var.node_pool.machine_type
       minimum            = var.node_pool.minimum
       maximum            = var.node_pool.maximum
