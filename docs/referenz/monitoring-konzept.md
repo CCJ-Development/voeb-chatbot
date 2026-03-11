@@ -373,7 +373,7 @@ kubeProxy:
 
 **2.3 NetworkPolicy für Monitoring-Namespace** — ✅ Applied (2026-03-10)
 
-**Status:** 5 Policies in `monitoring` + 1 Policy in `onyx-dev` + `onyx-test` applied.
+**Status:** 7 Policies in `monitoring` + 2 Policies in `onyx-dev` + `onyx-test` applied (5 Basis + 2 Exporter-Egress seit Phase 4, 2026-03-10).
 
 Der Monitoring-Namespace braucht:
 - Egress zu `onyx-dev` und `onyx-test` (Scraping auf Port 8080)
@@ -534,23 +534,73 @@ Panels:
 
 ## 5. PROD-Strategie
 
-PROD = eigener Cluster (ADR-004). Monitoring wird identisch deployed:
+PROD = eigener Cluster (ADR-004). Monitoring wird als eigenstaendiger Stack deployed.
+
+### 5.1 Architektur-Entscheidung
+
+Kein Cross-Cluster-Monitoring. Jeder Cluster hat seinen eigenen Stack (Prometheus + Grafana + AlertManager + Exporter). Begruendung: ADR-004 (Blast Radius, eigenes Maintenance-Window). PROD-Monitoring darf nicht von DEV/TEST-Cluster abhaengen.
+
+### 5.2 PROD-spezifische Konfiguration (Abweichungen von DEV/TEST)
+
+| Parameter | DEV/TEST | PROD | Begruendung |
+|-----------|----------|------|-------------|
+| Scrape-Targets | `onyx-dev-api-service`, `onyx-test-api-service` | `onyx-prod-api-service.onyx-prod.svc.cluster.local:8080` | Eigener Cluster, nur 1 Namespace |
+| Prometheus Retention | 30d | **90d** | PROD-Metriken muessen laenger aufbewahrt werden (Capacity Planning, Incident Review) |
+| Prometheus Storage | 20 Gi | **50 Gi** | Laengere Retention = mehr Speicher |
+| AlertManager Receiver | `teams-niko` (DEV/TEST-Kanal) | **Eigener PROD-Kanal** | ITIL: PROD-Alerts duerfen nicht in DEV-Rauschen untergehen |
+| Grafana Dashboards | Manuell importiert | **ConfigMap Provisioning** | BSI OPS.1.1.2: Wiederherstellbarkeit. Kein manueller Zustand auf PROD |
+| Grafana Ingress | `kubectl port-forward` | Evaluieren: Ingress mit Entra ID oder Basic Auth | PROD-Grafana muss fuer VoEB-Betrieb erreichbar sein |
+| `send_resolved` | `true` | `true` | Entwarnung bei Alert-Resolution |
+
+### 5.3 Deployment-Anleitung
 
 ```bash
+# 1. Helm Repo (falls nicht vorhanden)
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# 2. PROD-spezifische Values-Datei verwenden (values-monitoring-prod.yaml)
+#    Diese ueberschreibt Scrape-Targets, Retention, Storage, AlertManager-Kanal
 helm install monitoring prometheus-community/kube-prometheus-stack \
   -n monitoring --create-namespace \
   -f deployment/helm/values/values-monitoring.yaml \
-  --set prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].targets[0]="onyx-prod-api-service.onyx-prod.svc.cluster.local:8080" \
-  --set prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].labels.environment="prod"
+  --set prometheus.prometheusSpec.retention=90d \
+  --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
+  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].job_name=onyx-api-prod' \
+  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].metrics_path=/metrics' \
+  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].scrape_interval=30s' \
+  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].targets[0]=onyx-prod-api-service.onyx-prod.svc.cluster.local:8080' \
+  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].labels.environment=prod' \
+  --set grafana.adminPassword=<PASSWORD>
+
+# 3. Exporter deployen (Secrets muessen vorher erstellt sein!)
+kubectl apply -f deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml
+kubectl apply -f deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml
+
+# 4. NetworkPolicies (analog DEV/TEST, aber nur onyx-prod statt onyx-dev+test)
+kubectl apply -f deployment/k8s/network-policies/monitoring/
+
+# 5. Verifizierung
+kubectl get pods -n monitoring
+kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
+# → http://localhost:3001 → Targets pruefen
 ```
 
-Kein Cross-Cluster-Monitoring nötig. Jeder Cluster hat seinen eigenen Stack.
+### 5.4 Vorbereitete Dateien (erstellt 2026-03-11)
 
-Für PROD zusätzlich:
-- Grafana Ingress mit Auth (Entra ID oder Basic Auth)
-- AlertManager mit produktivem Alerting-Kanal
-- `prometheus.prometheusSpec.retention: 90d` (statt 30d)
-- Storage: 50 Gi (statt 20 Gi)
+| Datei | Status | Beschreibung |
+|-------|--------|-------------|
+| `pg-exporter-prod.yaml` | ✅ Erstellt | postgres_exporter PROD (Secret manuell erstellen) |
+| `redis-exporter-prod.yaml` | ✅ Erstellt | redis_exporter PROD (Secret manuell erstellen) |
+| `values-monitoring.yaml` | ⚠️ Anpassung noetig | Scrape-Targets per `--set` Override (kein separates File) |
+| NetworkPolicies (monitoring/) | ✅ Wiederverwendbar | Identische Policies, Namespace-Labels muessen stimmen |
+
+### 5.5 Offene Punkte
+
+- [ ] Teams-Webhook-URL fuer PROD-Kanal (Niko muss erstellen)
+- [ ] Grafana Ingress + Auth (Entra ID oder Basic Auth) evaluieren
+- [ ] ConfigMap-basiertes Dashboard-Provisioning implementieren (PG: 14114, Redis: 763, K8s: 6417)
+- [ ] NetworkPolicy `03-allow-scrape-egress.yaml` fuer PROD anpassen (nur `onyx-prod` statt `onyx-dev`+`onyx-test`)
 
 ---
 

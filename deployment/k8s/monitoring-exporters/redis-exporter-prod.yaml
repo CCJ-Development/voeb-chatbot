@@ -1,0 +1,94 @@
+# redis_exporter PROD — Metriken von In-Cluster Redis (onyx-prod NS)
+# Erstellt: 2026-03-11 (PROD-Bereitstellung)
+#
+# Secret: redis-exporter-prod im monitoring-NS (PROD-Cluster).
+# Manuell erstellen:
+#   kubectl create secret generic redis-exporter-prod -n monitoring \
+#     --from-literal=REDIS_ADDR="redis://onyx-prod.onyx-prod.svc.cluster.local:6379" \
+#     --from-literal=REDIS_PASSWORD="<REDIS_PASSWORD>"
+#
+# Referenz: docs/technisches-feinkonzept/monitoring-exporter.md
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-exporter-prod
+  namespace: monitoring
+  labels:
+    app: redis-exporter
+    environment: prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-exporter
+      environment: prod
+  template:
+    metadata:
+      labels:
+        app: redis-exporter
+        environment: prod
+    spec:
+      containers:
+        - name: redis-exporter
+          image: oliver006/redis_exporter:v1.82.0
+          ports:
+            - containerPort: 9121
+              name: metrics
+              protocol: TCP
+          env:
+            - name: REDIS_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: redis-exporter-prod
+                  key: REDIS_ADDR
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-exporter-prod
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-exporter-prod
+  namespace: monitoring
+  labels:
+    app: redis-exporter
+    environment: prod
+spec:
+  selector:
+    app: redis-exporter
+    environment: prod
+  ports:
+    - port: 9121
+      targetPort: metrics
+      protocol: TCP
+      name: metrics

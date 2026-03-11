@@ -31,7 +31,7 @@
 
 **DEV+TEST allokierbare Kapazitaet (2x g1a.8d):** ~15.8 CPU / ~56.6 Gi RAM — je ~7.9 CPU / ~28.3 Gi pro Env
 **PROD allokierbare Kapazitaet (2x g1a.8d):** ~15.8 CPU / ~56.6 Gi RAM
-**PROD geschaetzte Auslastung:** CPU ~40%, RAM ~25% (bei 150 Usern)
+**PROD geschaetzte Auslastung:** CPU ~55% Requests / ~62% mit Monitoring, RAM ~27% Requests / ~30% mit Monitoring (bei 150 Usern, basierend auf values-prod.yaml PROD-Requests)
 
 > **Entscheidung (ADR-004):** Eigene Nodes pro Umgebung statt geteilter Node.
 > Begründung: CPU-Isolation, Ausfallsicherheit, Enterprise-Standard.
@@ -143,7 +143,7 @@
 | Redis | In-Cluster Pod | In-Cluster Pod | In-Cluster Pod |
 | LLM | StackIT AI Serving | gleich | gleich + Monitoring |
 | Backups | PG PITR (auto) | PG PITR (auto) | PG PITR + ObjStore Versioning |
-| Resource Quotas | Entfernt (DEV) | Entfernt (TEST) | CPU: 8, RAM: 24 GB |
+| Resource Quotas | Entfernt (DEV) | Entfernt (TEST) | CPU: 12, RAM: 20 Gi (berechnet: 8.75 CPU Requests + 37% Buffer, 15.25 Gi RAM Requests + 31% Buffer) |
 | Network Policy | Implementiert (SEC-03, 2026-03-05) | Implementiert (SEC-03, 2026-03-05) | Geplant: Namespace-isoliert + Egress-Rules |
 
 ### DNS

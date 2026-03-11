@@ -79,8 +79,25 @@ configMap:
   # Logging: PROD weniger verbose
   LOG_LEVEL: "WARNING"
 
+  # VÖB Extension Framework (EXT_ENABLED + EXT_BRANDING_ENABLED in values-common.yaml)
+  # Config-Paritaet: TEST und PROD muessen identisch konfiguriert sein.
+  # Begruendung: 12-Factor App Principle X (Dev/Prod Parity). Features die auf TEST getestet
+  # und abgenommen sind, muessen auf PROD identisch aktiv sein. Abweichungen zwischen
+  # Environments sind ein Deployment-Antipattern und fuehren zu "works on TEST"-Fehlern.
+  EXT_TOKEN_LIMITS_ENABLED: "true"
+  EXT_CUSTOM_PROMPTS_ENABLED: "true"
+
 # --- Celery Worker: PROD-Konfiguration (Standard Mode) ---
-# replicaCount: 0 bis PROD provisioniert ist. Dann auf 1 setzen.
+# Alle Worker aktiv (replicaCount: 1). Worker-Isolation ist Onyx Best Practice
+# (Standard Mode seit Upstream PR #9014, nicht Lightweight Mode).
+# Jeder Worker hat eine spezialisierte Aufgabe — 0 Replicas bedeutet Feature offline.
+# Bei 150 erwarteten Usern sind alle Worker-Typen notwendig:
+#   - light: Vespa-Operationen, Permission-Sync, Deletion
+#   - heavy: Document Pruning
+#   - docfetching: Connector-Daten abholen
+#   - docprocessing: Indexing Pipeline (Embed → Vespa)
+#   - monitoring: System Health Metriken (Celery Queues, Memory)
+#   - user_file_processing: Benutzer-Uploads
 celery_beat:
   replicaCount: 1
   resources:
@@ -102,7 +119,7 @@ celery_worker_primary:
       memory: 2Gi
 
 celery_worker_light:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 500m
@@ -112,7 +129,7 @@ celery_worker_light:
       memory: 2Gi
 
 celery_worker_heavy:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 500m
@@ -122,7 +139,7 @@ celery_worker_heavy:
       memory: 2Gi
 
 celery_worker_docfetching:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 500m
@@ -132,7 +149,7 @@ celery_worker_docfetching:
       memory: 4Gi
 
 celery_worker_docprocessing:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 500m
@@ -142,7 +159,7 @@ celery_worker_docprocessing:
       memory: 4Gi
 
 celery_worker_monitoring:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 250m
@@ -152,7 +169,7 @@ celery_worker_monitoring:
       memory: 512Mi
 
 celery_worker_user_file_processing:
-  replicaCount: 0
+  replicaCount: 1
   resources:
     requests:
       cpu: 500m
@@ -161,11 +178,41 @@ celery_worker_user_file_processing:
       cpu: 1000m
       memory: 2Gi
 
-# --- Nginx: PROD IngressClass ---
-# PROD laeuft auf separatem Cluster (ADR-004), daher kein Namenskonflikt.
+# --- Ingress: HTTPS via NGINX Ingress Controller ---
+# Enterprise Best Practice (BSI SYS.1.6): Netzwerkkonfiguration muss explizit und
+# nachvollziehbar sein. Nie auf Chart-Defaults verlassen — jede Umgebung definiert
+# ihren Ingress eigenstaendig. PROD auf eigenem Cluster (ADR-004), daher
+# className "nginx" ohne Namenskonflikt (TEST nutzt "nginx-test" auf shared Cluster).
+ingress:
+  enabled: true
+  className: "nginx"
+  api:
+    host: "chatbot.voeb-service.de"
+  webserver:
+    host: "chatbot.voeb-service.de"
+
+# --- Nginx: PROD IngressClass + HSTS Override ---
+# HSTS: BSI TR-02102 empfiehlt min. 6 Monate, OWASP empfiehlt 1 Jahr + includeSubDomains.
+# PROD setzt max-age=31536000 (1 Jahr). DEV/TEST bleiben bei max-age=3600 (1h) aus
+# values-common.yaml fuer Debugging-Flexibilitaet (z.B. HTTP-Fallback bei TLS-Problemen).
+# Env-spezifischer Override statt Aenderung in values-common.yaml = Clean Architecture.
+# Helm Deep Merge: http-snippet aus values-prod.yaml ueberschreibt values-common.yaml komplett.
 nginx:
   enabled: true
   controller:
+    config:
+      http-snippet: |
+        # Security Headers (BSI TR-02102 / VÖB Enterprise)
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        # HSTS: PROD = 1 Jahr (31536000s). BSI TR-02102: min. 6 Monate. OWASP: 1 Jahr.
+        # includeSubDomains: Alle Subdomains erben HSTS (dev./test. sind andere Cluster).
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        # Onyx custom config
+        include /etc/nginx/custom-snippets/upstreams.conf;
+        include /etc/nginx/custom-snippets/server.conf;
     ingressClassResource:
       name: "nginx"
       controllerValue: "k8s.io/ingress-nginx"
