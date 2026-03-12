@@ -1,7 +1,7 @@
 # NetworkPolicy: Allow Prometheus Scrape Egress — Monitoring Namespace
 #
 # Erlaubt Prometheus Egress zu:
-# - onyx-dev und onyx-test Namespaces (Port 8080 fuer /metrics)
+# - onyx-dev, onyx-test und onyx-prod Namespaces (Port 8080 fuer /metrics)
 # - Kubelet Metrics (Port 10250 fuer cAdvisor)
 # - node-exporter (Port 9100)
 # - kube-state-metrics + AlertManager + Grafana im eigenen Namespace
@@ -25,7 +25,7 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # Onyx API /metrics (Port 8080) in DEV + TEST
+    # Onyx API /metrics (Port 8080) in DEV + TEST + PROD
     - to:
         - namespaceSelector:
             matchLabels:
@@ -33,6 +33,9 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: onyx-test
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-prod
       ports:
         - port: 8080
           protocol: TCP

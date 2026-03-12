@@ -9,6 +9,21 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Infra] **Monitoring PROD deployed** (2026-03-12)
+  - Eigenstaendiger kube-prometheus-stack auf PROD-Cluster (`vob-prod`, ADR-004)
+  - 9 Pods: Prometheus, Grafana (3/3 mit Sidecar), AlertManager, kube-state-metrics, 2x node-exporter, prometheus-operator, PG Exporter, Redis Exporter
+  - 3 Scrape-Targets UP: `onyx-api-prod`, `postgres-prod`, `redis-prod`
+  - PROD-spezifisch: 90d Retention, 50Gi Storage, separater Teams-Kanal (`teams-prod` Receiver mit `[PROD]`-Prefix)
+  - Grafana Dashboards: Sidecar-Provisioning via gnetId (PostgreSQL 14114, Redis 763) — persistent ueber Pod-Restarts
+  - 7 NetworkPolicies in `monitoring` NS (Zero-Trust)
+  - Eigene Values-Datei: `deployment/helm/values/values-monitoring-prod.yaml`
+  - Lesson Learned: App-NS Monitoring-Policies NICHT ohne Basis-Policies anwenden (implizite Denies)
+  - Lesson Learned: Egress-Policies muessen alle Ziel-Namespaces enthalten (`onyx-prod` fehlte initial)
+
+### Changed
+- [Infra] `03-allow-scrape-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
+- [Infra] `07-allow-redis-exporter-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
+- [Infra] `apply.sh` (Monitoring-Exporters) Rewrite: Auto-Detection DEV/TEST/PROD statt Hardcoded (2026-03-12)
 - [Infra] **Monitoring-Stack deployed (kube-prometheus-stack)** (2026-03-10)
   - Self-Hosted: Prometheus + Grafana + AlertManager + kube-state-metrics + node-exporter (7 Pods)
   - Separater Helm Release `monitoring` in eigenem Namespace (nicht im Onyx Chart)

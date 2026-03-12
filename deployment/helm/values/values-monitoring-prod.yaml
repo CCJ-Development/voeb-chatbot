@@ -1,0 +1,411 @@
+# ===========================================================
+# VÖB Service Chatbot — Monitoring Stack Values (PROD)
+# ===========================================================
+# kube-prometheus-stack auf PROD-Cluster (vob-prod, eigener Cluster ADR-004)
+# Ressourcen-Budget: ~1,3 vCPU Requests, ~2,1 Gi RAM Requests
+#
+# PROD-Cluster hat NUR onyx-prod (kein DEV/TEST).
+# Daher eigene Values-Datei mit PROD-only Scrape Targets.
+#
+# Install:
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm install monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     -f deployment/helm/values/values-monitoring-prod.yaml \
+#     --set grafana.adminPassword=<PASSWORD>
+#
+# Upgrade:
+#   helm upgrade monitoring prometheus-community/kube-prometheus-stack \
+#     -n monitoring -f deployment/helm/values/values-monitoring-prod.yaml
+#
+# Zugang Grafana (nur kubectl port-forward):
+#   kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
+#
+# Konzept: docs/referenz/monitoring-konzept.md
+# ===========================================================
+
+# --- Prometheus ---
+prometheus:
+  prometheusSpec:
+    retention: 90d
+    retentionSize: "40GB"
+    scrapeInterval: "30s"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    # Scrape Onyx API — nur PROD (eigener Cluster)
+    additionalScrapeConfigs:
+      - job_name: "onyx-api-prod"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["onyx-prod-api-service.onyx-prod.svc.cluster.local:8080"]
+            labels:
+              environment: "prod"
+              service: "api"
+      # PostgreSQL Exporter (StackIT Managed PG Flex 4.8 Replica)
+      - job_name: "postgres-prod"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        scrape_timeout: "15s"
+        static_configs:
+          - targets: ["postgres-exporter-prod.monitoring.svc.cluster.local:9187"]
+            labels:
+              environment: "prod"
+              service: "postgresql"
+      # Redis Exporter (In-Cluster Redis)
+      - job_name: "redis-prod"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["redis-exporter-prod.monitoring.svc.cluster.local:9121"]
+            labels:
+              environment: "prod"
+              service: "redis"
+    # ServiceMonitor Namespace Selector (alle Namespaces)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+
+# --- Grafana ---
+grafana:
+  enabled: true
+  adminPassword: ""  # Muss per --set gesetzt werden
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+  # Kein Ingress — Zugriff per kubectl port-forward
+  ingress:
+    enabled: false
+  persistence:
+    enabled: false
+  # Dashboard-Provisioning via Sidecar (PROD: persistent, kein manueller Import)
+  # Grafana Sidecar laedt Dashboards automatisch von grafana.com per gnetId.
+  # Gleiche Dashboards wie DEV/TEST (dort manuell importiert: ID 14114 + 763).
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folder: /var/lib/grafana/dashboards
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: "sidecar"
+          orgId: 1
+          folder: "VÖB Chatbot"
+          type: file
+          disableDeletion: true
+          editable: false
+          options:
+            path: /var/lib/grafana/dashboards
+  dashboards:
+    default:
+      # PostgreSQL Dashboard (gleich wie DEV/TEST manuell importiert)
+      postgresql:
+        gnetId: 14114
+        revision: 3
+        datasource: Prometheus
+      # Redis Dashboard (gleich wie DEV/TEST manuell importiert)
+      redis:
+        gnetId: 763
+        revision: 5
+        datasource: Prometheus
+
+# --- AlertManager ---
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: "teams-prod"
+      routes:
+        - match:
+            severity: critical
+          repeat_interval: 1h
+          receiver: "teams-prod"
+    receivers:
+      - name: "teams-prod"
+        msteams_configs:
+          # PROD: Separater Teams-Kanal (Webhook-URL hier eintragen)
+          - webhook_url: "https://scale42ai.webhook.office.com/webhookb2/ae17ce3a-3647-4c8a-86f2-e0bd7b4703dc@a61ee147-68be-46ed-bc77-252610a484d5/IncomingWebhook/4a4dbe890f7442828999c10de1231aa9/98af9e43-092e-484a-b623-eaccbabbe80c/V2dHDcLlWC1kHa7tfeySkjhAUJwr8HTD8TSe7hpecDvTU1"
+            title: '[PROD] {{ .GroupLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }} — {{ .Annotations.description }}{{ end }}'
+            send_resolved: true
+
+# --- kube-state-metrics ---
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- node-exporter ---
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- prometheus-operator ---
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# --- Unnoetige Komponenten deaktivieren ---
+# Etcd, Scheduler, Controller-Manager, Proxy = StackIT-managed, kein Zugriff
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# --- Alert Rules ---
+# Gleiche 20 Regeln wie DEV/TEST — environment-Label differenziert automatisch.
+additionalPrometheusRulesMap:
+  voeb-chatbot-alerts:
+    groups:
+      - name: voeb-chatbot.rules
+        rules:
+          # 1. API nicht erreichbar
+          - alert: APIDown
+            expr: up{job=~"onyx-api.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Onyx API ist nicht erreichbar ({{ $labels.environment }})"
+              description: "Der Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 2. Pod restartet wiederholt
+          - alert: PodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total{namespace=~"onyx-.*"}[1h]) > 3
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} crashed wiederholt ({{ $labels.namespace }})"
+              description: "{{ $labels.pod }} hat in der letzten Stunde >3 Restarts."
+
+          # 3. Hohe Error-Rate (>5% Server Errors)
+          - alert: HighErrorRate
+            expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Hohe HTTP 5xx Error-Rate ({{ $labels.environment }})"
+              description: "Mehr als 5% aller Requests enden mit Server Error."
+
+          # 4. DB Connection Pool Overflow
+          - alert: DBPoolExhausted
+            expr: onyx_db_pool_overflow > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "DB Connection Pool Overflow ({{ $labels.environment }})"
+              description: "PostgreSQL Connection Pool nutzt Overflow-Connections seit 5 Minuten."
+
+          # 5. Zu viele langsame Requests (>1/s ueber 10min)
+          - alert: HighSlowRequests
+            expr: rate(onyx_api_slow_requests_total[5m]) > 1
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Hohe Slow-Request-Rate ({{ $labels.environment }})"
+              description: "Mehr als 1 Slow Request pro Sekunde seit 10 Minuten (Threshold: {{ $value | printf \"%.2f\" }}/s)."
+
+          # 6. Node Memory knapp (<10%)
+          - alert: NodeMemoryPressure
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.instance }} hat weniger als 10% freien RAM"
+              description: "Verfuegbar: {{ $value | humanizePercentage }}. Pods koennten OOM-killed werden."
+
+          # 7. Node Disk knapp (<15%)
+          - alert: NodeDiskPressure
+            expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes < 0.15
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Node {{ $labels.instance }} hat weniger als 15% freien Disk"
+              description: "Verfuegbar: {{ $value | humanizePercentage }}."
+
+          # 8. Vespa PVC voll (<20%)
+          - alert: VespaStorageFull
+            expr: kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Vespa PVC fast voll ({{ $labels.namespace }})"
+              description: "PVC {{ $labels.persistentvolumeclaim }} hat weniger als 20% freien Speicher."
+
+          # 9. TLS-Zertifikat laeuft bald ab (<14 Tage)
+          - alert: CertExpiringSoon
+            expr: certmanager_certificate_expiration_timestamp_seconds - time() < 14 * 24 * 3600
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "TLS-Zertifikat {{ $labels.name }} laeuft in weniger als 14 Tagen ab"
+              description: "Namespace {{ $labels.namespace }}, verbleibend: {{ $value | humanizeDuration }}."
+
+      # --- Exporter Alert Rules ---
+      - name: voeb-exporter.rules
+        rules:
+          # 10. PG Exporter nicht erreichbar
+          - alert: PGExporterDown
+            expr: up{job=~"postgres-.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL Exporter nicht erreichbar ({{ $labels.environment }})"
+              description: "Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 11. Redis Exporter nicht erreichbar
+          - alert: RedisExporterDown
+            expr: up{job=~"redis-.*"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Redis Exporter nicht erreichbar ({{ $labels.environment }})"
+              description: "Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 12. PG Connections >80% von max_connections
+          - alert: PGConnectionsHigh
+            expr: sum by (job,server)(pg_stat_database_numbackends{datname="onyx"}) > on(job,server) pg_settings_max_connections * 0.8
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Connections >80% ({{ $labels.environment }})"
+              description: "Aktive Backends: {{ $value }}. max_connections koennte bald erschoepft sein."
+
+          # 13. PG Deadlocks (>5 in 5min)
+          - alert: PGDeadlocks
+            expr: increase(pg_stat_database_deadlocks{datname="onyx"}[5m]) > 5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Deadlocks ({{ $labels.environment }})"
+              description: "Mehr als 5 Deadlocks in den letzten 5 Minuten."
+
+          # 14. PG Rollback-Rate >5%
+          - alert: PGHighRollbackRate
+            expr: rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) / (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m])) > 0.05
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Rollback-Rate >5% ({{ $labels.environment }})"
+              description: "Hohe Rollback-Rate: {{ $value | humanizePercentage }}."
+
+          # 15. PG Database-Groesse >10 GB
+          - alert: PGDatabaseGrowing
+            expr: pg_database_size_bytes{datname="onyx"} > 10e9
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL DB >10 GB ({{ $labels.environment }})"
+              description: "Aktuelle Groesse: {{ $value | humanize1024 }}B."
+
+          # 16. Redis Memory >80% von maxmemory
+          - alert: RedisMemoryHigh
+            expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8 and on(instance) redis_memory_max_bytes > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis Memory >80% ({{ $labels.environment }})"
+              description: "Verbrauch: {{ $value | humanizePercentage }}."
+
+          # 17. Redis hohe Evictions
+          - alert: RedisHighEvictions
+            expr: increase(redis_evicted_keys_total[5m]) > 100
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis hohe Evictions ({{ $labels.environment }})"
+              description: "Mehr als 100 Keys evicted in 5 Minuten."
+
+          # 18. Redis Cache Hit Rate <80%
+          - alert: RedisCacheHitRateLow
+            expr: rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.8
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Redis Cache Hit Rate <80% ({{ $labels.environment }})"
+              description: "Hit Rate: {{ $value | humanizePercentage }}."
+
+          # 19. Redis Rejected Connections (kritisch fuer Celery)
+          - alert: RedisRejectedConnections
+            expr: increase(redis_rejected_connections_total[5m]) > 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Redis lehnt Connections ab ({{ $labels.environment }})"
+              description: "Celery-Worker koennten ausfallen."
+
+          # 20. PG Cache Hit Ratio <90%
+          - alert: PGCacheHitRateLow
+            expr: rate(pg_stat_database_blks_hit{datname="onyx"}[5m]) / (rate(pg_stat_database_blks_hit{datname="onyx"}[5m]) + rate(pg_stat_database_blks_read{datname="onyx"}[5m])) < 0.9
+            for: 15m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Cache Hit Ratio <90% ({{ $labels.environment }})"
+              description: "Hit Ratio: {{ $value | humanizePercentage }}. Shared Buffers koennte zu klein sein."

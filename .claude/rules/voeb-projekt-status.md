@@ -53,8 +53,8 @@
   - ✅ Kubeconfig gueltig bis 2026-06-09 (90 Tage)
   - ⏳ DNS: A-Record + ACME-CNAME bei Leif/GlobVill angefragt (2026-03-11)
   - ⏳ TLS/HTTPS: Wartet auf DNS-Eintraege
-  - ⏳ Monitoring: Phase F (kube-prometheus-stack auf PROD-Cluster)
-  - ⏳ NetworkPolicies: Vorbereitet, Apply nach DNS/TLS
+  - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
+  - ⏳ NetworkPolicies onyx-prod: Kommt mit DNS/TLS-Hardening (Lesson: Monitoring-Policies nicht ohne Basis-Set anwenden)
 - **Phase 2 TEST:** ✅ **TEST LIVE** (2026-03-03)
   - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
   - ✅ Node Pool auf 2 Nodes skaliert (DEV + TEST)
@@ -103,7 +103,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD → 4. Monitoring PROD (kube-prometheus-stack) → 5. CI/CD Re-Run (gruener Lauf) → 6. M1-Abnahmeprotokoll.** PROD deployed (2026-03-11): 19 Pods, Health OK, LB `188.34.92.162`. SEC-06 Phase 2 aktiv. Entra ID weiterhin blockiert.
+**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** Monitoring PROD deployed (2026-03-12): 9 Pods, 3 Targets UP, Teams-Alerting. PROD App: 19 Pods, Health OK, LB `188.34.92.162`. Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

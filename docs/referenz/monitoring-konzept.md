@@ -1,8 +1,8 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD-Config vorbereitet (2026-03-12).
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
-> **Scope:** DEV + TEST (Shared Cluster), PROD-Vorbereitung
+> **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) config-ready
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
 > **Helm Release:** `monitoring` in Namespace `monitoring` (separater Release, nicht im Onyx Chart)
 > **Chart:** `prometheus-community/kube-prometheus-stack`
@@ -371,12 +371,12 @@ kubeProxy:
   enabled: false
 ```
 
-**2.3 NetworkPolicy für Monitoring-Namespace** — ✅ Applied (2026-03-10)
+**2.3 NetworkPolicy für Monitoring-Namespace** — ✅ Applied (2026-03-10), PROD-ready (2026-03-12)
 
-**Status:** 7 Policies in `monitoring` + 2 Policies in `onyx-dev` + `onyx-test` applied (5 Basis + 2 Exporter-Egress seit Phase 4, 2026-03-10).
+**Status:** 7 Policies in `monitoring` + 2 Policies in `onyx-dev` + `onyx-test` applied (5 Basis + 2 Exporter-Egress seit Phase 4, 2026-03-10). `03-allow-scrape-egress.yaml` um `onyx-prod` erweitert (2026-03-12).
 
 Der Monitoring-Namespace braucht:
-- Egress zu `onyx-dev` und `onyx-test` (Scraping auf Port 8080)
+- Egress zu `onyx-dev`, `onyx-test` und `onyx-prod` (Scraping auf Port 8080)
 - Egress DNS (Port 53 + 8053 für StackIT/Gardener)
 - Egress K8s API (Port 443 für prometheus-operator, kube-state-metrics, Service Discovery)
 - Ingress von Admin (kubectl port-forward)
@@ -548,59 +548,69 @@ Kein Cross-Cluster-Monitoring. Jeder Cluster hat seinen eigenen Stack (Prometheu
 | Prometheus Retention | 30d | **90d** | PROD-Metriken muessen laenger aufbewahrt werden (Capacity Planning, Incident Review) |
 | Prometheus Storage | 20 Gi | **50 Gi** | Laengere Retention = mehr Speicher |
 | AlertManager Receiver | `teams-niko` (DEV/TEST-Kanal) | **Eigener PROD-Kanal** | ITIL: PROD-Alerts duerfen nicht in DEV-Rauschen untergehen |
-| Grafana Dashboards | Manuell importiert | **ConfigMap Provisioning** | BSI OPS.1.1.2: Wiederherstellbarkeit. Kein manueller Zustand auf PROD |
-| Grafana Ingress | `kubectl port-forward` | Evaluieren: Ingress mit Entra ID oder Basic Auth | PROD-Grafana muss fuer VoEB-Betrieb erreichbar sein |
+| Grafana Dashboards | Manuell importiert | **Sidecar-Provisioning (gnetId)** | BSI OPS.1.1.2: Wiederherstellbarkeit. Kein manueller Zustand auf PROD |
+| Grafana Ingress | `kubectl port-forward` | `kubectl port-forward` | Entscheidung Niko (2026-03-12): kein externer Zugang, nur Kubeconfig |
 | `send_resolved` | `true` | `true` | Entwarnung bei Alert-Resolution |
 
 ### 5.3 Deployment-Anleitung
 
 ```bash
-# 1. Helm Repo (falls nicht vorhanden)
+# 1. Kubeconfig auf PROD-Cluster wechseln
+export KUBECONFIG=~/.kube/config-prod
+
+# 2. Helm Repo (falls nicht vorhanden)
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
-# 2. PROD-spezifische Values-Datei verwenden (values-monitoring-prod.yaml)
-#    Diese ueberschreibt Scrape-Targets, Retention, Storage, AlertManager-Kanal
+# 3. Monitoring-Stack deployen (eigene PROD Values-Datei)
 helm install monitoring prometheus-community/kube-prometheus-stack \
   -n monitoring --create-namespace \
-  -f deployment/helm/values/values-monitoring.yaml \
-  --set prometheus.prometheusSpec.retention=90d \
-  --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
-  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].job_name=onyx-api-prod' \
-  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].metrics_path=/metrics' \
-  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].scrape_interval=30s' \
-  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].targets[0]=onyx-prod-api-service.onyx-prod.svc.cluster.local:8080' \
-  --set 'prometheus.prometheusSpec.additionalScrapeConfigs[0].static_configs[0].labels.environment=prod' \
+  -f deployment/helm/values/values-monitoring-prod.yaml \
   --set grafana.adminPassword=<PASSWORD>
 
-# 3. Exporter deployen (Secrets muessen vorher erstellt sein!)
-kubectl apply -f deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml
-kubectl apply -f deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml
+# 4. Exporter-Secrets erstellen (Daten aus terraform output + onyx-prod Secrets)
+PG_PROD_PW=$(kubectl get secret onyx-dbreadonly -n onyx-prod -o jsonpath='{.data.db_readonly_password}' | base64 -d)
+echo -n "postgresql://db_readonly_user:${PG_PROD_PW}@fdc7610c-91dc-4d0a-9652-adafe1a509cd.postgresql.eu01.onstackit.cloud:5432/onyx?sslmode=require" > /tmp/pg-dsn.txt
+kubectl create secret generic pg-exporter-prod -n monitoring --from-file=DATA_SOURCE_NAME=/tmp/pg-dsn.txt
+rm /tmp/pg-dsn.txt
 
-# 4. NetworkPolicies (analog DEV/TEST, aber nur onyx-prod statt onyx-dev+test)
-kubectl apply -f deployment/k8s/network-policies/monitoring/
+REDIS_PROD_PW=$(kubectl get secret onyx-redis -n onyx-prod -o jsonpath='{.data.redis_password}' | base64 -d)
+kubectl create secret generic redis-exporter-prod -n monitoring \
+  --from-file=REDIS_ADDR=<(echo -n "onyx-prod.onyx-prod.svc.cluster.local:6379") \
+  --from-file=REDIS_PASSWORD=<(echo -n "${REDIS_PROD_PW}")
 
-# 5. Verifizierung
+# 5. Exporter deployen
+bash deployment/k8s/monitoring-exporters/apply.sh
+
+# 6. NetworkPolicies anwenden
+bash deployment/k8s/network-policies/monitoring/apply.sh
+
+# 7. Verifizierung
 kubectl get pods -n monitoring
 kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
-# → http://localhost:3001 → Targets pruefen
+# → http://localhost:3001 → Targets pruefen (3 Targets: onyx-api-prod, postgres-prod, redis-prod)
 ```
 
-### 5.4 Vorbereitete Dateien (erstellt 2026-03-11)
+### 5.4 Vorbereitete Dateien
 
 | Datei | Status | Beschreibung |
 |-------|--------|-------------|
-| `pg-exporter-prod.yaml` | ✅ Erstellt | postgres_exporter PROD (Secret manuell erstellen) |
-| `redis-exporter-prod.yaml` | ✅ Erstellt | redis_exporter PROD (Secret manuell erstellen) |
-| `values-monitoring.yaml` | ⚠️ Anpassung noetig | Scrape-Targets per `--set` Override (kein separates File) |
-| NetworkPolicies (monitoring/) | ✅ Wiederverwendbar | Identische Policies, Namespace-Labels muessen stimmen |
+| `values-monitoring-prod.yaml` | ✅ Erstellt (2026-03-12) | Eigene PROD Values: 90d Retention, 50Gi Storage, PROD-only Targets, Teams-Receiver `teams-prod`, Sidecar-Dashboard-Provisioning |
+| `pg-exporter-prod.yaml` | ✅ Erstellt (2026-03-11) | postgres_exporter PROD (Secret manuell erstellen) |
+| `redis-exporter-prod.yaml` | ✅ Erstellt (2026-03-11) | redis_exporter PROD (Secret manuell erstellen) |
+| `03-allow-scrape-egress.yaml` | ✅ Aktualisiert (2026-03-12) | `onyx-prod` Namespace hinzugefuegt |
+| `apply.sh` (Exporters) | ✅ Aktualisiert (2026-03-12) | Auto-Detection DEV/TEST/PROD, PROD-Secrets Anleitung |
+| `07-allow-redis-exporter-egress.yaml` | ✅ Aktualisiert (2026-03-12) | `onyx-prod` Namespace hinzugefuegt |
+| NetworkPolicies (monitoring/) | ✅ Wiederverwendbar | `apply.sh` erkennt `onyx-prod` automatisch |
 
 ### 5.5 Offene Punkte
 
-- [ ] Teams-Webhook-URL fuer PROD-Kanal (Niko muss erstellen)
-- [ ] Grafana Ingress + Auth (Entra ID oder Basic Auth) evaluieren
-- [ ] ConfigMap-basiertes Dashboard-Provisioning implementieren (PG: 14114, Redis: 763, K8s: 6417)
-- [ ] NetworkPolicy `03-allow-scrape-egress.yaml` fuer PROD anpassen (nur `onyx-prod` statt `onyx-dev`+`onyx-test`)
+- [x] ~~Teams-Webhook-URL fuer PROD-Kanal~~ ✅ Separater Webhook erstellt, in `values-monitoring-prod.yaml` eingetragen (2026-03-12)
+- [x] ~~NetworkPolicy `03-allow-scrape-egress.yaml` fuer PROD anpassen~~ ✅ `onyx-prod` hinzugefuegt (2026-03-12)
+- [x] ~~Dashboard-Provisioning~~ ✅ Grafana Sidecar mit gnetId (PG: 14114, Redis: 763) in PROD Values (2026-03-12)
+- [x] ~~Grafana Zugang PROD~~ ✅ Nur `kubectl port-forward`, kein Ingress (Entscheidung Niko, 2026-03-12)
+- [x] ~~Helm install + Secrets + Exporter~~ ✅ Deployed auf PROD-Cluster (2026-03-12, Revision 2). 9 Pods, 3/3 Targets UP
+- [ ] NetworkPolicies `onyx-prod`: Kommt als vollstaendiges Set zusammen mit DNS/TLS-Hardening
 
 ---
 
@@ -622,7 +632,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | # | Frage | Wer | Status |
 |---|-------|-----|--------|
 | 1 | ~~Alerting-Kanal: Email, Slack, oder Webhook?~~ | Niko | ✅ Microsoft Teams Webhook konfiguriert (2026-03-11). Alerts werden an Teams-Kanal zugestellt. |
-| 2 | Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?) | Niko/VÖB | Entscheidung: port-forward für DEV/TEST (Enterprise Best Practice: kein externer Zugang). Für PROD: Ingress mit Entra ID evaluieren. |
+| 2 | ~~Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?)~~ | Niko | ✅ Entscheidung (2026-03-12): Nur `kubectl port-forward` fuer alle Environments (DEV/TEST/PROD). Kein Ingress, kein externer Zugang. Zugriff nur mit Kubeconfig. |
 | 3 | ~~Grafana Admin-Passwort: Wie verwalten?~~ | Niko | ✅ Per `--set grafana.adminPassword=<SECRET>` beim Install. Passwort liegt in K8s Secret `monitoring-grafana`. |
 | 4 | Log-Aggregation (Loki) in Phase 2 oder später? | Niko | Offen |
 | 5 | ~~SMTP-Server für AlertManager (Email-Versand)?~~ | Niko | ✅ Entfällt — Teams Webhook statt Email gewählt (2026-03-10). Kein SMTP nötig. |
@@ -636,8 +646,9 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | 1 | Health Probes aktivieren + `/metrics` verifizieren | 0,25 PT | ✅ Deployed (2026-03-10) |
 | 2 | kube-prometheus-stack deployen + NetworkPolicies | 0,75 PT | ✅ Deployed (2026-03-10) |
 | 3 | Alert-Rules konfigurieren | 0,25 PT | ✅ Deployed (2026-03-10), Teams Webhook konfiguriert (2026-03-11) |
-| 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ⏳ Offen |
-| **Gesamt** | | **1,5 PT** | **1,25 PT erledigt** |
+| 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ✅ PROD: Sidecar-Provisioning (gnetId). DEV/TEST: manuell importiert |
+| 5 | PROD Monitoring Config | 0,25 PT | ✅ Config-ready (2026-03-12). Deploy offen |
+| **Gesamt** | | **1,75 PT** | **1,75 PT erledigt (Config), Deploy offen** |
 
 ---
 
@@ -794,7 +805,10 @@ allow-redis-exporter-ingress   redis_setup_type=standalone         ~10m  (Phase 
 | `deployment/k8s/monitoring-exporters/pg-exporter-test.yaml` | Neu (Phase 4) | postgres_exporter TEST (Deployment + Service) |
 | `deployment/k8s/monitoring-exporters/redis-exporter-dev.yaml` | Neu (Phase 4) | redis_exporter DEV (Deployment + Service) |
 | `deployment/k8s/monitoring-exporters/redis-exporter-test.yaml` | Neu (Phase 4) | redis_exporter TEST (Deployment + Service) |
-| `deployment/k8s/monitoring-exporters/apply.sh` | Neu (Phase 4) | Deploy-Script mit Secret-Prüfung |
+| `deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml` | Neu (PROD) | postgres_exporter PROD (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml` | Neu (PROD) | redis_exporter PROD (Deployment + Service) |
+| `deployment/k8s/monitoring-exporters/apply.sh` | Aktualisiert (PROD) | Deploy-Script mit Auto-Detection DEV/TEST/PROD |
+| `deployment/helm/values/values-monitoring-prod.yaml` | Neu (PROD) | PROD Monitoring Values (90d, 50Gi, Sidecar-Dashboards, Teams-PROD) |
 | `deployment/k8s/network-policies/monitoring/06-allow-pg-exporter-egress.yaml` | Neu (Phase 4) | PG Exporter → StackIT PG:5432 |
 | `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Neu (Phase 4) | Redis Exporter → onyx-dev/test:6379 |
 | `deployment/k8s/network-policies/07-allow-redis-exporter-ingress.yaml` | Neu (Phase 4) | App-NS: Ingress von Redis Exporter |
@@ -851,3 +865,92 @@ Commit noch ausstehend — Dateien auf Feature-Branch `feature/monitoring-export
 **Entscheidung (Niko, 2026-03-10): Microsoft Teams statt SMTP.**
 
 ✅ **Konfiguriert (2026-03-11):** Teams Incoming Webhook in `values-monitoring.yaml` eingetragen. Receiver `teams-niko` mit `msteams_configs`. Alerts werden bei Trigger an den Teams-Kanal zugestellt (inkl. `send_resolved: true` für Entwarnung).
+
+---
+
+## 10. PROD Deployment-Protokoll (2026-03-12)
+
+### Ablauf
+
+| Schritt | Aktion | Ergebnis |
+|---------|--------|----------|
+| 1 | `values-monitoring-prod.yaml` erstellt (90d Retention, 50Gi, PROD-only Targets, Teams-PROD Webhook, Sidecar-Dashboards) | ✅ |
+| 2 | `03-allow-scrape-egress.yaml` + `07-allow-redis-exporter-egress.yaml` um `onyx-prod` ergaenzt | ✅ |
+| 3 | `apply.sh` (Exporters) rewrite: Auto-Detection DEV/TEST/PROD | ✅ |
+| 4 | Teams PROD Webhook-URL eingetragen (separater Kanal) | ✅ |
+| 5 | PROD Kubeconfig verifiziert (`~/.kube/config-prod`) — Cluster `vob-prod` erreichbar | ✅ |
+| 6 | `helm install monitoring` mit `values-monitoring-prod.yaml` | ❌ Timeout: Grafana Init-Container CrashLoop |
+| 7 | Root Cause: Dashboard-Download nach `/var/lib/grafana/dashboards/voeb/` — Verzeichnis `voeb/` existiert nicht | Analyse via `kubectl logs -c download-dashboards` |
+| 8 | Fix: `dashboards.voeb` → `dashboards.default` in Values (Standard-Verzeichnis) | ✅ |
+| 9 | `helm upgrade` — alle 7 Basis-Pods Running, Grafana 3/3 | ✅ |
+| 10 | Exporter-Secrets erstellt: `pg-exporter-prod`, `redis-exporter-prod` | ✅ |
+| 11 | Exporter deployed: `pg-exporter-prod` + `redis-exporter-prod` (1/1 Running) | ✅ |
+| 12 | Monitoring NetworkPolicies applied (7 in monitoring NS) | ✅ |
+| 13 | App-NS Policies applied (`allow-monitoring-scrape` + `allow-redis-exporter-ingress` in `onyx-prod`) | ❌ **PROD-App kaputt** |
+| 14 | Root Cause: PROD hatte keine Basis-NetworkPolicies (kein default-deny, kein allow-intra). Monitoring-Policies erzeugten implizite Denies → External Traffic + Onyx→Redis blockiert | Analyse: API Health 503, Celery Restarts |
+| 15 | **Sofort-Fix:** Alle 3 Policies aus `onyx-prod` entfernt | ✅ API Health OK, 19 Pods stabil |
+| 16 | Prometheus Targets: API ✅ UP, PG ✅ UP, Redis ❌ DOWN (context deadline exceeded) | Nur Redis-Exporter betroffen |
+| 17 | Root Cause Redis: `07-allow-redis-exporter-egress.yaml` hatte nur `onyx-dev` + `onyx-test`, NICHT `onyx-prod` | Fix: `onyx-prod` Namespace hinzugefuegt |
+| 18 | Policy applied + Redis-Exporter Rollout Restart | ✅ |
+| 19 | **Alle 3 Targets UP:** onyx-api-prod, postgres-prod, redis-prod | ✅ |
+
+### Endstatus
+
+```
+$ KUBECONFIG=~/.kube/config-prod kubectl get pods -n monitoring
+NAME                                                     READY   STATUS    AGE
+alertmanager-monitoring-kube-prometheus-alertmanager-0   2/2     Running   ~86m
+monitoring-grafana-5bfb9bb69-sbs4p                       3/3     Running   ~13m
+monitoring-kube-prometheus-operator-78fbcc9cdb-thbdm     1/1     Running   ~86m
+monitoring-kube-state-metrics-6b4845b878-9hp4z           1/1     Running   ~86m
+monitoring-prometheus-node-exporter-5b8lb                1/1     Running   ~86m (Node 1)
+monitoring-prometheus-node-exporter-qxf68                1/1     Running   ~86m (Node 2)
+postgres-exporter-prod-9c55cb894-mjj98                   1/1     Running   ~11m
+prometheus-monitoring-kube-prometheus-prometheus-0       2/2     Running   ~86m
+redis-exporter-prod-5444f47bf8-kfkhc                     1/1     Running   ~2m
+
+Prometheus Targets:
+  onyx-api-prod    UP
+  postgres-prod    UP
+  redis-prod       UP
+```
+
+### NetworkPolicies (PROD-Cluster)
+
+| Namespace | Policies | Bemerkung |
+|-----------|----------|-----------|
+| `monitoring` | 7 (default-deny + 6 allow) | ✅ Vollstaendig, Zero-Trust |
+| `onyx-prod` | 0 | ⚠️ Bewusst leer — Full Setup kommt mit DNS/TLS-Hardening |
+
+### Lessons Learned
+
+**11. App-NS Monitoring-Policies NICHT ohne Basis-Policies anwenden (kritisch)**
+
+Auf DEV/TEST funktionieren `allow-monitoring-scrape` und `allow-redis-exporter-ingress` problemlos, weil dort seit SEC-03 (2026-03-05) ein vollstaendiges NetworkPolicy-Set existiert (default-deny + allow-intra + allow-dns + allow-external-egress). Die Basis-Policies erlauben normalen Betrieb, die Monitoring-Policies fuegen nur zusaetzliche Ingress-Regeln hinzu.
+
+Auf PROD existierten noch **keine** Basis-Policies. Durch das Anwenden von `allow-monitoring-scrape` (policyTypes: [Ingress], podSelector: {}) wurde fuer ALLE Pods in `onyx-prod` ein implizites Ingress-Deny aktiv. Nur Ingress von `monitoring:8080` war erlaubt — externer Traffic zum NGINX LoadBalancer wurde blockiert. Zusaetzlich brach `allow-redis-exporter-ingress` die Onyx→Redis-Verbindung (nur Redis-Exporter-Ingress erlaubt, nicht Onyx-App-Ingress).
+
+**Impact:** PROD-API nicht erreichbar (~5 Minuten), Celery-Worker Restarts durch Redis-Verbindungsabbruch.
+
+**Fix:** Alle Policies aus `onyx-prod` entfernt. Monitoring in `monitoring` NS laeuft unabhaengig und scraped ueber Cross-Namespace-Egress (ohne `onyx-prod`-Policies noetig, da `onyx-prod` keine Ingress-Restriction hat).
+
+**Regel:** App-NS NetworkPolicies muessen IMMER als vollstaendiges Set angewendet werden (Basis + Monitoring). Niemals einzelne Allow-Policies ohne Default-Deny + Allow-Intra. Fuer PROD: Full-Set kommt zusammen beim DNS/TLS-Hardening.
+
+**12. Grafana Dashboard gnetId: Verzeichnisname muss `default` sein (niedrig)**
+
+Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/dashboards` aber NICHT Unterverzeichnisse fuer Custom-Keys (z.B. `voeb`). Download scheitert mit `can't create ... nonexistent directory`. Fix: `dashboards.default` statt `dashboards.voeb` verwenden.
+
+**13. Egress-Policies muessen ALLE Namespaces abdecken (mittel)**
+
+`07-allow-redis-exporter-egress.yaml` hatte nur `onyx-dev` + `onyx-test` als Ziel-Namespaces. Auf dem PROD-Cluster (wo nur `onyx-prod` existiert) konnte der Redis-Exporter Redis nicht erreichen. Analog fehlte `onyx-prod` in `03-allow-scrape-egress.yaml`. **Regel:** Bei neuen Namespaces/Environments ALLE Egress-Policies pruefen und erweitern.
+
+### Dateien (PROD Monitoring)
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|-------------|
+| `deployment/helm/values/values-monitoring-prod.yaml` | Neu | PROD Monitoring Values (90d, 50Gi, Sidecar-Dashboards, Teams-PROD) |
+| `deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml` | Vorhanden (2026-03-11) | postgres_exporter PROD |
+| `deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml` | Vorhanden (2026-03-11) | redis_exporter PROD |
+| `deployment/k8s/monitoring-exporters/apply.sh` | Rewrite | Auto-Detection DEV/TEST/PROD |
+| `deployment/k8s/network-policies/monitoring/03-allow-scrape-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
+| `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
