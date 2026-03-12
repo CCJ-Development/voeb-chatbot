@@ -173,10 +173,10 @@ kube-state-metrics:
 prometheus-node-exporter:
   resources:
     requests:
-      cpu: 100m
+      cpu: 150m
       memory: 128Mi
     limits:
-      cpu: 200m
+      cpu: 500m
       memory: 256Mi
 
 # --- prometheus-operator ---
@@ -198,6 +198,9 @@ kubeScheduler:
 kubeControllerManager:
   enabled: false
 kubeProxy:
+  enabled: false
+# CoreDNS: StackIT-managed, kein Scrape-Zugriff auf kube-system
+coreDns:
   enabled: false
 
 # --- Alert Rules ---
@@ -340,9 +343,12 @@ additionalPrometheusRulesMap:
               summary: "PostgreSQL Deadlocks ({{ $labels.environment }})"
               description: "Mehr als 5 Deadlocks in den letzten 5 Minuten."
 
-          # 14. PG Rollback-Rate >5%
+          # 14. PG Rollback-Rate >5% (nur bei genuegend Traffic, >10 tx/sec)
           - alert: PGHighRollbackRate
-            expr: rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) / (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m])) > 0.05
+            expr: |
+              (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) / (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m])) > 0.05)
+              and
+              (rate(pg_stat_database_xact_rollback{datname="onyx"}[5m]) + rate(pg_stat_database_xact_commit{datname="onyx"}[5m]) > 10)
             for: 10m
             labels:
               severity: warning
@@ -380,9 +386,12 @@ additionalPrometheusRulesMap:
               summary: "Redis hohe Evictions ({{ $labels.environment }})"
               description: "Mehr als 100 Keys evicted in 5 Minuten."
 
-          # 18. Redis Cache Hit Rate <80%
+          # 18. Redis Cache Hit Rate <80% (nur bei genuegend Traffic, >50 ops/sec)
           - alert: RedisCacheHitRateLow
-            expr: rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.8
+            expr: |
+              (rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) < 0.8)
+              and
+              (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]) > 50)
             for: 10m
             labels:
               severity: warning

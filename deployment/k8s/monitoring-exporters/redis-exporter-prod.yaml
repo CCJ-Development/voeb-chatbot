@@ -48,10 +48,10 @@ spec:
                   key: REDIS_PASSWORD
           resources:
             requests:
-              cpu: 25m
+              cpu: 50m
               memory: 32Mi
             limits:
-              cpu: 50m
+              cpu: 150m
               memory: 64Mi
           securityContext:
             runAsNonRoot: true
