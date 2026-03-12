@@ -54,6 +54,8 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [stackit-container-registry.md](./referenz/stackit-container-registry.md) | Aktuell | Container Registry Konzepte, Auth, Robot Accounts |
 | [ee-foss-abgrenzung.md](./referenz/ee-foss-abgrenzung.md) | Aktuell | EE/FOSS-Lizenzabgrenzung, was erlaubt/verboten ist |
 | [ext-entwicklungsplan.md](./referenz/ext-entwicklungsplan.md) | Aktuell | Extension-Module Reihenfolge, Workflow, Dependencies |
+| [monitoring-konzept.md](./referenz/monitoring-konzept.md) | Aktuell | Monitoring-Stack: Prometheus, Grafana, AlertManager, Exporter |
+| [compliance-research.md](./referenz/compliance-research.md) | Entwurf | DSGVO, BSI, EU AI Act — Compliance-Analyse und Handlungsbedarf |
 
 ## Technisches Feinkonzept
 
@@ -64,6 +66,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [ext-branding.md](./technisches-feinkonzept/ext-branding.md) | Final | Branding/Whitelabel Modul (Phase 4b) |
 | [ext-token.md](./technisches-feinkonzept/ext-token.md) | Final | Token Limits + Usage Tracking (Phase 4c) |
 | [ext-custom-prompts.md](./technisches-feinkonzept/ext-custom-prompts.md) | Final | Custom System Prompts (Phase 4d) |
+| [monitoring-exporter.md](./technisches-feinkonzept/monitoring-exporter.md) | Final | PostgreSQL + Redis Exporter (Monitoring) |
 
 ## Kontakt
 
@@ -73,4 +76,4 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | Projektmanagement | CCJ / Coffee Studios | Benito-Miguel Schwankhart |
 | Auftraggeber | VÖB | Luca Koenes |
 
-Letzte Aktualisierung: 2026-03-08
+Letzte Aktualisierung: 2026-03-12

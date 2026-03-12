@@ -79,7 +79,7 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | ext-branding | **Keiner** | — | — |
 | ext-token | **Keiner** | — | — |
 | ext-prompts | **Keiner** | — | — |
-| ext-analytics | **Keiner** | — | — |
+| ext-analytics | **UEBERSPRUNGEN** | — | Funktionalitaet in ext-token enthalten |
 | ext-rbac | **Entra ID Zugangsdaten** | VoeB IT | Kein sinnvoller Workaround — Auth ist Voraussetzung |
 | ext-access | **ext-rbac** | ext-rbac muss fertig sein | — |
 

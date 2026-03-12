@@ -1,6 +1,6 @@
 # Modulspezifikation: Monitoring Exporter (postgres_exporter + redis_exporter)
 
-> **Status:** Entwurf v0.3 — Implementierung, Redis-Labels korrigiert, pg_monitor-Workaround
+> **Status:** v1.0 — Deployed (DEV+TEST 2026-03-10, PROD 2026-03-12). PROD mit erhoehten CPU-Limits
 > **Typ:** Infrastruktur (kein ext/-Code, kein Feature Flag)
 > **Aufwand:** ~0,5 PT (Puffer: 0,75 PT bei PG-ACL-Debugging)
 > **Prioritaet:** Hoch — schliesst groesste Luecke im Monitoring-Stack
@@ -67,8 +67,10 @@ Prometheus ──scrape──> Onyx API :8080/metrics
 | postgres_exporter TEST | `monitoring` | Deployment | 1 | `app: postgres-exporter, environment: test` |
 | redis_exporter DEV | `monitoring` | Deployment | 1 | `app: redis-exporter, environment: dev` |
 | redis_exporter TEST | `monitoring` | Deployment | 1 | `app: redis-exporter, environment: test` |
+| postgres_exporter PROD | `monitoring` | Deployment | 1 | `app: postgres-exporter, environment: prod` |
+| redis_exporter PROD | `monitoring` | Deployment | 1 | `app: redis-exporter, environment: prod` |
 
-**Warum im `monitoring`-Namespace?** Alle Monitoring-Komponenten zentral. NetworkPolicies erlauben bereits Egress zu `onyx-dev` und `onyx-test`. Exporter brauchen nur zusaetzlichen Egress zu den PG-Hosts und Redis-Services.
+**Warum im `monitoring`-Namespace?** Alle Monitoring-Komponenten zentral. NetworkPolicies erlauben Egress zu `onyx-dev`, `onyx-test` und `onyx-prod`. Exporter brauchen nur zusaetzlichen Egress zu den PG-Hosts und Redis-Services.
 
 ---
 
@@ -120,12 +122,12 @@ StackIT PG Flex unterstuetzt nur `login` + `createdb` als Terraform-Rollen. `pg_
 |------|------|
 | Image | `quay.io/prometheuscommunity/postgres-exporter:v0.19.1` |
 | Port | 9187 |
-| CPU Request | 50m |
-| CPU Limit | 100m |
+| CPU Request | 50m (PROD: 100m) |
+| CPU Limit | 100m (PROD: 250m) |
 | RAM Request | 64Mi |
 | RAM Limit | 128Mi |
 
-**Ressourcen-Impact (2x Exporter):** +100m CPU Request, +128Mi RAM Request — vernachlaessigbar.
+**Ressourcen-Impact (3x Exporter):** +200m CPU Request, +192Mi RAM Request. PROD erhoehte Limits wegen CPUThrottlingHigh (2026-03-12).
 
 ### 3.4 Konfiguration
 
@@ -183,12 +185,12 @@ securityContext:
 |------|------|
 | Image | `oliver006/redis_exporter:v1.82.0` |
 | Port | 9121 |
-| CPU Request | 25m |
-| CPU Limit | 50m |
+| CPU Request | 25m (PROD: 50m) |
+| CPU Limit | 50m (PROD: 150m) |
 | RAM Request | 32Mi |
 | RAM Limit | 64Mi |
 
-**Ressourcen-Impact (2x Exporter):** +50m CPU Request, +64Mi RAM Request — vernachlaessigbar.
+**Ressourcen-Impact (3x Exporter):** +100m CPU Request, +96Mi RAM Request. PROD erhoehte Limits wegen CPUThrottlingHigh (2026-03-12).
 
 ### 4.4 Konfiguration
 

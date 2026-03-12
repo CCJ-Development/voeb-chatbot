@@ -113,7 +113,7 @@ curl -s http://<IP>/api/health | jq .
 
 > **TEST:** `Qwen/Qwen3-VL-Embedding-8B` aktiv (umgestellt 2026-03-08). 4096 Dimensionen, LiteLLM Provider, float Precision.
 >
-> **DEV:** `nomic-ai/nomic-embed-text-v1` (self-hosted, Model Server). Wechsel auf Qwen3-VL-Embedding 8B steht noch aus.
+> **DEV:** `Qwen/Qwen3-VL-Embedding-8B` aktiv (umgestellt 2026-03-12). 4096 Dimensionen, LiteLLM Provider.
 >
 > **Hintergrund:** Das Wechseln des Embedding-Modells ueber die Admin-UI ist seit [PR #9005](https://github.com/onyx-dot-app/onyx/pull/9005) wieder moeglich (Search Settings Swap re-enabled, 2026-03-06).
 
@@ -274,7 +274,7 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 | Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | TBD |
 | Chat Default | GPT-OSS 120B | GPT-OSS 120B | TBD |
 | Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | TBD |
-| Embedding | nomic-embed-text-v1 (self-hosted) | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | TBD |
+| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | TBD |
 
 > **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
 

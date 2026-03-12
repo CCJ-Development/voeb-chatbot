@@ -551,6 +551,12 @@ Kein Cross-Cluster-Monitoring. Jeder Cluster hat seinen eigenen Stack (Prometheu
 | Grafana Dashboards | Manuell importiert | **Sidecar-Provisioning (gnetId)** | BSI OPS.1.1.2: Wiederherstellbarkeit. Kein manueller Zustand auf PROD |
 | Grafana Ingress | `kubectl port-forward` | `kubectl port-forward` | Entscheidung Niko (2026-03-12): kein externer Zugang, nur Kubeconfig |
 | `send_resolved` | `true` | `true` | Entwarnung bei Alert-Resolution |
+| Alert-Rules | Original (20 Regeln) | **Tuned** (20 Regeln, PGHighRollbackRate + RedisCacheHitRateLow mit Mindest-Traffic Guard) | False Positives bei Idle-System vermeiden (2026-03-12) |
+| coreDns ServiceMonitor | Aktiv (implizit) | **Deaktiviert** (`coreDns.enabled: false`) | StackIT-managed kube-system, kein Scrape-Zugriff |
+| node-exporter CPU | 100m / 200m | **150m / 500m** | CPUThrottlingHigh behoben (27% Throttling) |
+| PG Exporter CPU | 50m / 100m | **100m / 250m** | CPUThrottlingHigh behoben (49% Throttling) |
+| Redis Exporter CPU | 25m / 50m | **50m / 150m** | CPUThrottlingHigh behoben (54% Throttling) |
+| Prometheus retentionSize | 15 GB | **40 GB** | Mehr Headroom fuer 90d Retention |
 
 ### 5.3 Deployment-Anleitung
 
@@ -609,7 +615,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 - [x] ~~NetworkPolicy `03-allow-scrape-egress.yaml` fuer PROD anpassen~~ ✅ `onyx-prod` hinzugefuegt (2026-03-12)
 - [x] ~~Dashboard-Provisioning~~ ✅ Grafana Sidecar mit gnetId (PG: 14114, Redis: 763) in PROD Values (2026-03-12)
 - [x] ~~Grafana Zugang PROD~~ ✅ Nur `kubectl port-forward`, kein Ingress (Entscheidung Niko, 2026-03-12)
-- [x] ~~Helm install + Secrets + Exporter~~ ✅ Deployed auf PROD-Cluster (2026-03-12, Revision 2). 9 Pods, 3/3 Targets UP
+- [x] ~~Helm install + Secrets + Exporter~~ ✅ Deployed auf PROD-Cluster (2026-03-12, Revision 3). 9 Pods, 3/3 Targets UP. Alert-Tuning applied (Revision 3)
 - [ ] NetworkPolicies `onyx-prod`: Kommt als vollstaendiges Set zusammen mit DNS/TLS-Hardening
 
 ---

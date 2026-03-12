@@ -15,9 +15,9 @@
 
 | Parameter | Wert |
 |-----------|------|
-| Cluster | 1 (shared für alle Environments) |
-| Kubernetes-Version | v1.33.8 (SKE-zugewiesen, upgraded 2026-03-08) |
-| Namespaces | `onyx-dev`, `onyx-test` (PROD: geplant eigener Cluster, ADR-004) |
+| Cluster | 2 (`vob-chatbot`: DEV+TEST shared, `vob-prod`: PROD eigener Cluster, ADR-004) |
+| Kubernetes-Version | DEV/TEST: v1.33.8, PROD: v1.33.9 |
+| Namespaces | `onyx-dev`, `onyx-test` (shared Cluster), `onyx-prod` (eigener Cluster) |
 | Ingress Controller | NGINX via Essential Network Load Balancer (NLB-10) |
 | TLS | Let's Encrypt via cert-manager (v1.19.4), LIVE seit 2026-03-09. ECDSA P-384, TLSv1.3, HTTP/2. DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill |
 | Network Policies | IMPLEMENTIERT (SEC-03, 2026-03-05): 5 Policies (Default-Deny, DNS, Intra-NS, Ingress, Egress) auf DEV+TEST. PROD: zusätzlich granulare per-Pod-Rules geplant |
@@ -134,7 +134,7 @@
 
 | Aspekt | DEV | TEST | PROD |
 |--------|-----|------|------|
-| Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` (geplant: eigener Cluster, ADR-004) |
+| Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` (eigener Cluster `vob-prod`, deployed 2026-03-11) |
 | Cluster | shared (`vob-chatbot`) | shared (`vob-chatbot`) | **eigener Cluster** (ADR-004) |
 | Worker Nodes | eigener Node (g1a.8d) | eigener Node (g1a.8d) | 2× g1a.8d dedicated |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 Replica (3 Nodes HA) |
@@ -144,7 +144,7 @@
 | LLM | StackIT AI Serving | gleich | gleich + Monitoring |
 | Backups | PG PITR (auto) | PG PITR (auto) | PG PITR + ObjStore Versioning |
 | Resource Quotas | Entfernt (DEV) | Entfernt (TEST) | CPU: 12, RAM: 20 Gi (berechnet: 8.75 CPU Requests + 37% Buffer, 15.25 Gi RAM Requests + 31% Buffer) |
-| Network Policy | Implementiert (SEC-03, 2026-03-05) | Implementiert (SEC-03, 2026-03-05) | Geplant: Namespace-isoliert + Egress-Rules |
+| Network Policy | Implementiert (SEC-03, 2026-03-05) | Implementiert (SEC-03, 2026-03-05) | monitoring-NS: 7 Policies (2026-03-12). onyx-prod: offen (kommt mit DNS/TLS) |
 
 ### DNS
 
@@ -152,7 +152,7 @@
 |-------------|--------|-----|--------|
 | DEV | `dev.chatbot.voeb-service.de` | `188.34.74.187` | A-Record gesetzt (2026-03-05) |
 | TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05) |
-| PROD | `chatbot.voeb-service.de` | — | Geplant |
+| PROD | `chatbot.voeb-service.de` | `188.34.92.162` | Deployed (2026-03-11), DNS/TLS offen (wartet auf GlobVill) |
 
 Cloudflare: DNS-only (kein Proxy). TLS: LIVE seit 2026-03-09. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv.
 
@@ -175,7 +175,7 @@ Cloudflare: DNS-only (kein Proxy). TLS: LIVE seit 2026-03-09. cert-manager (v1.1
 
 ## Nicht enthalten (optional hinzubuchbar)
 
-- **Observability/Logging:** StackIT LogMe (ab ~274 EUR/Monat) — Alternative: Self-hosted Prometheus/Grafana/ELK auf Cluster
+- **Observability/Logging:** Self-hosted kube-prometheus-stack (deployed 2026-03-10 DEV/TEST, 2026-03-12 PROD). StackIT LogMe nicht genutzt
 - **DNS-Zone:** 1,92 EUR/Monat — ggf. über bestehende VÖB-Infrastruktur
 - **WAF/DDoS:** Abhängig von StackIT-Angebot
 

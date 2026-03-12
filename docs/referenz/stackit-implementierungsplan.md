@@ -717,7 +717,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | 29 | **M3**: IP-Ownership in ADR-001 klären ("CCJ oder VÖB" → eindeutig) | Niko | ⏳ Klärung mit VÖB |
 | 30 | **C5**: DSGVO-Dokumente erstellen (DSFA, Löschkonzept, AVV) | Niko | ⏳ P2 (vor Abnahme) |
 | 31 | **M5**: PROD OIDC-Secrets in GitHub Environment `prod` vorbereiten | Niko | ⏳ Nach Entra ID |
-| 32 | **M6**: PROD Node-Sizing entscheiden (2 vs 3 Nodes) | Niko | ⏳ Vor PROD |
+| 32 | **M6**: PROD Node-Sizing entscheiden (2 vs 3 Nodes) | Niko | ✅ Erledigt (2026-03-11) — 2× g1a.8d, deployed in values-prod.yaml |
 | 33 | **M7**: Cluster-API-ACL Default `0.0.0.0/0` entfernen (`modules/stackit/variables.tf`) | Niko | ⏳ P1 (vor PROD) |
 | 34 | **M9**: ✅ Erledigt — Standard Mode (8 separate Worker), Lightweight Mode durch Upstream PR #9014 entfernt | Niko | ✅ Erledigt (2026-03-06) |
 
