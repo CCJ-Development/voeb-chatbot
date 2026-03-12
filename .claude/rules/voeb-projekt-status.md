@@ -37,7 +37,7 @@
   - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
-  - ✅ Embedding DEV: nomic-embed-text-v1 (self-hosted). Wechsel auf Qwen3-VL-Embedding 8B steht aus.
+  - ✅ Embedding DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
   - 📋 Scope: DEV live, TEST live, PROD deployed (DNS/TLS offen).
 - **Phase 2 PROD:** ✅ **PROD DEPLOYED** (2026-03-11)
   - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
@@ -71,7 +71,7 @@
   - ✅ Upstream-Merge: 415 Commits von onyx-foss, 0 Core-Konflikte, DEV grün (2026-03-03)
   - ✅ DNS/TLS-Runbook erstellt (docs/runbooks/dns-tls-setup.md)
   - ✅ Fork-Management Doku überarbeitet (8-Schritte-Anleitung)
-  - ✅ Embedding TEST: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-08, 4096 Dim, multilingual). DEV: nomic-embed-text-v1 (self-hosted).
+  - ✅ Embedding TEST: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-08, 4096 Dim, multilingual). DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
   - ✅ DNS: A-Records gesetzt + Cloudflare DNS-only verifiziert (2026-03-05)
   - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
@@ -94,7 +94,7 @@
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
-  - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch `feature/ext-token` offen für Nachbesserungen.
+  - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch auf main gemergt.
   - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
   - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).

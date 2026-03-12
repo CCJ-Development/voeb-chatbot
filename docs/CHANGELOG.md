@@ -21,6 +21,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Lesson Learned: Egress-Policies muessen alle Ziel-Namespaces enthalten (`onyx-prod` fehlte initial)
 
 ### Changed
+- [Infra] **Alert-Tuning PROD** (2026-03-12, Helm Rev 3): Mindest-Traffic Guard fuer PGHighRollbackRate (>10 tx/sec) + RedisCacheHitRateLow (>50 ops/sec) — False Positives bei Idle-System. coreDns ServiceMonitor deaktiviert (StackIT-managed). Exporter CPU-Limits erhoeht (PG: 100m/250m, Redis: 50m/150m, node-exporter: 150m/500m).
 - [Infra] `03-allow-scrape-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
 - [Infra] `07-allow-redis-exporter-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
 - [Infra] `apply.sh` (Monitoring-Exporters) Rewrite: Auto-Detection DEV/TEST/PROD statt Hardcoded (2026-03-12)
@@ -329,8 +330,8 @@ Beispiel: `1.2.3`
 ### Phase 4 – Extensions (M3-M4)
 - [x] Branding/Whitelabel Release (DEV+TEST deployed 2026-03-08)
 - [x] Token Limits Release (DEV+TEST deployed 2026-03-09)
-- [x] Custom Prompts Release (implementiert 2026-03-09, Deploy offen)
-- [ ] Analytics Release
+- [x] Custom Prompts Release (DEV + TEST deployed + abgenommen 2026-03-09)
+- [x] ~~Analytics Release~~ — UEBERSPRUNGEN (Funktionalitaet in ext-token enthalten, 2026-03-09)
 - [ ] RBAC Release (blockiert: Entra ID)
 - [ ] Access Control Release (blockiert: RBAC)
 
@@ -462,10 +463,10 @@ Bei Fragen zur Dokumentation:
 
 | Version | Datum | Autor | Änderungen |
 |---------|-------|-------|-----------|
-| 0.1 | [AUSSTEHEND] | [AUSSTEHEND] | Initial Release |
+| 0.1 | 2026-02-20 | Nikolaj Ivanov / CCJ | Initial Release |
 
 ---
 
-**Letzte Aktualisierung**: 2026-03-08
-**Wartete durch**: [AUSSTEHEND]
-**Nächste Überprüfung**: [AUSSTEHEND]
+**Letzte Aktualisierung**: 2026-03-12
+**Gepflegt durch**: Nikolaj Ivanov / CCJ
+**Nächste Überprüfung**: Vor M1-Abnahme

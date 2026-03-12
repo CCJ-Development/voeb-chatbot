@@ -75,20 +75,24 @@ deployment/helm/
     values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, Vespa+Redis an, Health Probes)
     values-dev.yaml          ← DEV: 1 Replica, 8 Celery-Worker (Standard Mode), Auth disabled
     values-test.yaml         ← TEST: 1 Replica, 8 Celery-Worker, Auth disabled
-    values-prod.yaml         ← PROD: Platzhalter (noch nicht deployed)
-    values-monitoring.yaml   ← kube-prometheus-stack (separater Helm Release in NS monitoring)
+    values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (deployed 2026-03-11)
+    values-monitoring.yaml   ← kube-prometheus-stack DEV/TEST (separater Helm Release in NS monitoring)
+    values-monitoring-prod.yaml ← kube-prometheus-stack PROD (90d Retention, 50Gi, separater Teams-Kanal)
 ```
 Onyx: CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgrade --install -f values-common.yaml -f values-{env}.yaml`
-Monitoring: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`
+Monitoring DEV/TEST: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`
+Monitoring PROD: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring-prod.yaml`
 
 ## Monitoring
 ```
-deployment/k8s/monitoring-exporters/   ← postgres_exporter + redis_exporter (4 Deployments + Services)
+deployment/k8s/monitoring-exporters/   ← postgres_exporter + redis_exporter (6 Deployments + Services)
   pg-exporter-dev.yaml
   pg-exporter-test.yaml
+  pg-exporter-prod.yaml
   redis-exporter-dev.yaml
   redis-exporter-test.yaml
-  apply.sh                   ← Deploy-Script mit Secret-Prüfung
+  redis-exporter-prod.yaml
+  apply.sh                   ← Deploy-Script mit Auto-Detection DEV/TEST/PROD
 deployment/k8s/network-policies/
   monitoring/                ← NetworkPolicies fuer monitoring-Namespace
     01-default-deny-all.yaml

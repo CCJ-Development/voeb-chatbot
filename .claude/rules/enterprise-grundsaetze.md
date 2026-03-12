@@ -15,7 +15,7 @@
 - ❌ Code ohne Modulspezifikation + Freigabe
 - ❌ Feature ohne Feature Flag
 - ❌ Commit/Push ohne Nikos Freigabe
-- ❌ Direkt auf main committen (immer über feature/* Branch + PR)
+- ❌ Direkt auf main committen (immer über feature/* Branch, lokaler merge)
 - ❌ Neue Dateien in backend/onyx/ oder web/src/ (statt backend/ext/ bzw. web/src/ext/)
 - ❌ EE-Code nutzen, kopieren oder portieren (`backend/ee/`, `web/src/ee/`) — keine Lizenz vorhanden
 - ❌ `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` auf `true` setzen

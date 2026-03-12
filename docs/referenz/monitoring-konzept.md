@@ -2,7 +2,7 @@
 
 > **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD-Config vorbereitet (2026-03-12).
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
-> **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) config-ready
+> **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) deployed (2026-03-12, Helm Rev 3)
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
 > **Helm Release:** `monitoring` in Namespace `monitoring` (separater Release, nicht im Onyx Chart)
 > **Chart:** `prometheus-community/kube-prometheus-stack`
@@ -647,8 +647,8 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | 2 | kube-prometheus-stack deployen + NetworkPolicies | 0,75 PT | ✅ Deployed (2026-03-10) |
 | 3 | Alert-Rules konfigurieren | 0,25 PT | ✅ Deployed (2026-03-10), Teams Webhook konfiguriert (2026-03-11) |
 | 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ✅ PROD: Sidecar-Provisioning (gnetId). DEV/TEST: manuell importiert |
-| 5 | PROD Monitoring Config | 0,25 PT | ✅ Config-ready (2026-03-12). Deploy offen |
-| **Gesamt** | | **1,75 PT** | **1,75 PT erledigt (Config), Deploy offen** |
+| 5 | PROD Monitoring Config + Deploy | 0,25 PT | ✅ Deployed (2026-03-12, Helm Rev 3). Alert-Tuning applied |
+| **Gesamt** | | **1,75 PT** | **1,75 PT erledigt, alle Phasen deployed** |
 
 ---
 
