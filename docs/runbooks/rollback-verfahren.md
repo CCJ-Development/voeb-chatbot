@@ -38,7 +38,7 @@ Problem erkannt
 
 ### Voraussetzungen
 
-- Kubeconfig konfiguriert (`~/.kube/config`)
+- Kubeconfig konfiguriert: DEV/TEST: `~/.kube/config` (Ablauf: 2026-05-28), PROD: `~/.kube/config-prod` (Ablauf: 2026-06-09)
 - `helm` und `kubectl` installiert
 - Zugriff auf den SKE Cluster
 
@@ -72,13 +72,15 @@ kubectl get pods -n onyx-{env}
 
 ### Environment-spezifisches Verhalten
 
-| Environment | --atomic | Automatischer Rollback | Helm History Max |
-|-------------|----------|----------------------|-----------------|
-| DEV | Nein | Nein (bewusst, für Debugging) | 5 Revisionen |
-| TEST | Ja | Ja (bei Fehler) | 5 Revisionen |
-| PROD | Ja | Ja (bei Fehler) | 5 Revisionen |
+| Environment | Helm-Flag | Automatischer Rollback | Helm History Max |
+|-------------|-----------|----------------------|-----------------|
+| DEV | `--wait --timeout 15m` | Nein (manuell) | 5 Revisionen |
+| TEST | `--wait --timeout 15m` | Nein (manuell) | 5 Revisionen |
+| PROD | `--wait --timeout 15m` | Nein (manuell) | 5 Revisionen |
 
-**Hinweis**: Bei TEST/PROD mit `--atomic` rollt Helm automatisch zurück, wenn der Deploy fehlschlägt (Pods starten nicht, Smoke Test schlägt fehl). Ein manueller Rollback ist nur nötig, wenn der Deploy "erfolgreich" war, aber die Anwendung danach fehlerhaft ist.
+**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 16+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit. Ein manueller Rollback ist nötig, wenn der Deploy fehlschlägt oder die Anwendung danach fehlerhaft ist.
+
+**Nach Helm Rollback:** Recreate-Strategie geht verloren (wurde per `kubectl patch` gesetzt, nicht in Helm Values). Nach Rollback Strategie manuell neu patchen oder CI/CD Re-Deploy ausloesen.
 
 ---
 

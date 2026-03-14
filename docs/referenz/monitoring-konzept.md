@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD-Config vorbereitet (2026-03-12).
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD deployed (2026-03-12, Helm Rev 3).
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) deployed (2026-03-12, Helm Rev 3)
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
@@ -129,13 +129,13 @@ StackIT bietet `Observability-Starter-EU01` (70 EUR/Mo) mit Prometheus + Grafana
 
 | | CPU Requests | RAM Requests | CPU Limits | RAM Limits |
 |---|---|---|---|---|
-| PROD (16 Pods) | ~4.500m | ~9 Gi | ~11.000m | ~28 Gi |
+| PROD (19 Pods) | ~8.750m | ~15.25 Gi | ~19.500m | ~42.5 Gi |
 | System | ~500m | ~1 Gi | ~800m | ~2 Gi |
 | Monitoring | 1.100m | 1,9 Gi | 2.250m | 3,8 Gi |
-| **Gesamt PROD** | **6.100m** | **~12 Gi** | **14.050m** | **~34 Gi** |
-| **Auslastung** | **39%** | **21%** | **89%** | **60%** |
+| **Gesamt PROD** | **~10.350m** | **~18.15 Gi** | **~22.550m** | **~48.3 Gi** |
+| **Auslastung** | **~65%** | **~32%** | **~143%** | **~85%** |
 
-**PROD: Kein Problem.** Monitoring passt komfortabel.
+**PROD: Komfortabel.** CPU Requests ~65%, RAM Requests ~32%. CPU Limits uebercommitted (normal bei Burstable QoS). Detailberechnung in `docs/referenz/prod-bereitstellung.md`, Sektion 11.
 
 ---
 

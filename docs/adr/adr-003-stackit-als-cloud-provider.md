@@ -97,10 +97,10 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 │  │  ├── Automated Backups (daily, 30 days retention)        │ │
 │  │  └── SSL/TLS Encrypted Connections                       │ │
 │  │                                                            │ │
-│  │  S3-compatible Object Storage (for backups, assets)      │ │
-│  │  ├── Bucket: vob-chatbot-backups                          │ │
-│  │  ├── Bucket: vob-chatbot-assets                           │ │
-│  │  ├── Lifecycle Policies (archive old data)                │ │
+│  │  S3-compatible Object Storage (File Store)               │ │
+│  │  ├── Bucket: vob-dev                                      │ │
+│  │  ├── Bucket: vob-test                                     │ │
+│  │  ├── Bucket: vob-prod                                     │ │
 │  │  └── Encryption at rest (AES-256)                         │ │
 │  │                                                            │ │
 │  │  Observability & Monitoring (deployed 2026-03-10)          │ │
@@ -335,7 +335,7 @@ Aktuelle Kostenübersicht siehe `docs/referenz/stackit-implementierungsplan.md`,
 
 ### Sicherheits-Konfiguration
 
-Aktueller Stand: SEC-01 umgesetzt (PG ACL). SEC-02 bis SEC-07 geplant vor PROD. Details siehe `docs/sicherheitskonzept.md`.
+Aktueller Stand: SEC-01 umgesetzt (PG ACL). SEC-03 umgesetzt (NetworkPolicies). SEC-06 Phase 2 umgesetzt (runAsNonRoot auf PROD). SEC-07 verifiziert (Encryption-at-Rest). SEC-02/04/05 zurückgestellt. Details siehe `docs/sicherheitskonzept.md`.
 
 1. **Network Policies**: Kubernetes Network Policies fuer Pod-Segmentierung -- implementiert (SEC-03, 2026-03-05)
 2. **TLS/SSL**: cert-manager + Let's Encrypt (Cloudflare DNS-01), ECDSA P-384 (BSI TR-02102-2) -- IMPLEMENTIERT (2026-03-09)

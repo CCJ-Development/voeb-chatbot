@@ -1,9 +1,9 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-03-09
-**Version**: 0.5
-**Nächste Überprüfung**: 2026-04-03
+**Letzte Aktualisierung**: 2026-03-12
+**Version**: 0.6
+**Nächste Überprüfung**: 2026-04-12
 
 ---
 
@@ -16,6 +16,7 @@
 | 0.3 | 2026-03-05 | Nikolaj Ivanov | Cloud-Infrastruktur-Audit (2026-03-04) referenziert, SEC-03 als ERLEDIGT (NetworkPolicies DEV+TEST), 3 Quick Wins dokumentiert: C6 (DB_READONLY→K8s Secret), H8 (Security-Header), H11 (Script Injection Fix), Audit-Datum korrigiert |
 | 0.4 | 2026-03-05 | Nikolaj Ivanov | Zugriffsmatrix (M-CM-3) hinzugefügt, 4-Augen-Prinzip (M-CM-2) dokumentiert mit BAIT-Referenz, Interims-Lösung und geplanten GitHub-Protection-Maßnahmen |
 | 0.5 | 2026-03-09 | Nikolaj Ivanov | TLS/HTTPS als IMPLEMENTIERT aktualisiert (Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 auf DEV+TEST seit 2026-03-09), SEC-06 Phase 1 erledigt (privileged: false), SEC-07 als verifiziert (StackIT AES-256), BAIT-Compliance-Tabelle korrigiert, URLs auf HTTPS-FQDNs aktualisiert |
+| 0.6 | 2026-03-12 | Nikolaj Ivanov | PROD-Umgebung eingearbeitet (19 Pods, SKE `vob-prod`, PG Flex 4.8 HA 3-Node), SEC-06 Phase 2 ERLEDIGT (`runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme), NetworkPolicies monitoring-NS PROD (7 Policies), Monitoring PROD (Teams PROD-Kanal), Extensions als Sicherheitsmaßnahmen dokumentiert (ext-token Kostenkontrolle, ext-prompts LLM-Steuerung), GitHub Environment `prod` (Required Reviewer + 6 Secrets), StackIT BSI C5 Type 2 referenziert |
 
 ---
 
@@ -29,7 +30,7 @@ Dieses Konzept gilt für:
 - Alle Komponenten des VÖB Service Chatbot (Onyx Core + Extension Layer in `backend/ext/` und `web/src/ext/`)
 - Die Cloud-Infrastruktur auf StackIT (SKE Kubernetes, PostgreSQL Flex, Object Storage -- Region EU01 Frankfurt)
 - Integrationspunkte mit externen Services (Microsoft Entra ID, StackIT AI Model Serving)
-- Entwicklungs- (DEV), Test- (TEST) und Produktionsumgebungen (PROD, geplant)
+- Entwicklungs- (DEV), Test- (TEST) und Produktionsumgebungen (PROD)
 
 ### Zielgruppe
 - IT-Sicherheitsteam (CCJ / Coffee Studios)
@@ -43,9 +44,9 @@ Dieses Konzept gilt für:
 |----------|--------|-----|------|
 | DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
 | TEST | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
-| PROD | Geplant | -- | Entra ID (OIDC) |
+| PROD | DEPLOYED seit 2026-03-11 | DNS/TLS ausstehend (LB: `188.34.92.162`) | Temporär `AUTH_TYPE: basic` (Entra ID wartet auf VÖB) |
 
-> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST) und **GEPLANT** (offen, für PROD). Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
+> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-11 deployed (19 Pods, Health OK), DNS/TLS und Entra ID stehen noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
 
 ---
 
@@ -60,10 +61,10 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 
 | Anforderung | Status | Details |
 |-------------|--------|---------|
-| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT | TLSv1.3 / ECDSA P-384 auf DEV + TEST (seit 2026-03-09). Let's Encrypt via cert-manager DNS-01 |
+| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV+TEST), AUSSTEHEND (PROD) | TLSv1.3 / ECDSA P-384 auf DEV + TEST (seit 2026-03-09). PROD wartet auf DNS-Einträge (cert-manager + ClusterIssuer READY) |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
 | Zugriffskontrollen (Authentifizierung) | TEILWEISE | Basic Auth aktiv (DEV/TEST). Entra ID (OIDC) geplant (Phase 3) |
-| Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01) |
+| Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01). PROD: Egress `188.34.73.72/32` + Admin-IP |
 | Minimales Privilege Principle | TEILWEISE | PG-User `onyx_app` hat nur `login` + `createdb`. Kubernetes RBAC: ein globaler Kubeconfig (SEC-05 offen) |
 
 ### 2. Integrität (Integrity)
@@ -86,23 +87,23 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 | Anforderung | Status | Details |
 |-------------|--------|---------|
 | Kubernetes-Orchestrierung | IMPLEMENTIERT | SKE Cluster mit automatischem Pod-Restart |
-| Datenbank-Backups | IMPLEMENTIERT | PG Flex: tägliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, StackIT Managed) |
-| Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed (2026-03-10): Prometheus, Grafana, AlertManager, 20 Alert-Rules, Teams Webhook. Konzept: `docs/referenz/monitoring-konzept.md` |
+| Datenbank-Backups | IMPLEMENTIERT | PG Flex: tägliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, PROD 03:00-05:00 UTC Maintenance-Window, StackIT Managed). PROD: PG Flex 4.8 HA (3-Node), automatische Backups + Point-in-Time Recovery |
+| Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed auf DEV/TEST (2026-03-10) und PROD (2026-03-12): Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter, PG Exporter, Redis Exporter. PROD: 9 Pods, 3 Targets UP, separater Teams PROD-Kanal mit `[PROD]`-Prefix, `send_resolved: true`. Konzept: `docs/referenz/monitoring-konzept.md` |
 | DDoS-Mitigation | OFFEN | Kein Rate Limiting und keine WAF implementiert |
-| Hochverfügbarkeit | OFFEN (DEV/TEST) | Single-Replica pro Service. HA geplant für PROD |
+| Hochverfügbarkeit | IMPLEMENTIERT (PROD) | PROD: 2x API HA, 2x Web HA, PG Flex 4.8 HA (3-Node). DEV/TEST: Single-Replica |
 
 ---
 
 ## Authentifizierung und Autorisierung
 
-### Aktueller Stand: Onyx-interne E-Mail/Passwort-Authentifizierung (DEV/TEST)
+### Aktueller Stand: Onyx-interne E-Mail/Passwort-Authentifizierung (DEV/TEST/PROD)
 
-**IMPLEMENTIERT** in DEV und TEST:
+**IMPLEMENTIERT** in DEV, TEST und PROD (temporär):
 
 Die Authentifizierung ist über die Umgebungsvariable `AUTH_TYPE` konfiguriert. `AUTH_TYPE: "basic"` bezeichnet Onyx-eigene E-Mail/Passwort-Authentifizierung (Session-Cookie-basiert), **nicht** HTTP Basic Auth nach RFC 7617. Aktuell:
 
 ```yaml
-# values-dev.yaml / values-test.yaml
+# values-dev.yaml / values-test.yaml / values-prod.yaml (temporär)
 configMap:
   AUTH_TYPE: "basic"
   REQUIRE_EMAIL_VERIFICATION: "false"
@@ -134,7 +135,7 @@ Onyx unterstützt folgende Auth-Typen nativ (Enum `AuthType` in `backend/onyx/co
 Onyx unterstützt OIDC nativ. Die Konfiguration erfolgt über Umgebungsvariablen:
 
 ```yaml
-# Geplante Konfiguration (values-prod.yaml)
+# Geplante Konfiguration (values-prod.yaml — aktuell AUTH_TYPE: "basic" temporär)
 configMap:
   AUTH_TYPE: "oidc"
   OPENID_CONFIG_URL: "https://login.microsoftonline.com/<TENANT_ID>/v2.0/.well-known/openid-configuration"
@@ -188,7 +189,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 | GitHub Repository | VÖB | Read | Einsicht in Code, PRs, Issues |
 | GitHub Environment `dev` | CI/CD Pipeline (auto) | Deploy | Automatisch bei Push auf `main` |
 | GitHub Environment `test` | Tech Lead | Deploy (workflow_dispatch) | Manueller Trigger |
-| GitHub Environment `prod` | Tech Lead + Reviewer | Deploy (workflow_dispatch + Approval) | 4-Augen-Prinzip (geplant) |
+| GitHub Environment `prod` | Tech Lead + Reviewer | Deploy (workflow_dispatch + Approval) | Required Reviewer + 6 Secrets (implementiert 2026-03-11) |
 | GitHub Actions Secrets (global) | Repository Admin | Read/Write | STACKIT_REGISTRY_*, STACKIT_KUBECONFIG |
 | GitHub Actions Secrets (per env) | Environment Admin | Read/Write | PG, Redis, S3, DB_READONLY Passwörter |
 
@@ -196,24 +197,29 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 
 | Ressource | Rolle | Zugriff | Bemerkung |
 |-----------|-------|---------|-----------|
-| SKE Cluster `vob-chatbot` | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs geplant |
-| SKE Cluster `vob-chatbot` | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
+| SKE Cluster `vob-chatbot` (DEV/TEST) | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs zurückgestellt |
+| SKE Cluster `vob-chatbot` (DEV/TEST) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
+| SKE Cluster `vob-prod` (PROD) | Tech Lead | Cluster-Admin (Kubeconfig) | Eigener Cluster (ADR-004), Kubeconfig gültig bis 2026-06-09 |
+| SKE Cluster `vob-prod` (PROD) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | GitHub Environment `prod` mit Required Reviewer + 6 Secrets |
 | Namespace `onyx-dev` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
 | Namespace `onyx-test` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
-| Namespace `onyx-prod` | Tech Lead + Reviewer | Full Access | Geplant: Namespace-scoped RBAC (SEC-05) |
-| SKE Cluster API | Alle (Internet) | Zugriff mit Kubeconfig | **OPS-01: ACL auf Cluster-Egress-IP einschränken (vor PROD)** |
+| Namespace `onyx-prod` | Tech Lead + Reviewer | Full Access | Eigener Cluster, Required Reviewer auf GitHub Environment |
+| SKE Cluster API | Alle (Internet) | Zugriff mit Kubeconfig | **OPS-01: ACL auf Cluster-Egress-IP einschränken (empfohlen)** |
 
 #### Datenbanken & Storage
 
 | Ressource | Rolle / User | Zugriff | Bemerkung |
 |-----------|-------------|---------|-----------|
-| PostgreSQL DEV (`vob-dev`) | `onyx_app` | Read/Write (login, createdb) | ACL: Cluster-Egress-IP (SEC-01) |
+| PostgreSQL DEV (`vob-dev`) | `onyx_app` | Read/Write (login, createdb) | ACL: Cluster-Egress-IP `188.34.93.194/32` (SEC-01) |
 | PostgreSQL DEV (`vob-dev`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
 | PostgreSQL TEST (`vob-test`) | `onyx_app` | Read/Write | Eigene Instanz, ACL identisch |
 | PostgreSQL TEST (`vob-test`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
-| PostgreSQL (Admin) | Tech Lead | Full Access (via Admin-IP) | `109.41.112.160/32` in PG ACL |
+| PostgreSQL PROD (`vob-prod`) | `onyx_app` | Read/Write | PG Flex 4.8 HA (3-Node), ACL: Egress `188.34.73.72/32` + Admin-IP |
+| PostgreSQL PROD (`vob-prod`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
+| PostgreSQL (Admin) | Tech Lead | Full Access (via Admin-IP) | `109.41.112.160/32` in PG ACL (alle Environments) |
 | Object Storage DEV (`vob-dev`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
 | Object Storage TEST (`vob-test`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
+| Object Storage PROD (`vob-prod`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
 | Container Registry | CI/CD Robot Account | Push/Pull | `robot$voeb-chatbot+github-ci` |
 
 #### Infrastructure as Code
@@ -241,14 +247,14 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 |----------|----------|-----------|--------|
 | SEC-05: Namespace-scoped ServiceAccounts | Kubernetes RBAC | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — PROD = eigener Cluster |
 | SEC-04: Remote State Backend | Terraform | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — Solo-Dev, FileVault |
-| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 1 ERLEDIGT** (2026-03-08) — `privileged: false` deployed |
+| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = dokumentierte Ausnahme) |
 | Branch Protection auf `main` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-07): PR required, 3 Status Checks, kein Review (Solo-Dev) |
-| Environment Protection auf `prod` | GitHub | P1 (vor PROD) | Offen |
+| Environment Protection auf `prod` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-11): Required Reviewer + 6 environment-getrennte Secrets |
 | VÖB als Required Reviewer | GitHub Environment `prod` | Langfristig | Offen |
 
-### 4-Augen-Prinzip (BAIT Kap. 8.6)
+### 4-Augen-Prinzip (Best Practice, orientiert an BAIT Kap. 2/7)
 
-**Anforderung**: BAIT fordert, dass keine Änderung an der Produktionsumgebung ohne dokumentierte zweite Freigabe erfolgt. Dies betrifft insbesondere Code-Änderungen, Konfigurationsänderungen und Infrastrukturänderungen.
+**Anforderung**: Angelehnt an BAIT Kap. 2 (IT-Governance) und Kap. 7 (IT-Projekte und Anwendungsentwicklung) wird sichergestellt, dass keine Änderung an der Produktionsumgebung ohne dokumentierte zweite Freigabe erfolgt. Dies betrifft insbesondere Code-Änderungen, Konfigurationsänderungen und Infrastrukturänderungen. Der VÖB unterliegt als eingetragener Verein (e.V.) nicht direkt den BAIT — die Umsetzung erfolgt als freiwillige Best-Practice-Orientierung.
 
 **Aktueller Stand** (1-Person-Entwicklungsteam):
 
@@ -258,7 +264,7 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 | Maßnahme | Status | Beschreibung |
 |----------|--------|-------------|
-| Feature-Branch + PR Pflicht | Implementiert | Jede Änderung läuft über einen Feature-Branch und wird per Pull Request gemergt |
+| Feature-Branch Pflicht | Implementiert | Feature-Branches werden lokal auf main gemergt. Upstream-Syncs nutzen Pull Requests (Diff-Inspektion bei grossen Merges). |
 | PR-Checkliste | Implementiert | Dokumentierte Checkliste vor jedem Commit (Tests, Lint, Types, Doku) |
 | Explizite Commit-Freigabe | Implementiert | Tech Lead gibt jeden Commit explizit frei (Self-Review-Prozess) |
 | CHANGELOG-Dokumentation | Implementiert | Jede Änderung wird im Changelog erfasst |
@@ -269,11 +275,17 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 |----------|--------------|--------|--------|
 | GitHub Branch Protection auf `main` | Require Pull Request, 3 Required Status Checks (helm-validate, build-backend, build-frontend) | Kein direkter Push auf `main` möglich. Review-Requirement entfernt (Solo-Dev, 2026-03-07). | **ERLEDIGT** |
 
-**Geplante Maßnahmen** (vor PROD):
+**Implementierte Maßnahmen** (PROD):
+
+| Maßnahme | Konfiguration | Effekt | Status |
+|----------|--------------|--------|--------|
+| GitHub Environment Protection auf `prod` | Required Reviewer + 6 Secrets | Kein PROD-Deploy ohne Freigabe | **ERLEDIGT** (2026-03-11) |
+
+**Geplante Maßnahmen**:
 
 | Maßnahme | Konfiguration | Effekt |
 |----------|--------------|--------|
-| GitHub Environment Protection auf `prod` | Required Reviewers (Tech Lead + VÖB-Kontakt) | Kein PROD-Deploy ohne zweite Freigabe |
+| VÖB als Required Reviewer | VÖB-Kontakt als zweiter Reviewer | Echtes 4-Augen-Prinzip mit externer Freigabe |
 | Wait Timer auf `prod` | Optional: 10 Min Bedenkzeit | Versehentliche Freigabe verhindern |
 
 **Langfristige Lösung**: VÖB-Stakeholder oder ein zweiter CCJ-Mitarbeiter wird als Required Reviewer für das GitHub Environment `prod` hinterlegt. Damit ist das 4-Augen-Prinzip für alle Produktionsänderungen technisch erzwungen.
@@ -288,16 +300,17 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 #### TLS/HTTPS
 
-**Status: IMPLEMENTIERT (DEV + TEST, seit 2026-03-09)**
+**Status: IMPLEMENTIERT (DEV + TEST, seit 2026-03-09) | AUSSTEHEND (PROD — wartet auf DNS)**
 
 - DEV: `https://dev.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
 - TEST: `https://test.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
+- PROD: DNS-Einträge (A-Record + ACME-CNAME) bei GlobVill angefragt (2026-03-11). cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY auf PROD-Cluster
 
 **Technische Details:**
 - TLS-Terminierung am NGINX Ingress Controller (in-cluster)
 - Let's Encrypt Zertifikate via cert-manager (v1.19.4), DNS-01 Challenge über Cloudflare API
 - ACME-Challenge CNAME-Delegation über GlobVill (voeb-service.de NS bei GlobVill)
-- ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` (beide READY)
+- ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` (READY), `onyx-prod-letsencrypt` (READY, wartet auf DNS)
 - Auto-Renewal aktiv
 - BSI TR-02102-2 konform: ECDSA P-384 (stärker als BSI-Mindestanforderung)
 
@@ -307,7 +320,7 @@ letsencrypt:
   enabled: true
 ```
 
-**DNS-Status (2026-03-05)**: A-Records gesetzt (`dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt (2026-03-09). Details: `docs/runbooks/dns-tls-setup.md`
+**DNS-Status (2026-03-12)**: A-Records gesetzt für DEV (`dev.chatbot.voeb-service.de` → `188.34.74.187`) und TEST (`test.chatbot.voeb-service.de` → `188.34.118.201`). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt (2026-03-09). **PROD**: A-Record + ACME-CNAME bei Leif/GlobVill angefragt (2026-03-11), LB-IP: `188.34.92.162`. Details: `docs/runbooks/dns-tls-setup.md`
 
 #### Interne Kommunikation (Cluster-intern)
 
@@ -330,21 +343,21 @@ API Base: https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1
 
 #### PostgreSQL Datenbank (StackIT Managed Flex)
 
-- **Backup-Verschlüsselung**: StackIT Managed Service -- Details zur Verschlüsselung at-rest müssen bei StackIT verifiziert werden (SEC-07)
-- **Backup-Schedule**: Täglich (DEV: 02:00 UTC, TEST: 03:00 UTC, konfiguriert per Terraform)
+- **Backup-Verschlüsselung**: StackIT Managed Service — AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08)
+- **Backup-Schedule**: Täglich (DEV: 02:00 UTC, TEST: 03:00 UTC, PROD: Maintenance-Window 03:00-05:00 UTC, konfiguriert per Terraform)
+- **PROD HA**: PG Flex 4.8 HA (3-Node Cluster) — automatische Backups + Point-in-Time Recovery
 - **Column-Level Encryption**: Nicht implementiert. API Keys werden von Onyx im Klartext in der DB gespeichert (Onyx-Standardverhalten)
 
 #### Vespa Index (Vektorspeicher)
 
 - Läuft in-cluster als StatefulSet mit PersistentVolume (20 Gi)
-- Verschlüsselung abhängig vom StackIT Volume-Provider (`premium-perf2-stackit`)
-- [AUSSTEHEND -- Verifizierung ob StackIT Storage Classes Encryption-at-Rest bieten (SEC-07)]
+- Verschlüsselung über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08, StackIT Default — nicht deaktivierbar)
 
 #### Object Storage (StackIT S3-kompatibel)
 
-- Buckets: `vob-dev` (DEV), `vob-test` (TEST)
-- Zugriff über Access Key / Secret Key (pro Environment getrennt)
-- [AUSSTEHEND -- Verifizierung ob StackIT Object Storage Encryption-at-Rest bietet (SEC-07)]
+- Buckets: `vob-dev` (DEV), `vob-test` (TEST), `vob-prod` (PROD)
+- Zugriff über Access Key / Secret Key (pro Environment getrennt, in K8s Secrets)
+- SSE (Server-Side Encryption) als StackIT Default (SEC-07 verifiziert 2026-03-08)
 
 ### Geheimnismanagement
 
@@ -355,6 +368,7 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 1. **GitHub Actions Secrets** (CI/CD-Pipeline):
    - Global (Repository-weit): `STACKIT_REGISTRY_USER`, `STACKIT_REGISTRY_PASSWORD`, `STACKIT_KUBECONFIG`
    - Per Environment (`dev`, `test`, `prod`): `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `DB_READONLY_PASSWORD`, `REDIS_PASSWORD`
+   - PROD: 6 environment-getrennte Secrets + Required Reviewer (GitHub Environment Protection)
    - Environment-Trennung stellt sicher, dass DEV-Secrets nicht in TEST/PROD verwendet werden
 
 2. **Kubernetes Secrets** (Runtime):
@@ -378,7 +392,8 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 | Redis-Passwort | GitHub Secret → K8s Secret | Manuell |
 | S3 Access Key + Secret | GitHub Secret → K8s Secret | Manuell |
 | Container Registry Token | GitHub Secret | Manuell |
-| Kubeconfig | GitHub Secret (base64) | Ablauf: 2026-05-28 |
+| Kubeconfig (DEV/TEST) | GitHub Secret (base64) | Ablauf: 2026-05-28 |
+| Kubeconfig (PROD) | GitHub Secret (base64) | Ablauf: 2026-06-09 |
 | StackIT AI Model Serving Token | Onyx Admin UI (in DB) | Manuell (90d empfohlen) |
 | Terraform SA Key | `~/.stackit/` (lokal, chmod 600) | Manuell |
 
@@ -395,45 +410,71 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 ```
 Internet
   │
-  ├─→ NGINX Ingress (LoadBalancer)
-  │     DEV: 188.34.74.187 (IngressClass: nginx)
-  │     TEST: 188.34.118.201 (IngressClass: nginx-test)
+  ├─→ [SKE Cluster vob-chatbot (DEV/TEST)]
+  │     NGINX Ingress (LoadBalancer)
+  │       DEV: 188.34.74.187 (IngressClass: nginx)
+  │       TEST: 188.34.118.201 (IngressClass: nginx-test)
+  │     [onyx-dev Namespace] — 16 Pods
+  │       API Server → Vespa, Redis, Celery (8 Worker)
+  │       Web Server (Frontend), Model Server
+  │     [onyx-test Namespace] — 15 Pods
+  │       API Server → Vespa, Redis, Celery (8 Worker)
+  │       Web Server (Frontend), Model Server
+  │     [monitoring Namespace] — DEV/TEST Monitoring
   │
-  ├─→ [onyx-dev Namespace]
-  │     API Server → Vespa, Redis, Celery
-  │     Web Server (Frontend)
-  │     Model Server (Inference + Indexing)
-  │
-  └─→ [onyx-test Namespace]
-        API Server → Vespa, Redis, Celery
-        Web Server (Frontend)
-        Model Server (Inference + Indexing)
+  └─→ [SKE Cluster vob-prod (PROD, eigener Cluster)]
+        NGINX Ingress (LoadBalancer)
+          PROD: 188.34.92.162 (DNS/TLS ausstehend)
+        [onyx-prod Namespace] — 19 Pods
+          2x API Server HA, 2x Web Server HA
+          Vespa, Redis, Celery (8 Worker), 2x Model Server, NGINX
+        [monitoring Namespace] — 9 Pods
+          Prometheus, Grafana, AlertManager, kube-state-metrics
+          2x node-exporter, PG Exporter, Redis Exporter, Operator
 
 Externe Services (über Internet):
-  - StackIT PostgreSQL Flex (DEV + TEST: eigene Instanzen)
-  - StackIT Object Storage (S3)
+  - StackIT PostgreSQL Flex (DEV: vob-dev, TEST: vob-test, PROD: vob-prod HA 3-Node)
+  - StackIT Object Storage (S3: vob-dev, vob-test, vob-prod)
   - StackIT AI Model Serving (LLM API, HTTPS)
 ```
 
 **Cluster-Details**:
-- SKE Cluster `vob-chatbot` in StackIT Region EU01 (Frankfurt)
-- Node Pool `devtest`: 2x g1a.8d (8 vCPU, 32 GB RAM)
-- Flatcar OS
-- Maintenance-Window: 02:00-04:00 UTC (automatische K8s + OS Updates)
-- Cluster-Egress-IP (NAT Gateway): `188.34.93.194` (fest für Cluster-Lifecycle)
+
+| Aspekt | DEV/TEST Cluster (`vob-chatbot`) | PROD Cluster (`vob-prod`) |
+|--------|----------------------------------|---------------------------|
+| Region | EU01 (Frankfurt) | EU01 (Frankfurt) |
+| K8s Version | v1.33.8 | v1.33.9 |
+| Node Pool | `devtest`: 2x g1a.8d (8 vCPU, 32 GB RAM) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
+| OS | Flatcar 4459.2.1 | Flatcar 4459.2.3 |
+| Maintenance-Window | 02:00-04:00 UTC | 03:00-05:00 UTC |
+| Egress-IP (NAT Gateway) | `188.34.93.194` | `188.34.73.72` |
+| Kubeconfig Ablauf | 2026-05-28 | 2026-06-09 |
 
 ### Kubernetes Network Policies
 
-**Status: IMPLEMENTIERT (SEC-03, 2026-03-05)**
+**Status: IMPLEMENTIERT (SEC-03, 2026-03-05) — DEV + TEST App-NS + Monitoring-NS (alle Cluster)**
 
-5 NetworkPolicies auf DEV + TEST applied (Zero-Trust Baseline):
+**App-Namespaces (onyx-dev, onyx-test)** — 5 NetworkPolicies (Zero-Trust Baseline):
 - `01-default-deny-all`: Default-Deny für allen Ingress + Egress
 - `02-allow-dns-egress`: DNS-Egress Port 53 + 8053 (StackIT/Gardener CoreDNS)
 - `03-allow-intra-namespace`: Intra-Namespace-Kommunikation erlaubt
 - `04-allow-external-ingress-nginx`: Ingress nur über NGINX Controller
 - `05-allow-external-egress`: Egress für PostgreSQL (5432) und HTTPS (443)
+- Cross-Namespace-Isolation verifiziert (DEV ↔ TEST). Details: `docs/audit/networkpolicy-analyse.md`
 
-Cross-Namespace-Isolation verifiziert (DEV ↔ TEST). Details: `docs/audit/networkpolicy-analyse.md`
+**App-Namespace PROD (onyx-prod)** — **NOCH KEINE NetworkPolicies** (bewusst):
+- Full-Set kommt zusammen mit DNS/TLS-Hardening
+- Lesson Learned: Einzelne Allow-Policies ohne Basis-Policies (default-deny + allow-intra + allow-dns) erzeugen implizite Denies und brechen den App-Traffic
+
+**Monitoring-Namespaces (alle Cluster)** — 7 NetworkPolicies (Zero-Trust):
+- `01-default-deny-all`: Default-Deny für allen Ingress + Egress
+- `02-allow-dns-egress`: DNS-Egress
+- `03-allow-scrape-egress`: Egress zu allen App-Namespaces (Port 8080 für Metriken)
+- `04-allow-intra-namespace`: Intra-Namespace-Kommunikation (Prometheus ↔ Grafana ↔ AlertManager)
+- `05-allow-k8s-api-egress`: Egress zum K8s API Server (kube-state-metrics)
+- `06-allow-pg-exporter-egress`: PG Exporter → StackIT PG:5432
+- `07-allow-redis-exporter-egress`: Redis Exporter → Redis:6379
+- Zusätzlich: 3 Policies in App-NS für Monitoring-Ingress (Scrape + Redis Exporter)
 
 ### PostgreSQL Netzwerk-ACL
 
@@ -442,15 +483,23 @@ Cross-Namespace-Isolation verifiziert (DEV ↔ TEST). Details: `docs/audit/netwo
 Die PostgreSQL-Instanzen sind auf Netzwerkebene eingeschränkt:
 
 ```hcl
-# Terraform: pg_acl in beiden Environments
+# Terraform: pg_acl pro Environment
+# DEV + TEST (Shared Cluster vob-chatbot):
 pg_acl = [
   "188.34.93.194/32",   # Cluster-Egress-IP (NAT Gateway)
   "109.41.112.160/32"   # Admin-IP (Nikolaj Ivanov, Debugging)
+]
+
+# PROD (Eigener Cluster vob-prod):
+pg_acl = [
+  "188.34.73.72/32",    # PROD Cluster-Egress-IP
+  "109.41.112.160/32"   # Admin-IP
 ]
 ```
 
 - Die `pg_acl`-Variable hat **keinen Default** mehr -- jedes Environment muss seine erlaubten CIDRs explizit angeben
 - Zugriff von außerhalb der erlaubten CIDRs wird auf Netzwerkebene abgelehnt
+- PROD nutzt eine eigene Egress-IP (`188.34.73.72`) da eigener Cluster (ADR-004)
 
 ### Ingress & TLS
 
@@ -459,7 +508,8 @@ pg_acl = [
 - NGINX Ingress Controller läuft in-cluster (Helm Subchart)
 - DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.74.187`, TLS aktiv
 - TEST: Eigene IngressClass `nginx-test`, LoadBalancer-IP `188.34.118.201`, TLS aktiv (Konflikt-Vermeidung im Shared Cluster)
-- TLS: **Aktiv** — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
+- PROD: LoadBalancer-IP `188.34.92.162`, TLS ausstehend (wartet auf DNS-Einträge)
+- TLS: **Aktiv** (DEV+TEST) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
 
 **Implementierte Security-Header** (H8, 2026-03-05):
 - `X-Content-Type-Options: nosniff` — verhindert MIME-Type-Sniffing
@@ -590,7 +640,7 @@ deploy-{env}          → ~2 Min (Helm upgrade + Smoke Test)
 | Concurrency Control | IMPLEMENTIERT | Max 1 Deploy pro Environment gleichzeitig, cancel-in-progress bei neuem Push |
 | Environment-getrennte Secrets | IMPLEMENTIERT | GitHub Environments `dev`, `test`, `prod` mit jeweils eigenen Secrets |
 | Gepinnte Image-Versionen | IMPLEMENTIERT | Model Server auf `v2.9.8` fixiert (nicht `:latest`) |
-| Required Reviewers (PROD) | GEPLANT | In GitHub Environment Settings für `prod` zu aktivieren |
+| Required Reviewers (PROD) | IMPLEMENTIERT | GitHub Environment `prod` mit Required Reviewer + 6 Secrets (seit 2026-03-11) |
 | Container Security Scanning | OFFEN | Kein Trivy/Snyk-Scan in der Pipeline (kein SEC-Finding, aber empfohlen für PROD) |
 
 **SHA-gepinnte Actions (verifiziert)**:
@@ -615,7 +665,7 @@ azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415     # v4
 | Feature | DEV | TEST | PROD |
 |---------|-----|------|------|
 | Trigger | `main`-Push oder manuell | Nur manuell (`workflow_dispatch`) | Nur manuell (`workflow_dispatch`) |
-| Helm Rollback | Manuell | `--atomic` (automatisch) | `--atomic` (automatisch) |
+| Helm Rollback | Manuell (`--wait --timeout 15m`) | Manuell (`--wait --timeout 15m`) | Manuell (`--wait --timeout 15m`) |
 | Smoke Test | `/api/health` (120s Timeout) | `/api/health` (120s Timeout) | `/api/health` (180s Timeout, 18 Attempts) |
 | Required Reviewers | Nein | Nein | Ja (GitHub Settings) |
 
@@ -642,7 +692,7 @@ azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415     # v4
 
 ### LLM-Provider: StackIT AI Model Serving
 
-**IMPLEMENTIERT (DEV + TEST seit 2026-03-03)**:
+**IMPLEMENTIERT (DEV + TEST seit 2026-03-03, PROD seit 2026-03-11)**:
 
 | Aspekt | Details |
 |--------|---------|
@@ -650,7 +700,7 @@ azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415     # v4
 | API-Protokoll | OpenAI-kompatible API über HTTPS |
 | Region | EU01 Frankfurt (Daten bleiben in Deutschland) |
 | Chat-Modelle | GPT-OSS 120B (131K Kontext), Qwen3-VL 235B (218K Kontext) |
-| Embedding-Modell | nomic-embed-text-v1 (self-hosted, aktiv). Ziel: Qwen3-VL-Embedding 8B (Blocker aufgehoben (Upstream PR #9005)) |
+| Embedding-Modell | Qwen3-VL-Embedding 8B (aktiv auf DEV + TEST + PROD, 4096 Dim, multilingual) |
 | Auth | Token-basiert (StackIT AI Model Serving Token) |
 | Preise | 0,45 EUR / 1M Input-Tokens, 0,65 EUR / 1M Output-Tokens |
 
@@ -658,30 +708,42 @@ azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415     # v4
 
 ### Prompt Injection Prevention
 
-**TEILWEISE IMPLEMENTIERT (Onyx-nativ)**:
+**IMPLEMENTIERT (Onyx-nativ + ext-prompts)**:
 
-Onyx bietet System-Prompt-Konfiguration über die Admin UI. Der Extension Layer (`ext-prompts`, Phase 4) wird Custom Prompt Injection für VÖB-spezifische Guardrails ermöglichen.
+Onyx bietet System-Prompt-Konfiguration über die Admin UI. Das Extension-Modul `ext-prompts` (Phase 4d, deployed seit 2026-03-09) ermöglicht Custom System Prompt Injection für VÖB-spezifische Guardrails.
 
-Aktuell implementierte Schutzmaßnahmen:
+Implementierte Schutzmaßnahmen:
 - System Prompts werden vor User-Input platziert (Onyx-Standard)
 - Input-Validierung über Pydantic-Modelle (Längenbegrenzung)
+- **ext-prompts** (IMPLEMENTIERT, `EXT_CUSTOM_PROMPTS_ENABLED`): Custom System Prompt Injection über Hook in `backend/onyx/chat/prompt_utils.py` (CORE #7). Admin-konfigurierbare Prompts werden vor dem Base System Prompt eingefügt. 29 Unit Tests, auf DEV + TEST + PROD deployed.
 
-**Geplant** (Phase 4 Extension Module):
-- Custom System Prompt Injection über Hook in `backend/onyx/chat/prompt_utils.py`
-- Token Limits Management (pro User/Organisation) über `ext-token`-Modul
+**Geplant**:
 - Output-Filterung für sensible Daten (IBAN, Kreditkartennummern etc.)
 
 ### Token Limits als Kostenschutz
 
-**GEPLANT (Phase 4c)**:
+**IMPLEMENTIERT (Phase 4c, deployed seit 2026-03-09)**:
 
-Das **Token Limits Management Modul** (`ext-token`) wird implementieren:
-- Pro-User und Pro-Organisation Quotas
-- Real-Time Token-Tracking
-- Pre-Request Validation (Request-Ablehnung bei Quota-Überschreitung)
-- Hard Stops bei Überschreitung
+Das **Token Limits Management Modul** (`ext-token`, `EXT_TOKEN_LIMITS_ENABLED`) ist auf allen Environments deployed:
+- Real-Time Token-Tracking (Input + Output Tokens pro Request)
+- Per-User und Per-Model Usage Tracking via LLM-Hook in `backend/onyx/llm/multi_llm.py` (CORE #2)
+- Usage Dashboard mit Timeline-, Per-User- und Per-Model-Ansichten in der Admin UI
+- Pre-Request Validation (Quota-Prüfung vor LLM-Aufruf)
+- Hard Stops bei Quota-Überschreitung (HTTP 429)
 
-Aktuell gibt es keine Token-Limitierung auf Anwendungsebene. Die StackIT-seitigen Rate Limits (200K TPM, 30-600 RPM) bieten einen grundlegenden Schutz.
+Zusätzlich bieten die StackIT-seitigen Rate Limits (200K TPM, 30-600 RPM) einen plattformseitigen Grundschutz.
+
+### Extension Layer als Sicherheitsmaßnahmen
+
+Die folgenden Extension-Module (`backend/ext/` + `web/src/ext/`) sind auf allen Environments (DEV, TEST, PROD) deployed und dienen als ergänzende Sicherheitsmaßnahmen. Alle Extensions sind hinter Feature Flags geschützt und beeinflussen bei Deaktivierung nicht die Onyx-Kernfunktionalität.
+
+| Modul | Feature Flag | Sicherheitsfunktion | Status |
+|-------|-------------|---------------------|--------|
+| ext-branding | `EXT_BRANDING_ENABLED` | Whitelabel-Branding (Logo, App-Name, Login-Text) — verhindert Verwechslung mit Onyx-Original, stärkt Vertrauenswürdigkeit. Logo-Upload mit Magic-Byte-Validierung (kein SVG/XSS). | Deployed (2026-03-08) |
+| ext-token | `EXT_TOKEN_LIMITS_ENABLED` | **Kostenkontrolle**: Real-Time Token-Tracking, Per-User Quotas, Hard Stops bei Überschreitung (HTTP 429). Verhindert unkontrollierte LLM-Kosten und Missbrauch. | Deployed (2026-03-09) |
+| ext-prompts | `EXT_CUSTOM_PROMPTS_ENABLED` | **Kontrollierte LLM-Steuerung**: Admin-konfigurierbare System Prompts, die vor dem Base System Prompt injiziert werden. Ermöglicht VÖB-spezifische Guardrails und Compliance-Instruktionen. | Deployed (2026-03-09) |
+
+**Architektur-Prinzip**: Alle Extensions nutzen das Hook-Pattern (try/except ImportError) in max. 10 Core-Dateien. Bei Fehler in einer Extension läuft Onyx unbeeinträchtigt weiter. Details: `.claude/rules/core-dateien.md`
 
 ---
 
@@ -689,26 +751,39 @@ Aktuell gibt es keine Token-Limitierung auf Anwendungsebene. Die StackIT-seitige
 
 ### Rechtsgrundlage und Compliance
 
-Der VÖB Service Chatbot muss mit folgenden Regelwerken konform sein:
-- **DSGVO** (Datenschutz-Grundverordnung EU)
-- **BDSG** (Bundesdatenschutzgesetz Deutschland)
-- **BAIT** (Bankaufsichtliche Anforderungen an die IT)
-- **BSI-Grundschutz** (IT-Grundschutz-Kompendium)
+Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG und dem EU AI Act. Da der VÖB als Spitzenverband der öffentlichen Banken im regulatorischen Umfeld der Finanzbranche agiert, orientiert sich dieses Dokument darüber hinaus an den Anforderungen der BAIT/DORA sowie des BSI IT-Grundschutzes, um den Erwartungen der Mitgliedsinstitute und Aufsichtsbehörden zu entsprechen.
+
+**Direkt anwendbare Regelwerke:**
+- **DSGVO** (Datenschutz-Grundverordnung EU) — vollumfänglich
+- **BDSG** (Bundesdatenschutzgesetz Deutschland) — nationale Ergänzung zur DSGVO
+- **EU AI Act** (Verordnung (EU) 2024/1689) — VÖB ist "Deployer" eines KI-Systems (Limited Risk)
+
+**Freiwillige Orientierung (Best Practice):**
+- **BAIT** (Bankaufsichtliche Anforderungen an die IT) — freiwillige Orientierung, da VÖB kein KWG-Institut. BAIT wird am 31.12.2026 aufgehoben (DORA-Übergang).
+- **DORA** (Digital Operational Resilience Act) — nicht direkt anwendbar (VÖB kein Finanzunternehmen i.S.d. Art. 2), aber als Nachfolger der BAIT orientierungsrelevant
+- **BSI IT-Grundschutz** (IT-Grundschutz-Kompendium, Edition 2023) — de facto Standard im Banking-Umfeld
+- **BSI C5** — StackIT als Cloud-Provider besitzt BSI C5 Type 2 Zertifizierung
 
 **Status der Compliance**:
 
-| Regelwerk | Anforderung | Status |
-|-----------|-------------|--------|
-| DSGVO | Datenverarbeitung in EU | ERFÜLLT (StackIT EU01 Frankfurt) |
-| DSGVO | Keine Drittland-Übermittlung | ERFÜLLT (LLM auf StackIT, kein OpenAI) |
-| DSGVO | Löschkonzept | GEPLANT (Onyx unterstützt User-Löschung nativ) |
-| DSGVO | Datenschutzerklärung | [AUSSTEHEND -- Klärung mit VÖB] |
-| DSGVO | AVV (Auftragsverarbeitungsvertrag) | [AUSSTEHEND -- Klärung mit VÖB] |
-| BAIT | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST seit 2026-03-09) |
-| BAIT | Zugangskontrolle | TEILWEISE (Basic Auth, Entra ID geplant) |
-| BAIT | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies, DEV+TEST, 2026-03-05) |
-| BSI-Grundschutz | Container-Härtung | **TEILWEISE** (SEC-06 Phase 1: `privileged: false` deployed, Phase 2: `runAsNonRoot` vor PROD) |
-| BSI-Grundschutz | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
+| Regelwerk | Verbindlichkeit | Anforderung | Status |
+|-----------|----------------|-------------|--------|
+| DSGVO | Direkt anwendbar | Datenverarbeitung in EU | ERFÜLLT (StackIT EU01 Frankfurt) |
+| DSGVO | Direkt anwendbar | Keine Drittland-Übermittlung | ERFÜLLT (LLM auf StackIT, kein OpenAI) |
+| DSGVO | Direkt anwendbar | Löschkonzept | GEPLANT (Onyx unterstützt User-Löschung nativ) |
+| DSGVO | Direkt anwendbar | VVT (Verzeichnis der Verarbeitungstätigkeiten, Art. 30) | GEPLANT |
+| DSGVO | Direkt anwendbar | DSFA (Datenschutz-Folgenabschätzung, Art. 35) | GEPLANT (DSK Muss-Liste Nr. 10 — Pflicht bei KI + PII) |
+| DSGVO | Direkt anwendbar | Datenschutzerklärung | [AUSSTEHEND -- Klärung mit VÖB] |
+| DSGVO | Direkt anwendbar | AVV mit StackIT (Art. 28) | [AUSSTEHEND -- Klärung mit VÖB] |
+| EU AI Act | Direkt anwendbar | KI-Kompetenz (Art. 4) — seit 02.02.2025 in Kraft | OFFEN (mit VÖB klären) |
+| EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
+| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST seit 2026-03-09, PROD wartet auf DNS) |
+| BAIT | Freiwillig | Zugangskontrolle | TEILWEISE (Basic Auth auf DEV/TEST/PROD, Entra ID geplant) |
+| BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 7 Policies monitoring-NS alle Cluster, App-NS PROD ausstehend) |
+| BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme) |
+| BSI-Grundschutz | Freiwillig | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
+
+**Hinweis BAIT**: BAIT (Rundschreiben 10/2017, Fassung 16.12.2024) wird am **31.12.2026 vollständig aufgehoben** (DORA-Übergang). Seit 17.01.2025 gilt DORA für CRR-Institute; BAIT gilt noch für Restgruppe bis 01.01.2027. VÖB fällt in keine dieser Kategorien — die BAIT-Orientierung ist rein freiwillig.
 
 ### Personenbezogene Daten (PII)
 
@@ -736,6 +811,40 @@ Erforderlich zwischen:
 
 > **Hinweis**: Es gibt **keinen** Vertrag mit OpenAI oder anderen externen LLM-Providern. Die gesamte LLM-Verarbeitung erfolgt über StackIT AI Model Serving in Deutschland.
 
+### EU AI Act Compliance
+
+Der VÖB Service Chatbot wird als **Limited Risk System** eingestuft (Art. 6, Anhang III der Verordnung (EU) 2024/1689). Es handelt sich NICHT um ein Hochrisiko-System, da:
+- Kein Kreditwürdigkeits-Assessment (Anhang III Nr. 5b)
+- Kein Zugang zu Finanzdienstleistungen
+- Kein automatisiertes Entscheidungssystem mit rechtlichen Auswirkungen
+- Internes Wissensmanagement-Tool ohne autonome Entscheidungen über Personen
+
+**Caveat**: Wenn der Chatbot jemals für kreditbezogene Entscheidungen genutzt wird, ist eine sofortige Neubewertung der Risikoklassifizierung erforderlich.
+
+| Artikel | Pflicht | Deadline | Status |
+|---------|---------|----------|--------|
+| **Art. 4** (KI-Kompetenz / AI Literacy) | Mitarbeiter müssen ausreichendes KI-Verständnis haben. Schulungsmaßnahmen dokumentieren. | **BEREITS IN KRAFT** (seit 02.02.2025) | OFFEN — mit VÖB klären |
+| **Art. 50** (Transparenzpflicht) | Nutzer müssen VOR Interaktion informiert werden, dass sie mit KI interagieren | 02.08.2026 | TEILWEISE — ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen |
+| **Art. 6 Abs. 3** (Risikoklassifizierung) | Dokumentation der Risikoklassifizierung | Laufend | GEPLANT — KI-Risikobewertung erstellen |
+
+### DSFA-Pflicht (Datenschutz-Folgenabschätzung)
+
+**Status: GEPLANT**
+
+Eine DSFA nach Art. 35 DSGVO ist für den VÖB Service Chatbot **gesetzlich vorgeschrieben**. Drei unabhängige Trigger:
+
+1. **DSK Muss-Liste Nr. 10** (V1.1, 17.10.2018): "Einsatz von künstlicher Intelligenz zur Verarbeitung personenbezogener Daten zur Steuerung der Interaktion mit den Betroffenen" — trifft direkt auf KI-Chatbot zu
+2. **Art. 35 Abs. 1 DSGVO**: "neue Technologien" — LLMs/Generative AI qualifizieren eindeutig
+3. **EDPB/WP248 Kriterien** (mindestens 2 von 9 = DSFA nötig): (a) Innovative Technologie, (b) Systematisches Monitoring (Chat-Logging), (c) Machtgefälle (Arbeitgeber-Tool)
+
+**Rechtsgrundlage**: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse). Gemäß Art. 35 Abs. 2 muss der VÖB-Datenschutzbeauftragte (DSB) während der DSFA konsultiert werden.
+
+### VVT (Verzeichnis der Verarbeitungstätigkeiten)
+
+**Status: GEPLANT**
+
+Ein VVT nach Art. 30 DSGVO ist gesetzlich vorgeschrieben. Das VVT dokumentiert alle personenbezogenen Datenverarbeitungen des Chatbot-Systems (Identitätsdaten, Konversationsdaten, Nutzungsmetriken) mit Angabe von Verarbeitungszweck, Rechtsgrundlage, Kategorien betroffener Personen, Empfängern und Löschfristen.
+
 ---
 
 ## Logging und Audit Trail
@@ -759,9 +868,13 @@ Onyx loggt auf verschiedenen Ebenen:
 
 Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentralisierte Log-Aggregation gehen Logs bei Pod-Neustarts verloren.
 
-**Geplant** (Phase M5):
-- Prometheus + Grafana für Metriken und Dashboards
-- Evaluation einer Log-Aggregations-Lösung
+**IMPLEMENTIERT** (Monitoring, 2026-03-10 DEV/TEST, 2026-03-12 PROD):
+- Prometheus + Grafana für Metriken und Dashboards (deployed auf allen Environments)
+- AlertManager mit Microsoft Teams Integration (separater PROD-Kanal mit `[PROD]`-Prefix)
+- postgres_exporter + redis_exporter für DB/Cache-Metriken
+
+**Geplant**:
+- Evaluation einer Log-Aggregations-Lösung (zentralisiertes Logging)
 
 ---
 
@@ -801,17 +914,19 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-03 | Kubernetes NetworkPolicies (Namespace-Isolation) | P1 | **ERLEDIGT** (2026-03-05) |
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — Quick Win `chmod 600` umgesetzt, Remote State optional |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — PROD = eigener Cluster (ADR-004), löst sich automatisch |
-| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 1 ERLEDIGT** (2026-03-08) — `privileged: false` deployed, Phase 2 (runAsNonRoot) vor PROD |
+| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — StackIT Default |
 
 ### SEC-01: PostgreSQL ACL (ERLEDIGT)
 
 **Problem**: `pg_acl = ["0.0.0.0/0"]` -- PostgreSQL war für das gesamte Internet erreichbar.
 
-**Lösung (implementiert 2026-03-03)**:
+**Lösung (implementiert 2026-03-03, erweitert auf PROD 2026-03-11)**:
 - `pg_acl` Default in Terraform-Modulen entfernt (erzwingt explizite Angabe)
 - DEV + TEST: `pg_acl = ["188.34.93.194/32", "109.41.112.160/32"]`
-- `188.34.93.194` = Cluster-Egress-IP (NAT Gateway, fest für Cluster-Lifecycle)
+- PROD: `pg_acl = ["188.34.73.72/32", "109.41.112.160/32"]`
+- `188.34.93.194` = DEV/TEST Cluster-Egress-IP (NAT Gateway, fest für Cluster-Lifecycle)
+- `188.34.73.72` = PROD Cluster-Egress-IP (eigener Cluster `vob-prod`)
 - `109.41.112.160` = Admin-IP (für direkten DB-Zugriff bei Debugging)
 
 ### SEC-02: Node Affinity — ZURÜCKGESTELLT (2026-03-08)
@@ -821,7 +936,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 **Entscheidung: Zurückgestellt — kein akuter Handlungsbedarf.** Begründung:
 
 1. **ADR-004 sagt explizit**: "Kein Dedicated-Node-Affinity nötig — der Scheduler balanciert automatisch" (Zeile 61). Die eigene Architekturentscheidung stuft Node Affinity als unnötig ein.
-2. **Bestehende Isolation ist ausreichend**: Namespace-Isolation + NetworkPolicies (SEC-03, 5 Policies pro Namespace, Cross-NS-Traffic verifiziert blockiert) + separate PG-Instanzen + separate S3-Buckets + separate Secrets + separate LoadBalancer-IPs. BAIT und BSI IT-Grundschutz fordern nachweisbare Umgebungstrennung, aber nicht explizit auf Node-Ebene.
+2. **Bestehende Isolation ist ausreichend**: Namespace-Isolation + NetworkPolicies (SEC-03, 5 Policies pro Namespace, Cross-NS-Traffic verifiziert blockiert) + separate PG-Instanzen + separate S3-Buckets + separate Secrets + separate LoadBalancer-IPs. BAIT (freiwillige Orientierung) und BSI IT-Grundschutz empfehlen nachweisbare Umgebungstrennung, aber nicht explizit auf Node-Ebene.
 3. **DEV/TEST enthalten keine Produktionsdaten** — das Restrisiko bei Pod-Kolokation (Container Escape, Resource Exhaustion) ist gering und durch Resource Limits bereits mitigiert.
 4. **PROD wird ein eigener Cluster** (ADR-004) — dort ist Node Affinity irrelevant, da keine Shared-Node-Situation entsteht.
 5. **Technische Einschränkung**: Der aktuelle Node Pool (`devtest`) ist ein einzelner Pool mit 2 Nodes. Persistente Labels per Terraform erfordern **separate Node Pools** (einer für DEV, einer für TEST), was eine größere Infrastrukturänderung mit Kostenimpact wäre. Manuelle `kubectl label`-Labels überleben keine Node-Replacements (Scaling, Maintenance).
@@ -842,7 +957,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 4. **CI/CD nutzt kein Terraform** — nur Helm/kubectl. Terraform wird ausschließlich lokal ausgeführt
 5. **PG ACL als Defense-in-Depth** — selbst bei Passwort-Leak ist DB-Zugang auf Cluster-Egress-IP + Admin-IP beschränkt
 6. **Remote State löst das Problem nicht vollständig** — S3-Credentials für den Bucket-Zugriff müssten wiederum lokal gespeichert werden
-7. **Kein BAIT/BSI-Requirement** — keine regulatorische Vorschrift für Remote IaC State
+7. **Kein regulatorisches Requirement** — weder BAIT (ohnehin freiwillig) noch BSI IT-Grundschutz fordern Remote IaC State
 
 **Quick Win umgesetzt**: `chmod 600` auf alle State-Dateien (war `644` = world-readable).
 
@@ -859,12 +974,12 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 1. **PROD wird ein eigener Cluster** (ADR-004) — separates Kubeconfig ergibt sich automatisch. Die Blast-Radius-Reduktion (das einzige starke Argument) ist architektonisch gelöst.
 2. **Solo-Entwickler** — derselbe Operator deployt auf alle Environments. Namespace-scoped RBAC isoliert ihn vor sich selbst, was bei einem 1-Personen-Team keinen praktischen Nutzen hat.
 3. **CI/CD ist bereits gehärtet** — SHA-gepinnte Actions, `permissions: contents: read`, Environment-gated Deploys (TEST/PROD nur per `workflow_dispatch`)
-4. **Kein BAIT/BSI-Requirement** für Pre-Production — BAIT Kap. 8.6 (4-Augen-Prinzip) gilt explizit für Produktionsumgebung, nicht für DEV/TEST bei Solo-Dev
+4. **Kein BAIT/BSI-Requirement** für Pre-Production — das 4-Augen-Prinzip (BAIT Kap. 2/7, freiwillige Orientierung) betrifft die Produktionsumgebung, nicht DEV/TEST bei Solo-Dev
 5. **DEV/TEST enthalten keine Kundendaten** — Worst Case (Cluster-Admin Leak auf DEV/TEST-Cluster) betrifft nur Testdaten
 
 **Opportunistische Umsetzung**: Kann beim Kubeconfig-Renewal (Ablauf 2026-05-28) kostenneutral mitgemacht werden — neue ServiceAccounts + namespace-scoped RoleBindings statt erneuter Cluster-Admin-Kubeconfig.
 
-### SEC-06: Container SecurityContext — Phase 1 ERLEDIGT (2026-03-08)
+### SEC-06: Container SecurityContext — Phase 2 ERLEDIGT (2026-03-11)
 
 **Kritisches Finding (2026-03-08):** Analyse der Onyx Helm Chart Templates ergab, dass mehrere Komponenten mit `privileged: true` + `runAsUser: 0` laufen — die höchstmögliche Privilegierung. Ein privilegierter Container hat vollen Zugriff auf den Host-Kernel, Devices und kann Host-Filesysteme mounten.
 
@@ -881,9 +996,9 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **BSI-Relevanz**: SYS.1.6.A10: "Privileged Mode SOLLTE NICHT verwendet werden." (SOLLTE = dringende Empfehlung). In einem Banking-Kontext würde dies als Finding in jedem Audit markiert.
 
-**Geplante Umsetzung (Stufenplan):**
-1. **Phase 1 (Quick Win, 1-2h):** `privileged: false` für Celery, Model Server, Vespa via `values-common.yaml`. `runAsUser: 0` erstmal beibehalten. Eliminiert das schlimmste Finding mit minimalem Risiko — `privileged` wird fast nie tatsächlich benötigt.
-2. **Phase 2 (vor PROD, 4-6h):** `runAsUser: 1001` + `runAsNonRoot: true` für API, Celery, Model Server. `emptyDir` für `/tmp` wo nötig. Vespa als dokumentierte Ausnahme (Upstream-Limitation: benötigt ggf. Root für `vm.max_map_count`).
+**Umsetzung (Stufenplan):**
+1. **Phase 1 (ERLEDIGT, 2026-03-08):** `privileged: false` für Celery, Model Server, Vespa via `values-common.yaml`. Eliminiert das schlimmste Finding mit minimalem Risiko.
+2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Vespa als dokumentierte Ausnahme (Upstream-Limitation: benötigt Root für `vm.max_map_count`). Kein `privileged` Mode auf keinem Container.
 3. **Phase 3 (optional, vor Abnahme):** `readOnlyRootFilesystem: true` mit vollständigem emptyDir-Mapping. Diminishing Returns für den Aufwand.
 
 **Technischer Hinweis**: Alle Onyx Chart Templates unterstützen `securityContext`-Overrides via Values (`{{- toYaml .Values.<component>.securityContext | nindent 12 }}`). Kein Chart-Umbau nötig — Änderungen ausschließlich in `values-common.yaml`.
@@ -913,16 +1028,18 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 ```
 Phase 1: ERKENNUNG
-├─ Automatisiert: kube-prometheus-stack (deployed 2026-03-10)
-│  ├─ 20 Alert-Rules (Prometheus → AlertManager → Teams Webhook)
-│  ├─ postgres_exporter + redis_exporter (DB/Cache-Metriken)
-│  └─ Grafana Dashboards (Cluster, PostgreSQL, Redis)
-├─ Smoke Tests in CI/CD (implementiert)
+├─ Automatisiert: kube-prometheus-stack (DEV/TEST 2026-03-10, PROD 2026-03-12)
+│  ├─ Alert-Rules (Prometheus → AlertManager → Teams Webhook)
+│  ├─ DEV/TEST: Teams-Kanal, PROD: separater Teams PROD-Kanal mit [PROD]-Prefix
+│  ├─ postgres_exporter + redis_exporter (DB/Cache-Metriken, alle Environments)
+│  ├─ Grafana Dashboards (Cluster, PostgreSQL, Redis) — Sidecar-Dashboards auf PROD
+│  └─ send_resolved: true (Entwarnung bei Alert-Auflösung)
+├─ Smoke Tests in CI/CD (implementiert, PROD: 180s Timeout, 18 Attempts)
 └─ Konzept: docs/referenz/monitoring-konzept.md
 
 Phase 2: EINDÄMMUNG
 ├─ Betroffene Pods isolieren (kubectl)
-├─ Namespace-Level: Helm Rollback (--atomic bei TEST/PROD)
+├─ Namespace-Level: Helm Rollback (manuell, alle Environments nutzen --wait --timeout 15m)
 └─ Datenbankebene: PG ACL kann auf [] gesetzt werden
 
 Phase 3: UNTERSUCHUNG
@@ -963,6 +1080,7 @@ Phase 6: NACHBEREITUNG
 | Aspekt | Details |
 |--------|---------|
 | Provider | StackIT (Schwarz IT, Teil der Schwarz Gruppe) |
+| Zertifizierung | **BSI C5 Type 2** (Cloud Computing Compliance Criteria Catalogue) |
 | Region | EU01 (Frankfurt am Main, Deutschland) |
 | Datensouveränität | Daten verlassen Deutschland nicht |
 | Rechenzentrum | Betrieben unter deutschem Recht |
@@ -971,13 +1089,18 @@ Phase 6: NACHBEREITUNG
 
 ### Ressourcen-Übersicht
 
-| Ressource | DEV | TEST | PROD (geplant) |
-|-----------|-----|------|-----------------|
-| SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster |
-| Node Pool | `devtest` (2 Nodes, g1a.8d) | `devtest` (shared) | Eigener Pool (2x g1a.8d) |
-| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA (3 Replicas) |
+| Ressource | DEV | TEST | PROD |
+|-----------|-----|------|------|
+| SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster (`vob-prod`, ADR-004) |
+| K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
+| Node Pool | `devtest` (2 Nodes, g1a.8d) | `devtest` (shared) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
+| Pods | 16 | 15 | 19 (2x API HA, 2x Web HA, 8 Celery, Vespa, Redis, 2x Model, NGINX) |
+| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA 3-Node (`vob-prod`) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
 | Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` |
+| Monitoring | Shared (`monitoring` NS) | Shared (`monitoring` NS) | Eigener (`monitoring` NS, 9 Pods) |
+| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa = Ausnahme) |
+| Deploy-Strategie | Recreate | Recreate | Recreate (DB Connection Pool Exhaustion vermeiden) |
 
 ### Telemetrie
 
@@ -997,8 +1120,14 @@ configMap:
 
 - **DSGVO**: https://dsgvo-gesetz.de/
 - **BDSG**: https://www.gesetze-im-internet.de/bdsg_2018/
+- **EU AI Act** (Verordnung (EU) 2024/1689): https://ai-act-law.eu/de/
 - **BSI-Grundschutz**: https://www.bsi.bund.de/DE/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierungen/IT-Grundschutz/it-grundschutz_node.html
-- **BAIT**: Bankaufsichtliche Anforderungen an die IT (BaFin)
+- **BSI C5** (StackIT Zertifizierung): https://stackit.com/en/why-stackit/benefits/certificates
+- **BAIT** (Rundschreiben 10/2017, Fassung 16.12.2024): https://www.bafin.de/SharedDocs/Downloads/DE/Rundschreiben/dl_rs_1710_ba_BAIT.html
+- **DORA** (Verordnung (EU) 2022/2554): https://eur-lex.europa.eu/eli/reg/2022/2554/oj?locale=de
+- **BaFin KI-Orientierungshilfe** (18.12.2025): https://www.bafin.de/SharedDocs/Downloads/DE/Anlage/neu/dl_Anlage_orientierungshilfe_IKT_Risiken_bei_KI.html
+- **DSK DSFA-Muss-Liste** (V1.1, 17.10.2018): https://www.datenschutzkonferenz-online.de/media/ah/20181017_ah_DSK_DSFA_Muss-Liste_Version_1.1_Deutsch.pdf
+- **DSK Orientierungshilfe KI und Datenschutz** (06.05.2024): https://www.datenschutzkonferenz-online.de/media/oh/20240506_DSK_Orientierungshilfe_KI_und_Datenschutz.pdf
 
 ### Sicherheits-Frameworks
 
@@ -1013,36 +1142,33 @@ configMap:
 - CI/CD Runbook: `docs/runbooks/ci-cd-pipeline.md`
 - DNS/TLS-Runbook: `docs/runbooks/dns-tls-setup.md`
 - LLM-Konfiguration Runbook: `docs/runbooks/llm-konfiguration.md`
+- Monitoring-Konzept: `docs/referenz/monitoring-konzept.md`
+- Monitoring-Exporter Feinkonzept: `docs/technisches-feinkonzept/monitoring-exporter.md`
 - Entra ID Fragenkatalog: `docs/entra-id-kundenfragen.md`
 
 ---
 
 ## Nächste Schritte
 
-### Vor PROD-Deployment (P1)
+### Vor PROD Go-Live (P1)
 
-1. ~~**SEC-02**: Node Affinity erzwingen~~ → **ZURÜCKGESTELLT** (2026-03-08)
-2. ~~**SEC-03**: Kubernetes NetworkPolicies implementieren~~ → **ERLEDIGT** (2026-03-05)
-3. ~~**SEC-04**: Terraform Remote State~~ → **ZURÜCKGESTELLT** (2026-03-08, herabgestuft auf P3)
-4. ~~**SEC-05**: Separate Kubeconfigs~~ → **ZURÜCKGESTELLT** (2026-03-08, herabgestuft auf P3)
-5. ~~**SEC-06 Phase 1**: `privileged: true` entfernen~~ → **ERLEDIGT** (2026-03-08, deployed auf DEV + TEST)
-6. **M7**: Cluster-API-ACL (`cluster_acl`) von `0.0.0.0/0` auf Cluster-Egress-IP einschränken (analog SEC-01 für PG)
-7. **TLS**: DNS-Einträge von VÖB IT, dann Let's Encrypt aktivieren
-8. **Entra ID**: App Registration + Credentials von VÖB IT
+1. **NetworkPolicies onyx-prod**: Vollständiges Set (default-deny + allow-rules) — kommt mit DNS/TLS-Hardening
+2. **TLS PROD**: DNS-Einträge (A-Record + ACME-CNAME) bei GlobVill angefragt (2026-03-11), dann Let's Encrypt aktivieren
+3. **Entra ID**: App Registration + Credentials von VÖB IT
+4. **M7**: Cluster-API-ACL (`cluster_acl`) von `0.0.0.0/0` auf Cluster-Egress-IP einschränken (empfohlen)
 
 ### Vor VÖB-Abnahme (P2)
 
-9. ~~**SEC-07**: Encryption-at-Rest bei StackIT verifizieren~~ → **ERLEDIGT** (2026-03-08, StackIT Default)
-10. **SEC-06 Phase 2**: `runAsNonRoot: true` + `runAsUser: 1001` für alle Komponenten (außer Vespa)
-11. **Penetration Test**: Externe Durchführung
-12. **DSGVO-Assessment (C5)**: Datenschutz-Folgenabschätzung (DSFA), Auftragsverarbeitungsvertrag (AVV), Löschkonzept erstellen
+5. **Penetration Test**: Externe Durchführung
+6. **DSGVO-Assessment**: Datenschutz-Folgenabschätzung (DSFA), Auftragsverarbeitungsvertrag (AVV), Löschkonzept, VVT erstellen
+7. **EU AI Act Compliance**: KI-Risikobewertung dokumentieren, Art. 4 KI-Kompetenz mit VÖB klären, Art. 50 Transparenzhinweis prüfen
 
 ### Opportunistisch (P3 — Nice-to-have)
 
-13. **SEC-04**: Terraform Remote State (bei Teamvergrößerung oder Audit-Anforderung)
-14. **SEC-05**: Separate Kubeconfigs (beim Kubeconfig-Renewal 2026-05-28)
-15. **SEC-06 Phase 3**: `readOnlyRootFilesystem: true` (diminishing returns)
-11. **BAIT-Compliance-Check (M2)**: Vollständige Prüfung gegen BAIT-Anforderungen, Lücken im Sicherheitskonzept schließen
+8. **SEC-04**: Terraform Remote State (bei Teamvergrößerung oder Audit-Anforderung)
+9. **SEC-05**: Separate Kubeconfigs (beim Kubeconfig-Renewal 2026-05-28)
+10. **SEC-06 Phase 3**: `readOnlyRootFilesystem: true` (diminishing returns)
+11. **BAIT/DORA-Compliance-Matrix**: Vollständige Prüfung gegen BAIT/DORA-Anforderungen (freiwillige Orientierung)
 12. **IP-Ownership (M3)**: In ADR-001 "CCJ oder VÖB" eindeutig klären
 
 ### Dokumentations-Finalisierung
@@ -1051,9 +1177,21 @@ configMap:
 14. Aufbewahrungsfristen mit VÖB definieren
 15. Dieses Dokument auf Version 1.0 bringen (nach Umsetzung aller P1-Items)
 
+### Erledigt
+
+| SEC-Item | Status | Datum |
+|----------|--------|-------|
+| **SEC-03**: Kubernetes NetworkPolicies (DEV+TEST) | ERLEDIGT | 2026-03-05 |
+| **SEC-06 Phase 1**: `privileged: false` (DEV+TEST) | ERLEDIGT | 2026-03-08 |
+| **SEC-06 Phase 2**: `runAsNonRoot: true` (alle Environments inkl. PROD) | ERLEDIGT | 2026-03-11 |
+| **SEC-07**: Encryption-at-Rest verifiziert (StackIT Default AES-256) | ERLEDIGT | 2026-03-08 |
+| **SEC-02**: Node Affinity | ZURÜCKGESTELLT (P3) | 2026-03-08 |
+| **SEC-04**: Terraform Remote State | ZURÜCKGESTELLT (P3) | 2026-03-08 |
+| **SEC-05**: Separate Kubeconfigs | ZURÜCKGESTELLT (P3) | 2026-03-08 |
+
 ---
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Version**: 0.4
-**Letzte Aktualisierung**: 2026-03-07
-**Nächste Überprüfung**: 2026-04-03
+**Version**: 0.6
+**Letzte Aktualisierung**: 2026-03-12
+**Nächste Überprüfung**: 2026-04-12

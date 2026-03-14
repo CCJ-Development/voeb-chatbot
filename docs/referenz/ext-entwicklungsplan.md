@@ -205,7 +205,7 @@ Jedes Modul durchlaeuft denselben Prozess:
 7. Praesentation an Niko
    └── Dateien, Tests, Core-Aenderungen, offene Punkte
 
-8. Freigabe → Commit → PR → Merge → Deploy
+8. Freigabe → Commit → Push → Merge auf main → Deploy
 ```
 
 ---

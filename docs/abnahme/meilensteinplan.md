@@ -1,8 +1,8 @@
 # Meilensteinplan -- VÖB Service Chatbot
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-08
-**Version**: 0.3
+**Letzte Aktualisierung**: 2026-03-12
+**Version**: 0.4
 
 ---
 
@@ -23,10 +23,10 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 
 | Meilenstein | Titel | Phasen | Termin | Status |
 |-------------|-------|--------|--------|--------|
-| **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen |
+| **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen. Hinweis: PROD-Cluster wurde vor M1-Abnahme deployed (2026-03-11). PROD-Infrastruktur ist faktisch Teil des M1-Nachweises. |
 | **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | [TBD] | Blockiert (Entra ID) |
-| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08, ext-token ✅ deployed 2026-03-09) |
-| **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Teilweise (ext-prompts ✅ implementiert 2026-03-09) |
+| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | ✅ Beide deployed (Branding 2026-03-08, Token 2026-03-09) |
+| **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Teilweise (ext-prompts ✅ deployed 2026-03-09, ext-analytics ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten) |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
 
@@ -48,7 +48,7 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
 
 - **StackIT Kubernetes Cluster (SKE)**
   - 1 Cluster `vob-chatbot`, Node Pool `devtest` mit 2x g1a.8d (8 vCPU, 32 GB RAM je)
-  - Kubernetes v1.33.8, Flatcar 4459.2.1 (upgraded 2026-03-08)
+  - Kubernetes v1.33.x (DEV/TEST: v1.33.8, PROD: v1.33.9), Flatcar 4459.2.x (upgraded 2026-03-08)
   - Ingress Controller (NGINX) je Umgebung (DEV: `nginx`, TEST: `nginx-test`)
   - Load Balancer: DEV `188.34.74.187`, TEST `188.34.118.201`
   - Architekturentscheidung: [ADR-004](../adr/adr-004-umgebungstrennung-dev-test-prod.md)
@@ -63,7 +63,7 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
 - **LLM-Integration (StackIT AI Model Serving)**
   - Chat-Modell: GPT-OSS 120B (131K Kontext) -- verifiziert 2026-02-27
   - Chat-Modell: Qwen3-VL 235B (218K Kontext) -- verifiziert 2026-02-27
-  - Embedding-Modell: nomic-embed-text-v1 aktiv. Wechsel auf Qwen3-VL-Embedding 8B moeglich (Blocker aufgehoben, Upstream PR #9005).
+  - Embedding-Modell: Qwen3-VL-Embedding 8B (DEV+TEST). Umgestellt 2026-03-08 (TEST) / 2026-03-12 (DEV).
   - Konfiguration: OpenAI-kompatible API via LiteLLM, reine Admin-UI-Konfiguration
 
 - **CI/CD Pipeline (GitHub Actions)**
@@ -74,7 +74,7 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
   - SHA-gepinnte GitHub Actions (Supply-Chain-Schutz)
   - Concurrency Control, Least-Privilege Permissions
   - Smoke Test (`/api/health`, 120s Timeout) -- nur fuer DEV + TEST. PROD: `kubectl rollout status` Verify-Step
-  - `--atomic` fuer TEST/PROD (automatischer Rollback)
+  - `--wait --timeout 15m` fuer alle Environments (kein auto-Rollback, Release bleibt stehen und kann debuggt werden)
 
 - **Development Environment**
   - Docker Compose fuer lokale Entwicklung
@@ -112,7 +112,7 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
 |-----|-------|--------|
 | M1-N1 | DNS-Eintraege (`dev.chatbot.voeb-service.de` / `test.chatbot.voeb-service.de`) | ✅ A-Records gesetzt (2026-03-05). ✅ Cloudflare DNS-only verifiziert (2026-03-05). ✅ ACME-Challenge CNAMEs gesetzt (2026-03-09) |
 | M1-N2 | TLS/HTTPS (nach DNS-Setup) | ✅ Erledigt (2026-03-09) — HTTPS LIVE auf DEV + TEST. Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Details: docs/runbooks/dns-tls-setup.md |
-| M1-N3 | Embedding-Modell (Qwen3-VL-Embedding 8B) konfigurieren | Blocker aufgehoben (Upstream PR #9005). Fallback nomic-embed-text-v1 aktiv, RAG funktional. |
+| M1-N3 | Embedding-Modell (Qwen3-VL-Embedding 8B) konfigurieren | ✅ Erledigt — Qwen3-VL-Embedding 8B aktiv (TEST 2026-03-08, DEV 2026-03-12) |
 | M1-N4 | LLM in TEST Admin UI konfigurieren | ✅ Erledigt (2026-03-03) |
 | M1-N5 | CI/CD `workflow_dispatch` fuer TEST verifizieren | ✅ Erledigt (2026-03-03) |
 
@@ -312,10 +312,9 @@ Analytics, Branding und System Prompts Management Module sind implementiert.
   - Prompt Versioning
   - Admin-Endpunkte fuer Prompt Management
 
-- **Analytics Modul (`ext_analytics`)**
-  - Usage Metrics Collection
-  - DB-Tabelle: `ext_analytics_events`
-  - Reports Export
+- **Analytics Modul (`ext_analytics`)** — ⏭️ ÜBERSPRUNGEN
+  - Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model)
+  - Kein Mehrwert als eigenes Modul
 
 - **Testing**
   - Unit Tests
@@ -333,8 +332,8 @@ Analytics, Branding und System Prompts Management Module sind implementiert.
 | M4-2 | CSS Variables mit `--ext-` Prefix werden angewendet | [ ] Ja [ ] Nein |
 | M4-3 | System Prompts koennen erstellt/editiert/versioniert werden | [ ] Ja [ ] Nein |
 | M4-4 | Prompt Injection (prepend) funktioniert ohne bestehenden Prompt-Flow zu veraendern | [ ] Ja [ ] Nein |
-| M4-5 | Analytics Daten werden korrekt gesammelt | [ ] Ja [ ] Nein |
-| M4-6 | Reports koennen exportiert werden | [ ] Ja [ ] Nein |
+| M4-5 | ext-token Usage Dashboard zeigt Timeline, Per-User und Per-Model Statistiken | [ ] Ja [ ] Nein |
+| M4-6 | ~~Analytics~~ Entfaellt (Funktionalitaet in ext-token enthalten) | N/A |
 | M4-7 | Alle Module hinter Feature Flags (`EXT_BRANDING_ENABLED`, etc.) | [ ] Ja [ ] Nein |
 | M4-8 | Hook-Pattern: Fehler in ext bricht Onyx nie | [ ] Ja [ ] Nein |
 | M4-9 | Unit + Integration Tests bestanden | [ ] Ja [ ] Nein |
@@ -367,14 +366,14 @@ Vollstaendiges Testing durchgefuehrt. Security-Haertung abgeschlossen. System is
 ### Liefergegenstände
 
 - **Security-Haertung (P1 -- vor PROD)**
-  - SEC-02: Node Affinity erzwingen (DEV/TEST auf eigene Nodes)
+  - SEC-02: ~~Node Affinity erzwingen~~ → **ZURÜCKGESTELLT** (P3, ADR-004: "Kein Dedicated-Node-Affinity noetig")
   - ~~SEC-03: Kubernetes NetworkPolicies~~ → **ERLEDIGT** (2026-03-05, vorgezogen aus M5)
-  - SEC-04: Terraform Remote State (State-Bucket statt lokaler State)
+  - SEC-04: ~~Terraform Remote State~~ → **ZURÜCKGESTELLT** (P3, Solo-Dev, FileVault, gitignored, kein BAIT-Req)
   - SEC-05: Separate Kubeconfigs pro Environment (Least-Privilege CI/CD)
 
 - **Security-Haertung (P2 -- vor Abnahme)**
-  - SEC-06: Container SecurityContext (`runAsNonRoot`, `readOnlyRootFilesystem`)
-  - SEC-07: Encryption-at-Rest verifizieren (PG Flex + Object Storage)
+  - SEC-06: Container SecurityContext (`runAsNonRoot`, `readOnlyRootFilesystem`) → ✅ ERLEDIGT (Phase 1: `privileged: false` 2026-03-08, Phase 2: `runAsNonRoot: true` auf PROD 2026-03-11)
+  - SEC-07: Encryption-at-Rest verifizieren (PG Flex + Object Storage) → ✅ ERLEDIGT (StackIT Default, AES-256)
 
 - **Testberichte**
   - Unit Test Report
@@ -383,16 +382,18 @@ Vollstaendiges Testing durchgefuehrt. Security-Haertung abgeschlossen. System is
   - Performance Test Report
   - UAT Report (VÖB Tester)
 
-- **PROD Cluster provisionieren**
-  - Eigener SKE-Cluster (ADR-004: separater Cluster fuer Blast-Radius-Minimierung)
-  - 2x g1a.8d Nodes
-  - PostgreSQL Flex 4.8 Replica (HA, 3 Nodes)
-  - Eigene Network Policies, strengere Security
-  - Eigenes Maintenance-Window
+- **PROD Cluster provisionieren** → ✅ ERLEDIGT (deployed 2026-03-11)
+  - Eigener SKE-Cluster `vob-prod` (ADR-004: separater Cluster fuer Blast-Radius-Minimierung)
+  - 2x g1a.8d Nodes, K8s v1.33.9
+  - PostgreSQL Flex 4.8 HA (3-Node)
+  - 19 Pods Running, API Health OK, LB `188.34.92.162`
+  - Eigenes Maintenance-Window (03:00-05:00 UTC)
 
-- **Monitoring + Operations**
-  - Prometheus/Grafana Stack
-  - Alert Rules
+- **Monitoring + Operations** → ✅ ERLEDIGT (DEV/TEST 2026-03-10, PROD 2026-03-12)
+  - Prometheus/Grafana/AlertManager Stack (kube-prometheus-stack)
+  - postgres_exporter + redis_exporter auf allen Environments
+  - Alert Rules (20 Rules), Microsoft Teams Alerting
+  - Grafana Dashboards (PG + Redis)
   - Runbooks (Deployment, Incident Response)
 
 - **Dokumentation**
@@ -507,7 +508,8 @@ System ist produktiv deployed, validiert und an VÖB uebergeben.
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
 | Entra ID Zugangsdaten | VÖB IT | Blockiert M2 (Auth) |
-| ~~DNS-Eintraege~~ | ~~VÖB IT~~ | ✅ Erledigt — A-Records (2026-03-05) + ACME-Challenge CNAMEs (2026-03-09) + TLS LIVE |
+| DNS PROD (A-Record + ACME-CNAME) | Leif (GlobVill), angefragt 2026-03-11 | Blockiert HTTPS PROD |
+| ~~DNS-Eintraege DEV/TEST~~ | ~~VÖB IT~~ | ✅ Erledigt — A-Records (2026-03-05) + ACME-Challenge CNAMEs (2026-03-09) + TLS LIVE |
 
 ---
 
@@ -579,5 +581,5 @@ Falls Abnahme verweigert wird:
 ---
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-08
-**Version**: 0.3
+**Letzte Aktualisierung**: 2026-03-12
+**Version**: 0.4

@@ -98,7 +98,7 @@
 | NF-1 | Verfuegbarkeit DEV | Pods laufen stabil | 16 Pods Running, kein CrashLoop seit Go-Live | [x] Ja | Seit 2026-02-27, 16 Pods seit 2026-03-06 |
 | NF-2 | Verfuegbarkeit TEST | Pods laufen stabil | 15 Pods Running seit Redeploy | [x] Ja | Seit 2026-03-03, 15 Pods seit 2026-03-06 |
 | NF-3 | Backup | Taegliche PG Snapshots | StackIT Managed Backup aktiv (DEV 02:00, TEST 03:00 UTC) | [x] Ja | Managed Service |
-| NF-4 | CI/CD Robustheit | Automatischer Rollback bei Fehler | `--atomic` fuer TEST/PROD, Smoke Test nach Deploy | [x] Ja | Concurrency Control aktiv |
+| NF-4 | CI/CD Robustheit | Zuverlässiger Deploy mit Timeout | `--wait --timeout 15m` fuer alle Environments, Smoke Test nach Deploy, manueller Rollback bei Bedarf | [x] Ja | Concurrency Control aktiv |
 | NF-5 | Umgebungstrennung | DEV und TEST isoliert | Separate Namespaces, PG-Instanzen, Buckets, Credentials | [x] Ja | ADR-004 dokumentiert |
 
 **Ergebnis: 5/5 non-funktionale Kriterien erfuellt.**
@@ -138,10 +138,10 @@ Diese Punkte sind bekannt und werden in nachfolgenden Meilensteinen adressiert:
 |-----|-------|--------|-------------|
 | N-1 | DNS-Eintraege (`dev.chatbot.voeb-service.de`) | Erledigt — A-Records gesetzt (2026-03-05) | ✅ |
 | N-2 | TLS/HTTPS (cert-manager + Let's Encrypt) | ✅ Erledigt — HTTPS LIVE seit 2026-03-09 (ECDSA P-384, TLSv1.3) | ✅ |
-| N-3 | Embedding-Modell Qwen3-VL-Embedding 8B | Blocker aufgehoben — Upstream PR #9005 | Wechsel moeglich, Fallback nomic-embed-text-v1 aktiv |
+| N-3 | Embedding-Modell Qwen3-VL-Embedding 8B | ✅ Aktiv auf DEV + TEST | Qwen3-VL-Embedding 8B aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12) |
 | N-4 | Authentifizierung (Entra ID / OIDC) | Blockiert — wartet auf VÖB Credentials | M2 |
 
-**Hinweis:** N-1 (DNS), N-2 (TLS) und N-3 (Embedding) sind geloest. Der einzige verbleibende offene Punkt (N-4: Entra ID) hat eine externe Abhaengigkeit (VÖB IT). Die Infrastruktur ist technisch vollstaendig und abgesichert.
+**Hinweis:** N-1 (DNS), N-2 (TLS) und N-3 (Embedding) sind erledigt. Qwen3-VL-Embedding 8B ist auf DEV + TEST aktiv. Der einzige verbleibende offene Punkt (N-4: Entra ID) hat eine externe Abhaengigkeit (VÖB IT). Die Infrastruktur ist technisch vollstaendig und abgesichert.
 
 ---
 

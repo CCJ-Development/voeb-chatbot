@@ -87,7 +87,7 @@ ENABLE_PAID_ENTERPRISE_EDITION_FEATURES: "false"  # EE deaktiviert
 | 1 | **Branding / Whitelabel** | `ee.onyx.server.enterprise_settings.store` | `ext-branding` | 4b | ✅ Deployed (2026-03-08) |
 | 2 | **Token Limits / Usage Tracking** | — (existiert auch in EE nicht als Modul) | `ext-token` | 4c | ✅ Deployed (2026-03-09) |
 | 3 | **Custom System Prompts** | `ee.onyx.chat` (teilweise) | `ext-prompts` | 4d | ✅ Implementiert (2026-03-09) |
-| 4 | **Analytics / Monitoring** | `ee.onyx.server.monitoring` | `ext-analytics` | 4e | Keiner — STARTBAR |
+| 4 | **Analytics / Monitoring** | `ee.onyx.server.monitoring` | `ext-analytics` | 4e | ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten |
 | 5 | **RBAC / User Groups** | `ee.onyx.db.user_group`, `ee.onyx.access` | `ext-rbac` | 4f | Blockiert (Entra ID) |
 | 6 | **Document Access Control** | `ee.onyx.external_permissions` | `ext-access` | 4g | Blockiert (RBAC) |
 

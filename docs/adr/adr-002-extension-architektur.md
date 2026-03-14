@@ -52,7 +52,7 @@ Wie bauen wir **Custom Features** (Token Limits, RBAC, Branding, Analytics) für
 │ │ ├── models/                     (SQLAlchemy, ext_-Prefix)  │ │
 │ │ ├── schemas/                    (Pydantic Schemas)         │ │
 │ │ ├── services/                   (Business Logic)           │ │
-│ │ ├── migrations/                 (Alembic, eigener Branch)  │ │
+│ │ ├── (Migrationen in backend/alembic/versions/, ext_-Prefix) │ │
 │ │ └── tests/                      (pytest)                   │ │
 │ │                                                             │ │
 │ │ web/src/ext/                    (TypeScript, React)        │ │
@@ -361,9 +361,9 @@ Punkte 1-7 sind **minimal notwendig** für das Extension Framework. Punkte 8-10 
    - Mitigation: Gut dokumentieren, Beispiele geben
    - Impact: Engineering-Aufwand im Setup, aber zahlt sich aus
 
-3. **Datenbank-Migrationen zwei separate Pfade**
-   - Mitigation: Klare Konvention (core vs. ext_* files)
-   - Impact: Migration-Scripts müssen beide laden
+3. **Datenbank-Migrationen ext_-Migrationen im selben Alembic-Pfad**
+   - Mitigation: Klare Konvention (ext_-Prefix im Kommentar + Tabellennamen)
+   - Impact: Alembic-Chain muss korrekt verkettet sein (down_revision)
 
 ---
 
@@ -391,7 +391,6 @@ voeb-chatbot/
 │   │   ├── models/              (SQLAlchemy, ext_-Prefix)
 │   │   ├── schemas/             (Pydantic Schemas)
 │   │   ├── services/            (Business Logic)
-│   │   ├── migrations/          (Alembic, eigener Branch)
 │   │   ├── _core_originals/     (Backups vor Core-Änderungen)
 │   │   └── tests/               (pytest)
 │   │

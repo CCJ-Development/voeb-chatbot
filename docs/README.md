@@ -56,6 +56,8 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [ext-entwicklungsplan.md](./referenz/ext-entwicklungsplan.md) | Aktuell | Extension-Module Reihenfolge, Workflow, Dependencies |
 | [monitoring-konzept.md](./referenz/monitoring-konzept.md) | Aktuell | Monitoring-Stack: Prometheus, Grafana, AlertManager, Exporter |
 | [compliance-research.md](./referenz/compliance-research.md) | Entwurf | DSGVO, BSI, EU AI Act — Compliance-Analyse und Handlungsbedarf |
+| [prod-bereitstellung.md](./referenz/prod-bereitstellung.md) | Aktuell | PROD-Bereitstellungsplan |
+| [kostenvergleich-node-upgrade.md](./referenz/kostenvergleich-node-upgrade.md) | Aktuell | Kostenvergleich Node-Upgrade |
 
 ## Technisches Feinkonzept
 
@@ -67,6 +69,14 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [ext-token.md](./technisches-feinkonzept/ext-token.md) | Final | Token Limits + Usage Tracking (Phase 4c) |
 | [ext-custom-prompts.md](./technisches-feinkonzept/ext-custom-prompts.md) | Final | Custom System Prompts (Phase 4d) |
 | [monitoring-exporter.md](./technisches-feinkonzept/monitoring-exporter.md) | Final | PostgreSQL + Redis Exporter (Monitoring) |
+
+## Environments
+
+| Environment | Status | URL / IP | Cluster |
+|-------------|--------|----------|---------|
+| **DEV** | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | SKE `vob-chatbot`, NS `onyx-dev` |
+| **TEST** | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | SKE `vob-chatbot`, NS `onyx-test` |
+| **PROD** | Deployed seit 2026-03-11 (DNS/TLS pending) | LB `188.34.92.162` | SKE `vob-prod`, NS `onyx-prod` |
 
 ## Kontakt
 

@@ -88,17 +88,17 @@ main Branch ──push──→ DEV (automatisch)
                     workflow_dispatch
                            │
                            ▼
-                         TEST (manuell, --atomic)
+                         TEST (manuell, --wait --timeout 15m)
                            │
                     workflow_dispatch + GitHub Environment Approval
                            │
                            ▼
-                         PROD (manuell, --atomic, Review erforderlich)
+                         PROD (manuell, --wait --timeout 15m, Review erforderlich)
 ```
 
-### PROD: Eigener Cluster (spätere Phase)
+### PROD: Eigener Cluster — DEPLOYED (2026-03-11)
 
-PROD wird in einem **separaten SKE-Cluster** betrieben:
+PROD wird in einem **separaten SKE-Cluster** betrieben (deployed 2026-03-11, 19 Pods Running, Health OK):
 - Eigener Node Pool (2× g1a.8d, siehe ADR-005)
 - Eigene PG Flex 4.8 Replica (3-Node HA)
 - Eigene Network Policies mit Egress-Rules

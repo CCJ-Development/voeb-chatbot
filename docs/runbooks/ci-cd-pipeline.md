@@ -138,13 +138,9 @@ curl http://188.34.74.187/api/health
 
 ## 4. Rollback
 
-### Automatisch (TEST/PROD)
+### Alle Environments (DEV/TEST/PROD)
 
-TEST und PROD verwenden `--atomic`. Bei Fehler rollt Helm automatisch auf den vorherigen Release zurück.
-
-### Manuell (DEV)
-
-DEV verwendet kein `--atomic` (wegen des kubectl-Patches). Manueller Rollback:
+Alle Environments verwenden `--wait --timeout 15m`. Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 16+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit. Bei Bedarf manueller Rollback:
 
 ```bash
 # Letzte Helm Releases anzeigen
@@ -292,9 +288,9 @@ Der DEV-Cluster hat 1 Node (g1a.8d, 8 vCPU seit 2026-03-06). Recreate ist beibeh
 
 Onyx FOSS hat seit einer neueren Version den Default `"true"` für diese Variable. Das aktiviert Enterprise-Edition-Code-Pfade, die das Modul `onyx.server.tenants` importieren. Dieses Modul existiert nur im proprietären EE-Repository. Ohne die explizite Deaktivierung crasht der API-Server mit `ModuleNotFoundError`.
 
-### Warum kein `--atomic` für DEV?
+### Warum `--wait --timeout 15m` statt `--atomic`?
 
-DEV verwendet einen kubectl-Patch nach dem Helm Deploy (Recreate-Strategie). `--atomic` würde bei Timeout zurückrollen, bevor der Patch angewendet wird. Stattdessen: manuelles Rollout-Monitoring mit echtem Error-Reporting.
+Alle Environments nutzen `--wait --timeout 15m` statt `--atomic`. `--atomic` würde bei Timeout automatisch zurückrollen, was bei 16+ Pods mit Cold Start (Alembic Migrations, Model Server) kontraproduktiv ist — der Rollback verursacht einen weiteren Neustart-Zyklus. Mit `--wait` bleibt der Release bei Timeout stehen und kann debuggt werden.
 
 ### Warum Redis-Passwort als GitHub Secret?
 

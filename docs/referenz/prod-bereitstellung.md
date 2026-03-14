@@ -25,10 +25,10 @@ Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem get
 | Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`, DNS offen) |
 | TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | Wartet auf DNS (Leif/GlobVill) |
 | Auth | Basic (kein OIDC) | Basic (kein OIDC) | Basic (temporaer, Entra ID blockiert) |
-| Monitoring | kube-prometheus-stack | (shared mit DEV) | — (Phase F) |
+| Monitoring | kube-prometheus-stack | (shared mit DEV) | ✅ Deployed (2026-03-12, 9 Pods, 3 Targets UP) |
 | CI/CD Job | `deploy-dev` (auto) | `deploy-test` (manuell) | `deploy-prod` (manuell, Review) |
-| Helm Values | `values-dev.yaml` | `values-test.yaml` | `values-prod.yaml` (Platzhalter) |
-| Terraform | `environments/dev/` | `environments/test/` | **`environments/prod/` fehlt** |
+| Helm Values | `values-dev.yaml` | `values-test.yaml` | `values-prod.yaml` (deployed 2026-03-11) |
+| Terraform | `environments/dev/` | `environments/test/` | `environments/prod/` (erstellt 2026-03-11) |
 
 ### 1.3 Architekturentscheidung: Eigener Cluster
 
@@ -166,7 +166,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 **Geloeste Fragen Phase B (2026-03-11):**
 
 - [x] **B5:** Gleicher Cloudflare API Token — funktioniert (gleiche DNS-Zone `voeb-service.de`)
-- [ ] **B7:** Leif (GlobVill) muss ACME-CNAME setzen — **NOCH NICHT ANGEFRAGT!**
+- [ ] **B7:** Leif (GlobVill) muss ACME-CNAME setzen — **Angefragt 2026-03-11** (zusammen mit DNS A-Record)
 - [x] **B1:** Kubeconfig-Ablauf → 2026-06-09 (90 Tage). Terraform-Variable `kubeconfig_expiration` ergaenzt (Default war 3600s = 1h!)
 
 ---
@@ -232,18 +232,18 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| F1 | kube-prometheus-stack auf PROD-Cluster deployen | [ ] | B1 | Eigener Helm Release `monitoring` im Namespace `monitoring`. `values-monitoring.yaml` wiederverwenden |
+| F1 | kube-prometheus-stack auf PROD-Cluster deployen | [x] | B1 | ✅ Deployed 2026-03-12 — Helm Release `monitoring` in NS `monitoring`, `values-monitoring-prod.yaml` (90d Retention, 50Gi). 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2× node-exporter, PG Exporter, Redis Exporter, Operator) |
 | F2 | postgres_exporter fuer PROD erstellen | [x] | A9, F1 | ✅ **Geloest (2026-03-11).** `deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml` erstellt. Identisch mit DEV/TEST-Struktur. Secret `pg-exporter-prod` muss bei Deploy manuell erstellt werden (DATA_SOURCE_NAME mit PROD-PG-Host) |
 | F3 | redis_exporter fuer PROD erstellen | [x] | D6, F1 | ✅ **Geloest (2026-03-11).** `deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml` erstellt. Target: `onyx-prod.onyx-prod.svc.cluster.local:6379`. Secret `redis-exporter-prod` muss bei Deploy manuell erstellt werden |
-| F4 | Grafana Dashboards importieren | [ ] | F1 | PG Dashboard (ID 14114) + Redis Dashboard (ID 763). **Bekanntes Problem:** Nicht persistent bei Pod-Restart. Loesung: ConfigMap oder Grafana Provisioning evaluieren |
-| F5 | AlertManager → Teams konfigurieren | [ ] | F1 | Gleicher Teams Webhook wie DEV/TEST, oder eigener PROD-Kanal? `send_resolved: true` |
-| F6 | PROD-spezifische Alert-Rules pruefen | [ ] | F5 | 20 Alert-Rules aus DEV/TEST uebernehmen. Schwellwerte fuer PROD anpassen (hoehere Basislast) |
-| F7 | Monitoring NetworkPolicies | [ ] | E3, F1 | 7 Policies in `monitoring` NS + App-NS Ingress-Policies |
+| F4 | Grafana Dashboards importieren | [x] | F1 | ✅ Sidecar-Provisioning (gnetId 14114 PG + gnetId 763 Redis) — persistent, kein manueller Import noetig |
+| F5 | AlertManager → Teams konfigurieren | [x] | F1 | ✅ PROD-Kanal konfiguriert — separater Teams-Webhook, Receiver `teams-prod`, `[PROD]`-Prefix, `send_resolved: true` |
+| F6 | PROD-spezifische Alert-Rules pruefen | [x] | F5 | ✅ 20 Alert-Rules aktiv, Alert-Tuning applied (CPU-Limits Exporter angepasst) |
+| F7 | Monitoring NetworkPolicies | [x] | E3, F1 | ✅ 7 Policies in `monitoring` NS (Zero-Trust: Default-Deny, DNS-Egress, Scrape-Egress, Intra-Namespace, K8s-API, PG-Exporter, Redis-Exporter) |
 
 **Offene Fragen Phase F:**
 
-- [ ] **F4:** Grafana Dashboards persistent machen → **Entscheidung (2026-03-11): ConfigMap Provisioning.** Enterprise Best Practice: Kein manueller Zustand auf PROD. Alles was bei Pod-Restart verloren geht ist unakzeptabel. Grafana sidecar.dashboards liest JSON aus ConfigMaps → automatischer Import bei jedem Start. BSI OPS.1.1.2: "Wiederherstellbarkeit sicherstellen". Umsetzung bei F1 (kube-prometheus-stack Deploy auf PROD).
-- [ ] **F5:** Eigener Teams-Kanal fuer PROD-Alerts → **Entscheidung (2026-03-11): Ja, eigener PROD-Kanal.** Enterprise Best Practice (ITIL Incident Management): PROD-Alerts duerfen nicht in DEV/TEST-Rauschen untergehen. Gleicher Kanal fuehrt zu "Alert Fatigue". Niko muss neuen Teams-Kanal erstellen + Webhook-URL bereitstellen.
+- [x] **F4:** Grafana Dashboards persistent machen → ✅ **Umgesetzt (2026-03-12): Sidecar-Provisioning.** Grafana sidecar.dashboards liest JSON aus ConfigMaps (gnetId 14114 PG + gnetId 763 Redis) → automatischer Import bei jedem Start. Kein manueller Zustand auf PROD. BSI OPS.1.1.2: "Wiederherstellbarkeit sicherstellen".
+- [x] **F5:** Eigener Teams-Kanal fuer PROD-Alerts → ✅ **Umgesetzt (2026-03-12).** Separater PROD-Kanal mit eigenem Webhook. Receiver `teams-prod`, `[PROD]`-Prefix, `send_resolved: true`. PROD-Alerts getrennt von DEV/TEST (ITIL Incident Management).
 
 ---
 

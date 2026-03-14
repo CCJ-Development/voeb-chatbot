@@ -14,7 +14,7 @@
 |-------------|---------|--------|
 | DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
 | TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
-| PROD | Noch nicht provisioniert | — |
+| PROD | Deployed (LB `188.34.92.162`), DNS/TLS pending | — |
 
 ### Zielzustand
 
@@ -136,6 +136,7 @@ In Cloudflare Dashboard → DNS → Records:
 |------|------|-----------------|-------|-----|
 | A | `dev.chatbot` | `188.34.74.187` | **DNS only** (graue Wolke) | 300 |
 | A | `test.chatbot` | `188.34.118.201` | **DNS only** (graue Wolke) | 300 |
+| A | `chatbot` | `188.34.92.162` | **DNS only** (graue Wolke) | 300 |
 
 > **WICHTIG: Proxy-Status MANUELL auf "DNS only" (graue Wolke) umstellen!**
 > Cloudflare setzt neue A-Records standardmaessig auf **"Proxied" (orange Wolke)**.
@@ -145,7 +146,7 @@ In Cloudflare Dashboard → DNS → Records:
 
 > **TTL 300** (5 Minuten) fuer die Anfangsphase. Nach Verifikation auf 3600 (1 Stunde) erhoehen.
 
-> PROD A-Record kommt spaeter, wenn der PROD-Cluster provisioniert ist.
+> PROD A-Record (`chatbot` → `188.34.92.162`) bei Leif/GlobVill angefragt (2026-03-11). PROD-Cluster ist deployed.
 
 ### A3. Cloudflare API Token erstellen (Leif)
 
@@ -330,7 +331,7 @@ kubectl get crds | grep cert-manager
 ```
 
 > **Version:** v1.19.4 empfohlen (behebt CVE-2026-24051 und CVE-2025-68121).
-> v1.19.x unterstuetzt K8s 1.29-1.33 (unser Cluster: v1.32). Check: https://cert-manager.io/docs/releases/
+> v1.19.x unterstuetzt K8s 1.29-1.33 (unser Cluster: v1.33). Check: https://cert-manager.io/docs/releases/
 > Vor Installation aktuelle Version pruefen: `helm search repo jetstack/cert-manager --versions | head -5`
 >
 > **StackIT-Kompatibilitaet (verifiziert 2026-03-05):** cert-manager ist offiziell auf SKE unterstuetzt.
@@ -705,7 +706,7 @@ helm upgrade --install onyx-dev \
   -f deployment/helm/values/values-common.yaml \
   -f deployment/helm/values/values-dev.yaml \
   -f deployment/helm/values/values-dev-secrets.yaml \
-  --atomic --timeout 10m
+  --wait --timeout 15m
 ```
 
 #### TEST Deploy
@@ -903,7 +904,7 @@ helm upgrade onyx-dev deployment/helm/charts/onyx \
   -f deployment/helm/values/values-common.yaml \
   -f deployment/helm/values/values-dev.yaml \
   -f deployment/helm/values/values-dev-secrets.yaml \
-  --atomic --timeout 10m
+  --wait --timeout 15m
 
 # TEST analog (mit --set fuer Secrets)
 ```

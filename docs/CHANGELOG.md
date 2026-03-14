@@ -20,7 +20,14 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Lesson Learned: App-NS Monitoring-Policies NICHT ohne Basis-Policies anwenden (implizite Denies)
   - Lesson Learned: Egress-Policies muessen alle Ziel-Namespaces enthalten (`onyx-prod` fehlte initial)
 
+- [Infra] **PROD-Cluster deployed** (2026-03-11): SKE `vob-prod` (eigener Cluster, ADR-004), K8s v1.33.9, 2x g1a.8d, PG Flex 4.8 HA (3-Node), 19 Pods (2x API HA, 2x Web HA, 8 Celery-Worker), LB `188.34.92.162`
+- GitHub Environment `prod` mit Required Reviewer + 6 Secrets (keine Secrets im Git)
+- SEC-06 Phase 2: `runAsNonRoot: true` aktiv auf PROD (Vespa = dokumentierte Ausnahme)
+- PG ACL PROD: Egress `188.34.73.72/32` eingeschraenkt
+- Maintenance-Window PROD: 03:00-05:00 UTC
+
 ### Changed
+- [Config] **Embedding DEV: Wechsel auf Qwen3-VL-Embedding 8B** (2026-03-12) — nomic-embed-text-v1 ersetzt, alle Environments jetzt auf Qwen3-VL-Embedding 8B
 - [Infra] **Alert-Tuning PROD** (2026-03-12, Helm Rev 3): Mindest-Traffic Guard fuer PGHighRollbackRate (>10 tx/sec) + RedisCacheHitRateLow (>50 ops/sec) — False Positives bei Idle-System. coreDns ServiceMonitor deaktiviert (StackIT-managed). Exporter CPU-Limits erhoeht (PG: 100m/250m, Redis: 50m/150m, node-exporter: 150m/500m).
 - [Infra] `03-allow-scrape-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
 - [Infra] `07-allow-redis-exporter-egress.yaml` um `onyx-prod` Namespace erweitert (2026-03-12)
@@ -103,7 +110,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Chat: 4 Modelle in 1 Provider konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B)
   - Model-IDs mit StackIT-Doku verifiziert (3 Korrekturen: Llama 3.3, Mistral-Nemo, Llama 3.1 neu)
   - Embedding TEST: Wechsel von nomic-embed-text-v1 auf `Qwen/Qwen3-VL-Embedding-8B` (4096 Dim, multilingual)
-  - Embedding DEV: nomic-embed-text-v1 weiterhin aktiv
+  - Embedding DEV: Wechsel auf Qwen3-VL-Embedding 8B (2026-03-12, vorher nomic-embed-text-v1)
   - Nicht kompatibel mit Onyx: Gemma 3 27B + Mistral-Nemo 12B (kein Tool Calling auf StackIT vLLM)
   - Runbook aktualisiert: `docs/runbooks/llm-konfiguration.md`
 - [Infra] **Kubernetes v1.32 → v1.33 Upgrade** (2026-03-08)
@@ -223,7 +230,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - GPT-OSS 120B als primäres Chat-Modell konfiguriert und verifiziert
   - Qwen3-VL 235B als zweites Chat-Modell konfiguriert und verifiziert
   - OpenAI-kompatible API via StackIT (Daten bleiben in DE)
-  - Embedding-Modell: nomic-embed-text-v1 aktiv. Wechsel auf Qwen3-VL-Embedding 8B moeglich (Blocker aufgehoben, Upstream PR #9005).
+  - Embedding-Modell: nomic-embed-text-v1 initial aktiv (inzwischen auf allen Environments durch Qwen3-VL-Embedding 8B ersetzt, siehe 2026-03-08/2026-03-12).
 - [Feature] **Phase 4a: Extension Framework Basis**
   - `backend/ext/` Paketstruktur mit `__init__.py`, `config.py`, `routers/`
   - Feature Flag System: `EXT_ENABLED` Master-Switch + 6 Modul-Flags (AND-gated, alle default `false`)

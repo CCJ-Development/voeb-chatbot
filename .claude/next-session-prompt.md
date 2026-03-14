@@ -1,107 +1,97 @@
-# Session-Uebergabe — 2026-03-08
+# Session-Uebergabe — 2026-03-14
 
 ## Was wurde in dieser Session erledigt
 
-### 1. K8s Upgrade v1.32 → v1.33 (ERLEDIGT)
-- Terraform apply erfolgreich (9m40s), 0 added, 1 changed, 0 destroyed
-- Nodes: v1.33.8, Flatcar 4459.2.1 (beide supported)
-- DEV 16/16 Pods Running, TEST 15/15 Pods Running, Health OK
-- Datei: `deployment/terraform/environments/dev/main.tf` (kubernetes_version = "1.33")
+### 1. Schnelle Audit-Findings validiert + gefixt
+- **K2/K6 (`--atomic` vs `--wait`):** Alle 7 Doku-Dateien korrigiert (Betriebskonzept, Sicherheitskonzept, ADR-004, Abnahmeprotokoll, Meilensteinplan, Rollback-Runbook, CI/CD-Runbook)
+- **K5 (PROD Kubeconfig):** Bereits korrekt dokumentiert — geschlossen
+- **M13 (AlertManager Egress):** Neue NetworkPolicy `08-allow-alertmanager-webhook-egress.yaml` erstellt + apply.sh aktualisiert. NICHT auf PROD applied (kommt mit vollstaendigem Set)
+- **M12 (PG sslmode):** Zurueckgestellt — braucht StackIT-Klaerung
 
-### 2. SEC-02: Node Affinity (ZURUECKGESTELLT)
-- **Entscheidung (2026-03-08):** Zurueckgestellt — kein akuter Handlungsbedarf
-- ADR-004 sagt explizit: "Kein Dedicated-Node-Affinity noetig"
-- Bestehende Isolation ausreichend: Namespace + NetworkPolicies (SEC-03) + separate PG/S3/Secrets/LB
-- BAIT/BSI fordern keine Node-Level-Isolation fuer DEV/TEST
-- PROD wird eigener Cluster (ADR-004) — dort irrelevant
-- Technisch: 1 Node Pool = persistente Per-Node-Labels nur mit separaten Pools moeglich (Kostenimpact)
-- nodeSelector-Aenderungen in Helm Values REVERTIERT
-- Doku aktualisiert: Sicherheitskonzept, Betriebskonzept, Implementierungsplan, Projektstatus
+### 2. Betriebskonzept v0.6 + Sicherheitskonzept v0.6
+- Betriebskonzept: PROD durchgaengig eingearbeitet (Architektur, PG HA, Monitoring, Skalierung, Wartungsfenster, Extensions)
+- Sicherheitskonzept: PROD-Status, SEC-06, Extensions, Monitoring, NetworkPolicies PROD
 
-### 3. SEC-07: Encryption-at-Rest (VERIFIZIERT)
-- StackIT Managed Services: Encryption-at-Rest standardmaessig aktiviert (nicht deaktivierbar)
-- PostgreSQL Flex: Verschluesselte SSD-Volumes (AES-256)
-- Object Storage: Server-Side Encryption (SSE) default
-- Status: Verifiziert, kein Handlungsbedarf
-
-### 4. SEC-Priorisierung neu bewertet (2026-03-08)
-- **SEC-04** (Remote State): Herabgestuft P1 → P3 (Nice-to-have). Solo-Dev, FileVault, gitignored. Quick Win `chmod 600` umgesetzt.
-- **SEC-05** (Kubeconfigs): Herabgestuft P1 → P3. PROD = eigener Cluster (ADR-004). Opportunistisch bei Kubeconfig-Renewal (2026-05-28).
-- **SEC-06** (SecurityContext): HOCHGESTUFT P2 → **P1**. Kritisches Finding: `privileged: true` auf Celery/Model Server/Vespa. BSI SYS.1.6.A10. Stufenplan dokumentiert.
-- Doku aktualisiert: Sicherheitskonzept, Betriebskonzept, Implementierungsplan, Projektstatus
-
-### 5. TLS-Dokumentation (ERLEDIGT — aus vorheriger Session fortgefuehrt)
-- `voeb-projekt-status.md`: Beide TLS-Zeilen (DEV + TEST) aktualisiert, Blocker-Tabelle, Naechster Schritt
-- Mail an Leif ist RAUS (2 ACME-Challenge CNAMEs bei GlobVill)
-- Wartet auf Leif
-
-### 6. RBAC-Doku erweitert (ERLEDIGT)
-- Auth-Architektur dokumentiert: Ein AUTH_TYPE pro Instanz (verifiziert im Code)
-- AUTH_TYPE: disabled ist DEPRECATED (faellt auf basic zurueck)
-- Environment-Strategie: DEV=basic, TEST/PROD=oidc
-- B2B-Gastbenutzer fuer CCJ: `n.ivanov@scale42.de` (Microsoft-Account)
-- JIT-Provisioning bestaetigt (Zeile 220-222 backend/onyx/auth/users.py)
-- Datei: `docs/referenz/rbac-rollenmodell.md`
-
-### 7. E-Mail-Entwuerfe vorbereitet
-- **Leif (TLS):** 2 ACME-Challenge CNAMEs bei GlobVill — RAUS
-- **VoeB (Entra ID):** App-Registrierung, Token-Config, B2B-Gastbenutzer — Niko hat Text, noch nicht gesendet
-
-### 8. Doku-Updates (ERLEDIGT)
-- `docs/CHANGELOG.md`: K8s-Upgrade Eintrag
-- `docs/abnahme/meilensteinplan.md`: K8s-Version, TLS-Blocker-Status
-- `.claude/rules/voeb-projekt-status.md`: K8s-Upgrade, Naechster Schritt aktualisiert
+### 3. Doku-Audit Phase 3 (6 Opus-Agenten parallel, 20+ Dokumente)
+- **12 KRITISCHE + ~35 HOHE Findings** identifiziert und gefixt
+- Regulatorik: BAIT als freiwillige Orientierung (nicht Pflicht), EU AI Act + DSFA + VVT eingefuegt
+- Faktenkorrekturen: PR-Workflow, Migrations-Pfad, PROD Secrets, Embedding (nomic→Qwen3-VL), Extensions
+- Testkonzept v0.4: PROD-Sektion real, CI-Automatisierung korrigiert, ext-token/prompts Ergebnisse
+- Meilensteinplan v0.4: M3/M4/M5 an Realitaet angepasst, ext-analytics entfernt
+- Runbooks: helm-deploy (3-Env Befehle, Secrets-Warnung, PROD-Kubeconfig), dns-tls-setup, rollback
+- ADRs: adr-002 (Migrations), adr-003 (Buckets, SEC, --atomic), adr-004 (PROD deployed)
+- Referenz-Docs: prod-bereitstellung (Phase F Checkboxen), monitoring-konzept (19 Pods), ee-foss, stackit-*
 
 ---
 
-## Aktueller Stand
+## Commits auf `feature/prod-bereitstellung` (NICHT auf main gemergt)
 
-- **Branch:** `feature/k8s-upgrade-1.33` (NICHT COMMITTED, NICHT PUSHED)
-- **Geaenderte Dateien (unstaged):**
-  - `deployment/terraform/environments/dev/main.tf` (kubernetes_version 1.33)
-  - `deployment/helm/values/values-dev.yaml` (REVERTIERT — keine Aenderungen mehr)
-  - `deployment/helm/values/values-test.yaml` (REVERTIERT — keine Aenderungen mehr)
-  - `docs/CHANGELOG.md` (K8s-Upgrade Eintrag)
-  - `docs/abnahme/meilensteinplan.md` (K8s-Version + TLS-Status)
-  - `.claude/rules/voeb-projekt-status.md` (K8s-Upgrade + TLS-Status)
-  - `docs/referenz/rbac-rollenmodell.md` (Auth-Architektur + B2B-Gastbenutzer)
-  - Plus aeltere unstaged changes: betriebskonzept.md, sicherheitskonzept.md, dns-tls-setup.md, etc.
-- **Cluster-Zustand:**
-  - K8s: v1.33.8 (LIVE)
-  - Node-Labels: gesetzt (`voeb.environment=dev/test`) — NICHT PERSISTENT, werden bei Node-Replacement verloren. Kein Handlungsbedarf (SEC-02 zurueckgestellt).
-  - DEV: 16/16 Pods Running, Health OK
-  - TEST: 15/15 Pods Running, Health OK
-  - cert-manager: v1.19.4, 2 ClusterIssuers (DNS-01, Staging, READY=True), 0 Certificates
+### Vorherige Session (2026-03-12)
+| Hash | Beschreibung |
+|------|-------------|
+| `4f80c544` | feat(monitoring): Monitoring-Stack PROD deployed |
+| `e68964c2` | fix(monitoring): Alert-Tuning + Exporter CPU-Limits PROD |
+| `03bcab52` | docs(audit): Phase 1 — 13 Stellen korrigiert |
+| `d50c6964` | docs(audit): Phase 2 — 12 Stellen korrigiert |
+
+### Diese Session (2026-03-14)
+| Hash | Beschreibung |
+|------|-------------|
+| TBD | docs(audit): Phase 3 — Regulatorik, Faktenkorrekturen, 20 Dokumente |
+| TBD | feat(monitoring): AlertManager Webhook Egress NetworkPolicy |
+
+Untracked (bewusst ausgelassen): `docs/referenz/compliance-research.md`
+
+---
+
+## Offene Findings (brauchen Nikos Entscheidung)
+
+| # | Finding | Optionen |
+|---|---------|----------|
+| K1 | Teams Webhook-URLs im Git (Klartext) | A) In K8s Secret auslagern B) Risiko akzeptiert (Private Repo, write-only) |
+| K3 | NetworkPolicies PROD App-NS | A) Jetzt Full-Set (01-08) applyen B) Warten auf DNS/TLS |
+| K4 | DSGVO-Pflichtdokumente | VVT (Art. 30), AVV mit StackIT (Art. 28), DSFA (Art. 35) — Prio? |
+| H8 | Content-Security-Policy Header | A) CSP einfuehren B) Zurueckstellen |
+| H9 | Rate Limiting auf Ingress | A) NGINX limit-rps jetzt B) Erst bei echten Usern |
+| M10 | CORS allow_methods=["*"] | A) Einschraenken B) Erst bei PROD-Go-Live |
+| M12 | PG sslmode | Zurueckgestellt (StackIT-Klaerung noetig) |
+
+## Fehlende Dokumentation (aus Audit identifiziert)
+
+| Dokument | Aufwand | Status |
+|----------|---------|--------|
+| Monitoring-Runbook (Ops) | ~1h | Fehlt komplett |
+| NetworkPolicies-Runbook | ~1h | Fehlt komplett |
+| Kubeconfig-Renewal-Runbook | ~30min | Fehlt (Ablauf DEV/TEST 2026-05-28, PROD 2026-06-09) |
+| ADR-006 Monitoring-Architektur | ~30min | Fehlt |
+| ADR-007 Recreate-Strategie | ~30min | Fehlt |
 
 ---
 
 ## Naechste Schritte (Prioritaet)
 
-### 1. SEC-06 Phase 2 (vor PROD): `runAsNonRoot: true`
-- Phase 1 ERLEDIGT (2026-03-08): `privileged: false` deployed auf DEV + TEST, Smoke Tests gruen
-- Phase 2 (vor PROD, 4-6h): `runAsUser: 1001` + `runAsNonRoot: true` fuer API, Celery, Model Server
-- Vespa als dokumentierte Ausnahme (Upstream-Limitation)
+1. **Branch auf main mergen** (6+ Commits auf feature/prod-bereitstellung)
+2. **DNS PROD abwarten** (Leif/GlobVill, angefragt 2026-03-11)
+3. **TLS/HTTPS PROD aktivieren** (sobald DNS steht)
+4. **NetworkPolicies PROD** (Full-Set 01-08 inkl. AlertManager-Policy)
+5. **CI/CD PROD Re-Run** (gruener Lauf)
+6. **M1-Abnahmeprotokoll** finalisieren
+7. **Fehlende Runbooks + ADRs** erstellen
 
-### 2. Commit + PR
-- Alle Aenderungen auf `feature/k8s-upgrade-1.33` committen
-- PR gegen main erstellen
+## Blocker
 
-### 3. TLS (wartet auf Leif)
-- Sobald CNAMEs stehen: ClusterIssuers auf Production, Certificates erstellen, Helm Deploy
-
-### 4. Entra ID (wartet auf VoeB)
-- Mail-Entwurf fuer VoeB ist fertig, Niko muss entscheiden wann er sie schickt
+| Blocker | Wartet auf | Impact |
+|---------|-----------|--------|
+| DNS PROD (A-Record + ACME-CNAME) | Leif (GlobVill), angefragt 2026-03-11 | HTTPS PROD |
+| Entra ID Zugangsdaten | VoeB IT | Phase 3 |
 
 ---
 
-## Referenz
+## PROD-Cluster Live-Stand
 
-| Thema | Datei/URL |
-|-------|-----------|
-| Terraform DEV | deployment/terraform/environments/dev/main.tf |
-| Helm Values DEV | deployment/helm/values/values-dev.yaml |
-| Helm Values TEST | deployment/helm/values/values-test.yaml |
-| RBAC-Rollenmodell | docs/referenz/rbac-rollenmodell.md |
-| DNS/TLS Runbook | docs/runbooks/dns-tls-setup.md |
-| Meilensteinplan | docs/abnahme/meilensteinplan.md |
-| StackIT Project ID | b3d2a04e-46de-48bc-abc6-c4dfab38c2cd |
+- **KUBECONFIG:** `~/.kube/config-prod`
+- **Cluster:** `vob-prod` (eigener, ADR-004), K8s v1.33.9
+- **onyx-prod NS:** 19 Pods Running, 0 NetworkPolicies, LB `188.34.92.162`
+- **monitoring NS:** 9 Pods Running, 7 NetworkPolicies, Helm Rev 3
+- **Targets:** 3/3 UP (API, PG, Redis)
+- **Kubeconfig:** Gueltig bis 2026-06-09

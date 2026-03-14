@@ -91,8 +91,7 @@
 | Qwen3-VL 235B | `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8` | Chat + Vision/OCR, 218K Kontext | ✅ Verifiziert (DEV + TEST) |
 | Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | Chat, 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
 | Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | Chat (leichtgewichtig), 128K Kontext | ✅ Verifiziert (TEST, 2026-03-08) |
-| nomic-embed-text-v1 | `nomic-ai/nomic-embed-text-v1` | Embedding (self-hosted auf Model Server) | ✅ Aktiv (DEV) |
-| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding (multilingual, 32k Context, 4096 Dim) | ✅ Aktiv (TEST, seit 2026-03-08) |
+| Qwen3-VL-Embedding 8B | `Qwen/Qwen3-VL-Embedding-8B` | Embedding (multilingual, 32k Context, 4096 Dim) | ✅ Aktiv (DEV seit 2026-03-12, TEST seit 2026-03-08) |
 
 **Nicht kompatibel mit Onyx** (kein Tool Calling auf StackIT vLLM): `google/gemma-3-27b-it` (Gemma 3 27B), `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` (Mistral-Nemo 12B). Details: [LLM-Runbook](../runbooks/llm-konfiguration.md#chat-modelle--nicht-kompatibel-mit-onyx).
 

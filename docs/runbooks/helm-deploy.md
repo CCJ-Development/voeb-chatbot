@@ -1,6 +1,6 @@
 # Runbook: Helm Deploy — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-02-27
+**Zuletzt verifiziert:** 2026-03-12
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -20,19 +20,62 @@
 
 ## Deploy-Befehl
 
+**WICHTIG:** IMMER `values-{env}-secrets.yaml` mit angeben! Ohne diese Datei werden PG, Redis, S3 Credentials auf leere Strings gesetzt und alle Pods crashen.
+
+**PROD nutzt ein separates Kubeconfig:** `~/.kube/config-prod` (Cluster `vob-prod`, Ablauf 2026-06-09). DEV/TEST: `~/.kube/config` (Cluster `vob-chatbot`, Ablauf 2026-05-28).
+
+### Erwartete Pod-Counts
+
+| Environment | Pods | Hinweis |
+|-------------|------|---------|
+| DEV | 16 | 1x API, 1x Web, 8 Celery-Worker, Vespa, Redis, 2x Model, NGINX |
+| TEST | 15 | 1x API, 1x Web, 8 Celery-Worker, Vespa, Redis, Model, NGINX |
+| PROD | 19 | 2x API HA, 2x Web HA, 8 Celery-Worker, Vespa, Redis, 2x Model, NGINX |
+
+### DEV
+
 ```bash
+export KUBECONFIG=~/.kube/config
 helm upgrade --install onyx-dev \
   deployment/helm/charts/onyx \
   --namespace onyx-dev \
   -f deployment/helm/values/values-common.yaml \
   -f deployment/helm/values/values-dev.yaml \
-  -f deployment/helm/values/values-dev-secrets.yaml
+  -f deployment/helm/values/values-dev-secrets.yaml \
+  --wait --timeout 15m
 ```
 
-Die Datei `values-dev-secrets.yaml` ist gitignored und enthält:
+### TEST
+
+```bash
+export KUBECONFIG=~/.kube/config
+helm upgrade --install onyx-test \
+  deployment/helm/charts/onyx \
+  --namespace onyx-test \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-test.yaml \
+  -f deployment/helm/values/values-test-secrets.yaml \
+  --wait --timeout 15m
+```
+
+### PROD (eigener Cluster!)
+
+```bash
+export KUBECONFIG=~/.kube/config-prod
+helm upgrade --install onyx-prod \
+  deployment/helm/charts/onyx \
+  --namespace onyx-prod \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-prod.yaml \
+  -f deployment/helm/values/values-prod-secrets.yaml \
+  --wait --timeout 15m
+```
+
+Die `values-{env}-secrets.yaml` Dateien sind gitignored und enthalten:
 - PostgreSQL Passwort
 - Object Storage Credentials (S3 Access Key / Secret Key)
 - DB Readonly Password
+- Redis Passwort
 
 ---
 
@@ -112,9 +155,9 @@ kubectl get rs -n onyx-dev
 kubectl scale rs <old-rs-name> --replicas=0 -n onyx-dev
 ```
 
-### Langfristige Lösung (DEV)
+### Aktuell aktiv (alle Environments)
 
-Deployment-Strategie auf `Recreate` setzen (akzeptabel für DEV, kein Zero-Downtime nötig). Das muss im Helm Chart oder per Post-Renderer gemacht werden.
+Recreate-Strategie wird automatisch per `kubectl patch` nach jedem `helm upgrade` gesetzt (CI/CD Workflow). Akzeptabel fuer alle Environments (kein Zero-Downtime-Requirement).
 
 ---
 
@@ -149,14 +192,18 @@ Bei erstmaligem Deploy dauert der api-server-Start länger (viele Alembic-Migrat
 
 ```bash
 # Alle Pods 1/1 Running
-kubectl get pods -n onyx-dev
+kubectl get pods -n onyx-{env}
 
 # API Health
-curl -s http://<EXTERNAL_IP>/api/health
+# DEV:  curl -s https://dev.chatbot.voeb-service.de/api/health
+# TEST: curl -s https://test.chatbot.voeb-service.de/api/health
+# PROD: curl -s http://188.34.92.162/api/health  (bis TLS aktiv)
 # Erwartete Ausgabe: {"success":true,"message":"ok","data":null}
 
 # Login-Seite
-curl -s -o /dev/null -w "%{http_code}" http://<EXTERNAL_IP>/auth/login
+# DEV:  curl -s -o /dev/null -w "%{http_code}" https://dev.chatbot.voeb-service.de/auth/login
+# TEST: curl -s -o /dev/null -w "%{http_code}" https://test.chatbot.voeb-service.de/auth/login
+# PROD: curl -s -o /dev/null -w "%{http_code}" http://188.34.92.162/auth/login  (bis TLS aktiv)
 # Erwartete Ausgabe: 200 (oder 307 redirect zu login)
 ```
 

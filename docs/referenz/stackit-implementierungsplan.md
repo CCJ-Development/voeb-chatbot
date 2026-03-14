@@ -364,7 +364,7 @@ deploy-{env}          → ~2 Min (Helm upgrade + Smoke Test)
 | Feature | DEV | TEST | PROD |
 |---------|-----|------|------|
 | Trigger | `main`-Push oder manuell | Nur manuell | Nur manuell |
-| Helm Rollback | Manuell | `--atomic` (automatisch) | `--atomic` (automatisch) |
+| Helm Rollback | Manuell | `--wait --timeout 15m` (manuell) | `--wait --timeout 15m` (manuell) |
 | Recreate-Patch | Ja (Single-Node) | Nein | Nein |
 | Smoke Test | `/api/health` (120s Timeout) | `/api/health` (120s Timeout) | `/api/health` (180s Timeout, 18 Attempts) |
 | Required Reviewers | Nein | Nein | Ja (GitHub Settings) |
@@ -463,7 +463,7 @@ Separater Custom LLM Provider in der Admin UI:
 
 ### 6.3 Embedding-Modell konfigurieren
 
-> ✅ TEST: Qwen3-VL-Embedding 8B aktiv (seit 2026-03-08). DEV: nomic-embed-text-v1 als Fallback.
+> ✅ DEV + TEST: Qwen3-VL-Embedding 8B aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12).
 
 Gleicher Provider, gleiche API Base, gleicher Auth Token. Separater Provider-Eintrag in der Admin UI.
 
@@ -614,7 +614,7 @@ helm upgrade --install onyx-test \
   --namespace onyx-test \
   -f deployment/helm/values/values-common.yaml \
   -f deployment/helm/values/values-test.yaml \
-  --atomic --timeout 10m
+  --wait --timeout 15m
 
 # Verifizieren
 kubectl get pods -n onyx-test          # → 15 Pods Running (+ redis-operator im default NS)
@@ -644,7 +644,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | Onyx UI erreichbar | `http://188.34.74.187/auth/login` → Login-Seite | [x] ✅ (2026-02-27) |
 | LLM Chat-Modell (GPT-OSS) | GPT-OSS 120B antwortet über Onyx Chat | [x] ✅ (2026-02-27) |
 | LLM Chat-Modell (Qwen3-VL) | Qwen3-VL 235B antwortet über Onyx Chat | [x] ✅ (2026-02-27) |
-| LLM Embedding-Modell | Qwen3-VL-Embedding 8B fuer Dokumenten-Suche | [x] ✅ TEST aktiv (2026-03-08). DEV: nomic-embed-text-v1 als Fallback. |
+| LLM Embedding-Modell | Qwen3-VL-Embedding 8B fuer Dokumenten-Suche | [x] ✅ DEV + TEST aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12) |
 | CI/CD funktioniert | Push auf main → Pods updated | [x] ✅ Run #5 (2026-03-02): 10 Min, 10/10 Pods, Health OK |
 
 ---
@@ -671,7 +671,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | Schritt | Wann | Was | Status |
 |---------|------|-----|--------|
 | TEST Environment | Nach DEV-Validierung | Phase 7: Node Pool skalieren, PG + Bucket + Namespace + Helm | ✅ LIVE (2026-03-03) |
-| Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ✅ TEST aktiv (2026-03-08). DEV: nomic-embed-text-v1. |
+| Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ✅ DEV + TEST aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12) |
 | Branding | Nach TEST-Setup | Logo-Dateien ersetzen, ext/-Komponenten | ✅ Deployed (DEV+TEST, 2026-03-08) |
 | Entra ID (Auth) | Sobald Credentials von VÖB | `AUTH_TYPE: oidc` in Helm Values | Blockiert |
 | DNS + TLS | Nach DNS-Setup | Let's Encrypt oder StackIT-CA | Blockiert (VÖB IT) |
