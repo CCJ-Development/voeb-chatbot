@@ -989,6 +989,93 @@ kubectl get clusterissuer
 
 ---
 
+## Schritt 7: PROD DNS + TLS (ausstehend)
+
+**Status:** Wartet auf DNS-Eintraege von Leif/GlobVill (angefragt 2026-03-11).
+
+### Voraussetzungen
+
+| # | Was | Status |
+|---|-----|--------|
+| 1 | PROD LoadBalancer IP | ✅ `188.34.92.162` |
+| 2 | PROD Cluster deployed | ✅ `vob-prod`, 19 Pods Running |
+| 3 | cert-manager auf PROD | ✅ v1.19.4 installiert, ClusterIssuer `onyx-prod-letsencrypt` READY |
+| 4 | A-Record `chatbot` → `188.34.92.162` bei GlobVill | ⏳ Angefragt |
+| 5 | ACME CNAME `_acme-challenge.chatbot` bei GlobVill | ⏳ Angefragt |
+
+### DNS-Eintraege (Leif bei GlobVill)
+
+| Type | Name | Target |
+|------|------|--------|
+| A | `chatbot` | `188.34.92.162` |
+| CNAME | `_acme-challenge.chatbot` | `_acme-challenge.chatbot.voeb-service.de.cdn.cloudflare.net` |
+
+### Ablauf nach DNS-Eintraegen
+
+```bash
+# 1. DNS-Propagation pruefen
+dig A chatbot.voeb-service.de
+# Erwartete Ausgabe: 188.34.92.162
+
+dig CNAME _acme-challenge.chatbot.voeb-service.de
+# Erwartete Ausgabe: CNAME → *.cdn.cloudflare.net
+
+# 2. Certificate-Ressource erstellen (ECDSA P-384, analog DEV/TEST)
+cat <<EOF | kubectl apply --kubeconfig ~/.kube/config-prod -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: onyx-prod-tls
+  namespace: onyx-prod
+spec:
+  secretName: onyx-prod-tls
+  issuerRef:
+    name: onyx-prod-letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - chatbot.voeb-service.de
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+EOF
+
+# 3. Warten bis Certificate READY
+kubectl get certificate onyx-prod-tls -n onyx-prod --kubeconfig ~/.kube/config-prod -w
+# Erwartete Ausgabe: READY = True (1-2 Min)
+
+# 4. Helm Values anpassen (values-prod.yaml)
+# configMap:
+#   DOMAIN: "chatbot.voeb-service.de"
+#   WEB_DOMAIN: "https://chatbot.voeb-service.de"
+# ingress:
+#   host: "chatbot.voeb-service.de"
+#   tls:
+#     - secretName: onyx-prod-tls
+#       hosts:
+#         - chatbot.voeb-service.de
+
+# 5. Deploy
+gh workflow run stackit-deploy.yml -f environment=prod -R CCJ-Development/voeb-chatbot
+
+# 6. Verifikation
+curl -vI https://chatbot.voeb-service.de/api/health 2>&1 | grep -E "HTTP|subject|issuer|TLS"
+# Erwartete Ausgabe:
+#   TLS 1.3 / ECDSA P-384
+#   subject: CN=chatbot.voeb-service.de
+#   issuer: C=US, O=Let's Encrypt, CN=E7
+#   HTTP/2 200
+```
+
+### PROD-Zertifikat: Diskussionspunkt mit VoeB
+
+Fuer PROD (kundensichtbar) sollte mit VoeB diskutiert werden:
+- **Let's Encrypt** (wie DEV/TEST): Kostenlos, automatisch, BSI-konform (ECDSA P-384). Standard fuer interne Tools.
+- **Kommerzielles Zertifikat** (z.B. DigiCert OV/EV): Hoehere Vertrauensstufe, Organisation im Zertifikat sichtbar. Relevant falls VoeB-Mitarbeiter oder externe Partner das Zertifikat pruefen.
+
+> **Empfehlung**: Let's Encrypt — internes Tool, kein externer Kundenverkehr. OV/EV-Zertifikate bringen bei internem Einsatz keinen Sicherheitsvorteil.
+
+---
+
 ## Offene Punkte
 
 | Nr. | Thema | Status | Wer |
@@ -998,7 +1085,7 @@ kubectl get clusterissuer
 | 3 | Cloudflare API Token erstellen + uebermitteln | **ERLEDIGT** (2026-03-07) — Permissions korrigiert, ClusterIssuers READY | Leif (VoeB) |
 | 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **✅ ERLEDIGT** (2026-03-09) — CNAMEs gesetzt, Zertifikate ausgestellt | Leif (VoeB) |
 | 5 | ACME-Email-Adresse — Team-Adresse statt persoenliche? | Empfehlung: Team-Adresse | CCJ + VoeB |
-| 6 | PROD: LoadBalancer IP + A-Record | Spaeter (PROD nicht provisioniert) | CCJ + VoeB |
+| 6 | PROD: A-Record + ACME CNAME | ⏳ Angefragt bei Leif/GlobVill (2026-03-11). LB IP: `188.34.92.162`. Siehe Schritt 7. | CCJ + VoeB |
 | 7 | Let's Encrypt Zertifikat-Renewal verifizieren | Nach 60 Tagen pruefen (auto-renew) | CCJ |
 | 8 | Cloudflare API Token Backup | Token als GitHub Environment Secret hinterlegen (Disaster Recovery) | CCJ |
 | 9 | CAA Records bei GlobVill setzen | Empfohlen: `voeb-service.de CAA 0 issue "letsencrypt.org"` | Leif (VoeB) |

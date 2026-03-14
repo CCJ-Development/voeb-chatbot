@@ -51,6 +51,8 @@ deployment/docker_compose/
   .env                       ← Umgebungsvariablen + EXT_-Flags
   env.template               ← Template
   docker-compose.yml         ← Docker (READ-ONLY Struktur)
+  docker-compose.voeb.yml    ← VÖB-Overlay (Backend-Mounts für ext/, multi_llm.py, alembic/)
+  .env.voeb.template         ← VÖB-spezifische ENV-Variablen Template
 ```
 
 ## StackIT Cloud-Infrastruktur
@@ -61,10 +63,19 @@ deployment/terraform/
     variables.tf             ← Alle Variablen mit DEV-Defaults
     outputs.tf               ← Kubeconfig, PG-Credentials, Bucket-URL
     versions.tf              ← Provider stackitcloud/stackit ~> 0.80
-  environments/dev/
-    main.tf                  ← DEV-Umgebung (ruft Modul auf)
-    backend.tf               ← State-Backend (lokal, remote vorbereitet)
-    terraform.tfvars         ← Projekt-spezifische Werte
+  environments/
+    dev/
+      main.tf                ← DEV-Umgebung (ruft Modul auf)
+      backend.tf             ← State-Backend (lokal, remote vorbereitet)
+      terraform.tfvars       ← Projekt-spezifische Werte
+    test/
+      main.tf                ← TEST-Umgebung (eigene PG + Bucket)
+      backend.tf
+      terraform.tfvars
+    prod/
+      main.tf                ← PROD-Umgebung (eigener Cluster vob-prod, PG HA 3-Node)
+      backend.tf
+      terraform.tfvars
 ```
 
 ## Helm Value-Overlays
@@ -78,6 +89,8 @@ deployment/helm/
     values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (deployed 2026-03-11)
     values-monitoring.yaml   ← kube-prometheus-stack DEV/TEST (separater Helm Release in NS monitoring)
     values-monitoring-prod.yaml ← kube-prometheus-stack PROD (90d Retention, 50Gi, separater Teams-Kanal)
+    values-dev-secrets.yaml  ← DEV Secrets: PG, Redis, S3 Credentials (gitignored)
+    values-test-secrets.yaml ← TEST Secrets (gitignored)
 ```
 Onyx: CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgrade --install -f values-common.yaml -f values-{env}.yaml`
 Monitoring DEV/TEST: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`

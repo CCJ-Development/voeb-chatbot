@@ -60,8 +60,13 @@ helm upgrade --install onyx-test \
 
 ### PROD (eigener Cluster!)
 
+**Hinweis:** PROD wird regulaer ueber CI/CD deployed (`gh workflow run stackit-deploy.yml -f environment=prod`). Secrets werden dort aus GitHub Environment Secrets injiziert (`--set`). Fuer manuellen Deploy muss `values-prod-secrets.yaml` lokal erstellt werden (analog `values-dev-secrets.yaml`).
+
 ```bash
 export KUBECONFIG=~/.kube/config-prod
+
+# Option 1: Manueller Deploy mit lokaler Secrets-Datei
+# → values-prod-secrets.yaml muss erst erstellt werden (siehe "Secrets-Datei erstellen" unten)
 helm upgrade --install onyx-prod \
   deployment/helm/charts/onyx \
   --namespace onyx-prod \
@@ -69,6 +74,9 @@ helm upgrade --install onyx-prod \
   -f deployment/helm/values/values-prod.yaml \
   -f deployment/helm/values/values-prod-secrets.yaml \
   --wait --timeout 15m
+
+# Option 2: CI/CD (empfohlen)
+gh workflow run stackit-deploy.yml -f environment=prod -R CCJ-Development/voeb-chatbot
 ```
 
 Die `values-{env}-secrets.yaml` Dateien sind gitignored und enthalten:

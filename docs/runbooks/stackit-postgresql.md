@@ -20,33 +20,43 @@ Terraform erstellt die PG-Instanz und den Applikations-User, aber NICHT die Date
 - User-Credentials aus `terraform output pg_password`
 - kubectl Zugriff auf den Cluster (für temporären Pod)
 
+### Namespaces pro Umgebung
+
+| Umgebung | Namespace | PG-Host | Anmerkung |
+|----------|-----------|---------|-----------|
+| DEV | `onyx-dev` | Aus `terraform output -raw pg_host` (environments/dev) | Shared Cluster |
+| TEST | `onyx-test` | Aus `terraform output -raw pg_host` (environments/test) | Shared Cluster |
+| PROD | `onyx-prod` | Aus `terraform output -raw pg_host` (environments/prod) | Eigener Cluster `vob-prod` |
+
 ### Befehl (via temporären Pod)
 
 ```bash
-kubectl run pg-createdb --restart=Never --namespace onyx-dev \
+# <NS> = onyx-dev | onyx-test | onyx-prod
+kubectl run pg-createdb --restart=Never --namespace <NS> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d postgres \
   -c "CREATE DATABASE onyx OWNER onyx_app ENCODING 'UTF8';"
 
 # Ergebnis prüfen
-sleep 8 && kubectl logs pg-createdb -n onyx-dev
+sleep 8 && kubectl logs pg-createdb -n <NS>
 # Erwartete Ausgabe: "CREATE DATABASE"
 
 # Aufräumen
-kubectl delete pod pg-createdb -n onyx-dev
+kubectl delete pod pg-createdb -n <NS>
 ```
 
 ### Validierung
 
 ```bash
-kubectl run pg-check --restart=Never --namespace onyx-dev \
+# <NS> = onyx-dev | onyx-test | onyx-prod
+kubectl run pg-check --restart=Never --namespace <NS> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "SELECT 1;"
 
-sleep 5 && kubectl logs pg-check -n onyx-dev
-kubectl delete pod pg-check -n onyx-dev
+sleep 5 && kubectl logs pg-check -n <NS>
+kubectl delete pod pg-check -n <NS>
 ```
 
 ---
@@ -98,13 +108,14 @@ Die Alembic-Migration prüft per `IF NOT EXISTS` ob der User existiert und über
 Temporärer Pod mit PostgreSQL-Client:
 
 ```bash
-kubectl run pg-client --restart=Never --namespace onyx-dev \
+# <NS> = onyx-dev | onyx-test | onyx-prod
+kubectl run pg-client --restart=Never --namespace <NS> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "\dt"
 
-sleep 8 && kubectl logs pg-client -n onyx-dev
-kubectl delete pod pg-client -n onyx-dev
+sleep 8 && kubectl logs pg-client -n <NS>
+kubectl delete pod pg-client -n <NS>
 ```
 
 ---
@@ -115,5 +126,5 @@ kubectl delete pod pg-client -n onyx-dev
 |---------|---------|--------|
 | `database "onyx" does not exist` | DB nicht angelegt nach Terraform | DB manuell anlegen (siehe oben) |
 | `permission denied to create role` | Managed PG hat kein CREATEROLE | User per Terraform anlegen |
-| `Connection refused` | PG Flex ACL blockiert | ACL in `environments/dev/main.tf` prüfen (SEC-01: eingeschränkt auf Cluster-Egress `188.34.93.194/32` + Admin-IP) |
+| `Connection refused` | PG Flex ACL blockiert | ACL in `environments/{env}/main.tf` prüfen. DEV+TEST: Egress `188.34.93.194/32`, PROD: Egress `188.34.73.72/32` (jeweils + Admin-IP) |
 | `password authentication failed` | Falsches Passwort | `terraform output -raw pg_password` prüfen |

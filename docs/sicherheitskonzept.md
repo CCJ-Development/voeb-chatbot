@@ -903,7 +903,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 ---
 
-## Security-Audit Findings (SEC-01 bis SEC-07)
+## Security-Audit Findings (SEC-01 bis SEC-10)
 
 > **Quelle**: Enterprise-Audit der Infrastruktur (2026-03-04). Priorisierung: P0 = vor TEST-Deploy, P1 = vor PROD, P2 = vor VÖB-Abnahme.
 
@@ -916,6 +916,9 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — PROD = eigener Cluster (ADR-004), löst sich automatisch |
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — StackIT Default |
+| SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
+| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **OFFEN** — NGINX Ingress Annotations oder Anwendungsebene, vor PROD Go-Live |
+| SEC-10 | Cluster-API ACL auf Egress-IP einschränken | P3 | **OFFEN** — `cluster_acl` in Terraform von `0.0.0.0/0` einschränken (empfohlen, nicht kritisch) |
 
 ### SEC-01: PostgreSQL ACL (ERLEDIGT)
 
@@ -1010,6 +1013,32 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 - **PostgreSQL Flex**: Verschlüsselte SSD-Volumes (AES-256)
 - **Object Storage**: Server-Side Encryption (SSE) als Default
 - **Status**: Kein Handlungsbedarf, Verschlüsselung ist plattformseitig garantiert
+
+### SEC-08: CORS Einschränkung (OFFEN)
+
+**Finding**: `allow_methods=["*"]` und `allow_headers=["*"]` in `backend/onyx/main.py`. Permissive CORS-Konfiguration auf PROD.
+
+**Bewertung**: Niedriges Risiko — CORS schützt Browser-Clients, nicht APIs. `CORS_ALLOWED_ORIGIN` ist konfigurierbar und sollte auf die PROD-Domain beschränkt werden (`https://chatbot.voeb-service.de`). Methods/Headers einzuschränken ist empfohlen, aber erfordert Analyse welche HTTP-Methoden tatsächlich genutzt werden.
+
+**Status**: Evaluierung vor PROD Go-Live. Core-Datei — kein Hook möglich, direkte Änderung in `main.py`.
+
+### SEC-09: Rate Limiting (OFFEN)
+
+**Finding**: Kein Rate Limiting auf Anwendungsebene. LLM-Backend hat eigene Limits (TPM: 200.000, RPM: 30-600), aber kein Schutz vor missbräuchlicher Nutzung auf unserer Ebene.
+
+**Risiko**:
+- DoS: Ohne Rate Limiting können einzelne Nutzer die API überlasten
+- LLM-Kosten: Unkontrollierte LLM-Nutzung (ext-token trackt, limitiert aber nicht auf API-Ebene)
+
+**Empfohlene Umsetzung**: NGINX Ingress Annotations (`nginx.ingress.kubernetes.io/limit-rps`, `limit-connections`). Kein Code-Change nötig — reine Helm Values Konfiguration.
+
+### SEC-10: Cluster-API ACL (OFFEN)
+
+**Finding**: `cluster_acl = ["0.0.0.0/0"]` — SKE Cluster-API ist für das gesamte Internet erreichbar. Zugriff erfordert gültiges Kubeconfig, aber die Angriffsfläche ist unnötig groß.
+
+**Empfehlung**: ACL auf Cluster-Egress-IP + Admin-IP einschränken (analog SEC-01 für PostgreSQL). Umsetzung: `cluster_acl` Variable in `deployment/terraform/environments/{env}/main.tf`.
+
+**Priorität**: P3 — Kubeconfig ist zeitlich begrenzt (90 Tage), aber Best Practice ist Einschränkung.
 
 ---
 

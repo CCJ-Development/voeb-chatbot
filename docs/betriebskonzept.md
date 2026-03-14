@@ -982,8 +982,8 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 
 ### Geplante Runbooks
 
-1. **Incident Response** -- P1/P2 Prozeduren
-2. **Upstream Merge** -- Schritt-fuer-Schritt Onyx-Update-Prozess
+1. **Incident Response** -- P1/P2 Prozeduren (6-Phasen-Plan bereits dokumentiert in `docs/sicherheitskonzept.md`, Abschnitt "Incident Response Plan". Runbook als operatives Kurzformat ausstehend.)
+2. **Upstream Merge** -- Schritt-fuer-Schritt Onyx-Update-Prozess (Anleitung bereits in `.claude/rules/fork-management.md`, operatives Runbook ausstehend)
 
 **Hinweis**: Monitoring Setup und PROD Provisioning sind erledigt (Monitoring deployed 2026-03-12, PROD deployed 2026-03-11). Dokumentation in `docs/referenz/monitoring-konzept.md` und `docs/technisches-feinkonzept/monitoring-exporter.md`.
 

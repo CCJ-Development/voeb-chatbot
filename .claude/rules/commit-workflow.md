@@ -41,7 +41,7 @@ git checkout -b feature/<thema>
 - [ ] docs/CHANGELOG.md aktualisiert
 - [ ] docs/testkonzept.md → Testergebnisse
 - [ ] Feature Flag in .env.template dokumentiert
-- [ ] "Aktueller Status" in CLAUDE.md aktualisiert
+- [ ] `.claude/rules/voeb-projekt-status.md` aktualisiert
 
 ## Nach Freigabe
 ```bash

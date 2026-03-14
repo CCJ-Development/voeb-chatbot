@@ -92,7 +92,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 7: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx):
+Fuer JEDE gepatchte Core-Datei (aktuell 7 von 10 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx — die 3 ungepatchten: access.py, layout.tsx, header/ werden erst mit ext-rbac/ext-access gepatcht):
 
 ```bash
 # Beispiel Backend-Datei:

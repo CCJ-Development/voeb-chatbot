@@ -26,7 +26,7 @@ Wir nutzen **ausschliesslich Onyx FOSS** (MIT-Lizenz). Fuer Onyx Enterprise Edit
 | Enterprise Settings / Branding | `ext-branding` | `EXT_BRANDING_ENABLED` |
 | Token/Usage Tracking | `ext-token` | `EXT_TOKEN_LIMITS_ENABLED` |
 | Custom Prompts | `ext-prompts` | `EXT_CUSTOM_PROMPTS_ENABLED` |
-| Analytics/Monitoring | `ext-analytics` | `EXT_ANALYTICS_ENABLED` |
+| ~~Analytics/Monitoring~~ | ~~`ext-analytics`~~ | ~~`EXT_ANALYTICS_ENABLED`~~ | ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten |
 | User Groups / RBAC | `ext-rbac` | `EXT_RBAC_ENABLED` |
 | Document Access Control | `ext-access` | `EXT_DOC_ACCESS_ENABLED` |
 
