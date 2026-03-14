@@ -51,8 +51,7 @@ deployment/docker_compose/
   .env                       ← Umgebungsvariablen + EXT_-Flags
   env.template               ← Template
   docker-compose.yml         ← Docker (READ-ONLY Struktur)
-  docker-compose.voeb.yml    ← VÖB-Overlay (Backend-Mounts für ext/, multi_llm.py, alembic/)
-  .env.voeb.template         ← VÖB-spezifische ENV-Variablen Template
+  docker-compose.voeb.yml    ← VÖB-Overlay (Backend-Mounts für ext/, Core-Dateien, alembic/)
 ```
 
 ## StackIT Cloud-Infrastruktur
@@ -115,7 +114,8 @@ deployment/k8s/network-policies/
     05-allow-k8s-api-egress.yaml
     06-allow-pg-exporter-egress.yaml    ← PG Exporter → StackIT PG:5432
     07-allow-redis-exporter-egress.yaml ← Redis Exporter → Redis:6379
-    apply.sh                 ← Sichere Apply-Reihenfolge (7 Steps + App-NS Policies)
+    08-allow-alertmanager-webhook-egress.yaml ← AlertManager → Teams Webhook (HTTPS)
+    apply.sh                 ← Sichere Apply-Reihenfolge (8 Steps + App-NS Policies)
   06-allow-monitoring-scrape.yaml       ← App-NS: Ingress von monitoring:8080
   07-allow-redis-exporter-ingress.yaml  ← App-NS: Ingress von Redis Exporter:6379
 ```
