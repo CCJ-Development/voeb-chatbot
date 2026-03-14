@@ -4,7 +4,7 @@
 2. **Dokumentation vor Code.** Feature → Modulspezifikation → Freigabe → Code → Test → Abnahme.
 3. **Nachvollziehbarkeit.** Architekturentscheidungen als ADR (docs/adr/). Änderungen im Changelog.
 4. **Abnahmefähigkeit.** Alles durch VÖB abnehmbar. Protokolle pro Meilenstein (M1-M6).
-5. **Regulatorik.** DSGVO, BAIT, BSI-Grundschutz. Sicherheits-/Betriebskonzept sind Pflicht.
+5. **Regulatorik.** DSGVO, EU AI Act, BSI-Grundschutz (BAIT als freiwillige Orientierung — VÖB ist kein KWG-Institut). Sicherheits-/Betriebskonzept sind Pflicht.
 6. **Stabilität vor Speed.** Saubere Architektur, Upstream-Sync-Fähigkeit, minimale Core-Änderungen.
 7. **Extend, don't modify.** ext_-Prefix, nur 10 Core-Dateien, Feature Flags für alles.
 

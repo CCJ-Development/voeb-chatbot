@@ -1,8 +1,8 @@
 # Meilensteinplan -- VÖB Service Chatbot
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.4
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.5
 
 ---
 
@@ -25,8 +25,8 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 |-------------|-------|--------|--------|--------|
 | **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen. Hinweis: PROD-Cluster wurde vor M1-Abnahme deployed (2026-03-11). PROD-Infrastruktur ist faktisch Teil des M1-Nachweises. |
 | **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | [TBD] | Blockiert (Entra ID) |
-| **M3** | Branding + Token Limits | Phase 4b, 4c | [TBD] | ✅ Beide deployed (Branding 2026-03-08, Token 2026-03-09) |
-| **M4** | Advanced Features (Prompts, Analytics, RBAC, Access) | Phase 4d, 4e, 4f, 4g | [TBD] | Teilweise (ext-prompts ✅ deployed 2026-03-09, ext-analytics ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten) |
+| **M3** | Token Limits + Custom Prompts | Phase 4c, 4d | [TBD] | ✅ Beide deployed (Token 2026-03-09, Prompts 2026-03-09) |
+| **M4** | Branding + RBAC | Phase 4b, 4e, 4f, 4g | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08, ext-analytics ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten, ext-rbac ⏳ blockiert Entra ID, ext-access ⏳ blockiert RBAC) |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
 
@@ -227,133 +227,155 @@ Phase 4a (Extension Framework Basis) ist bereits abgeschlossen. Die Entra ID Int
 
 ---
 
-## M3: Token Limits + RBAC
+## M3: Token Limits + Custom Prompts
 
 ### Beschreibung
 
-Token Limits Management und Role-Based Access Control sind implementiert und getestet.
+Token Limits Management und Custom System Prompts sind implementiert und getestet. Beide Module deployed auf DEV + TEST (2026-03-09).
+
+### Status: Abgeschlossen
+
+- **ext-token deployed**: 2026-03-09 (DEV + TEST)
+- **ext-prompts deployed**: 2026-03-09 (DEV + TEST, 29 Unit Tests)
 
 ### Liefergegenstände
 
-- **Token Limits Modul (`ext_token_limits`)**
-  - Token Hook in `backend/onyx/llm/multi_llm.py` (Core-Datei #2)
-  - Quota Management pro User/Organisation
-  - Token Counting Logic
-  - Alert System (bei hoher Nutzung)
-  - Admin-Endpunkte fuer Quota-Verwaltung
-  - DB-Tabellen: `ext_limits_quota`, `ext_limits_usage_log`, `ext_limits_alerts`
+- **Token Limits Modul (`ext-token`)** — ✅ deployed (DEV+TEST, 2026-03-09)
+  - Token Hook in `backend/onyx/llm/multi_llm.py` (Core-Datei #2, 3 Hooks)
+  - Quota Management pro User (monatliches Limit)
+  - Token Counting Logic (Prompt + Completion Tokens)
+  - Usage Dashboard (Timeline, Per-User, Per-Model Statistiken)
+  - Admin-Endpunkte fuer Quota-Verwaltung + Usage-Abfrage
+  - DB-Tabellen: `ext_token_usage`, `ext_token_user_limit`
 
-- **RBAC Modul (`ext-rbac`)**
+- **Custom Prompts Modul (`ext-prompts`)** — ✅ deployed (DEV+TEST, 2026-03-09)
+  - Prompt Injection Hook in `backend/onyx/chat/prompt_utils.py` (Core-Datei #7)
+  - Prompt Template Management (erstellen, editieren, aktivieren/deaktivieren)
+  - Prompt Versioning
+  - Admin-Endpunkte fuer Prompt Management
+  - Admin-Sidebar Link (Core-Datei #10)
+  - DB-Tabelle: `ext_custom_prompts`
+
+- **Testing**
+  - 29 Unit Tests (ext-prompts)
+  - Unit Tests (ext-token)
+
+- **Dokumentation**
+  - Modulspezifikationen: [ext-token.md](../technisches-feinkonzept/ext-token.md), [ext-prompts.md](../technisches-feinkonzept/ext-prompts.md)
+
+### Akzeptanzkriterien
+
+| Nr. | Kriterium | Erfuellt? |
+|-----|-----------|---------|
+| M3-1 | Token Quota wird durchgesetzt (Request abgelehnt bei Ueberschreitung) | [x] Ja |
+| M3-2 | Token-Zaehlung ist akkurat (Prompt + Completion Tokens) | [x] Ja |
+| M3-3 | Monatliches Quota-Reset funktioniert | [x] Ja |
+| M3-4 | Streaming Responses werden korrekt gezaehlt | [x] Ja |
+| M3-5 | Usage Dashboard zeigt Timeline, Per-User und Per-Model Statistiken | [x] Ja |
+| M3-6 | System Prompts koennen erstellt/editiert/versioniert werden | [x] Ja |
+| M3-7 | Prompt Injection (prepend) funktioniert ohne bestehenden Prompt-Flow zu veraendern | [x] Ja |
+| M3-8 | Hook-Pattern: Fehler in ext bricht Onyx nie | [x] Ja |
+| M3-9 | Feature Flags: Module einzeln ein-/ausschaltbar (`EXT_TOKEN_LIMITS_ENABLED`, `EXT_CUSTOM_PROMPTS_ENABLED`) | [x] Ja |
+| M3-10 | Unit Tests bestanden (29 ext-prompts + ext-token) | [x] Ja |
+
+### Verantwortlichkeiten
+
+| Rolle | Aufgaben |
+|-------|----------|
+| **CCJ / Nikolaj Ivanov** | Token Limits + Custom Prompts Implementation (Backend + Frontend) |
+| **VÖB** | Requirements Validation, Akzeptanztest |
+
+### Termine
+
+**Start**: Parallel zu M2 (Extension Framework bereits abgeschlossen)
+**ext-token deployed**: 2026-03-09
+**ext-prompts deployed**: 2026-03-09
+**Abnahme**: [TBD]
+
+### Dependencies
+
+- M2: Extension Framework (fuer Router-Registrierung + Feature Flags) — erfuellt
+- LLM Token-Zaehlung: StackIT AI Model Serving gibt Token-Counts in Response zurueck (OpenAI-kompatibel) — erfuellt
+
+---
+
+## M4: Branding + RBAC
+
+### Beschreibung
+
+Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding ist bereits deployed (2026-03-08). RBAC ist blockiert durch fehlende Entra ID Zugangsdaten. ext-analytics wurde uebersprungen (Funktionalitaet in ext-token enthalten). ext-access ist blockiert (braucht RBAC).
+
+### Status: Teilweise
+
+- **ext-branding deployed**: 2026-03-08 (DEV + TEST)
+- **ext-analytics**: ÜBERSPRUNGEN (Funktionalitaet in ext-token/M3)
+- **ext-rbac**: Blockiert (Entra ID)
+- **ext-access**: Blockiert (braucht RBAC)
+
+### Liefergegenstände
+
+- **Branding Modul (`ext-branding`)** — ✅ deployed (DEV+TEST, 2026-03-08)
+  - Logo/Titel via Config in `web/src/components/header/` (Core-Datei #5) mit Fallback auf Original
+  - CSS Variables mit `--ext-` Prefix in `web/src/lib/constants.ts` (Core-Datei #6)
+  - Nav-Items in `web/src/app/layout.tsx` (Core-Datei #4)
+  - Login-Tagline, Login-Logo, Admin-Sidebar (Core-Dateien #8-10)
+  - Greeting, Disclaimer, Popup, Consent
+  - DB-Tabelle: `ext_branding_config`
+
+- **RBAC Modul (`ext-rbac`)** — ⏳ blockiert (Entra ID)
   - Additiver Permission-Check in `backend/onyx/access/access.py` (Core-Datei #3)
   - DB-Tabellen: `ext_rbac_groups`, `ext_rbac_roles`, `ext_rbac_permissions`
   - Rollen- und Gruppenverwaltung (Mapping auf Entra ID Abteilungen)
   - Admin-Endpunkte fuer Gruppen- und Rollenverwaltung
 
-- **Testing**
-  - Unit Tests (beide Module)
-  - Integration Tests (mit Auth)
-  - Performance Tests (Token Counting)
-
-- **Dokumentation**
-  - Modulspezifikationen (Token Limits, RBAC)
-  - Admin Guide
-
-### Akzeptanzkriterien
-
-| Nr. | Kriterium | Erfuellt? |
-|-----|-----------|---------|
-| M3-1 | Token Quota wird durchgesetzt (Request abgelehnt bei Ueberschreitung) | [ ] Ja [ ] Nein |
-| M3-2 | Token-Zaehlung ist akkurat | [ ] Ja [ ] Nein |
-| M3-3 | Monatliches Quota-Reset funktioniert | [ ] Ja [ ] Nein |
-| M3-4 | User-Gruppen koennen erstellt und Benutzer zugewiesen werden | [ ] Ja [ ] Nein |
-| M3-5 | Berechtigungen werden basierend auf Gruppen durchgesetzt | [ ] Ja [ ] Nein |
-| M3-6 | Nur Admins koennen Quotas und Gruppen aendern | [ ] Ja [ ] Nein |
-| M3-7 | Streaming Responses werden korrekt gezaehlt | [ ] Ja [ ] Nein |
-| M3-8 | Hook-Pattern: Fehler in ext bricht Onyx nie | [ ] Ja [ ] Nein |
-| M3-9 | Feature Flags: Module einzeln ein-/ausschaltbar | [ ] Ja [ ] Nein |
-| M3-10 | Unit + Integration Tests bestanden | [ ] Ja [ ] Nein |
-
-### Verantwortlichkeiten
-
-| Rolle | Aufgaben |
-|-------|----------|
-| **CCJ / Nikolaj Ivanov** | Token Limits + RBAC Implementation (Backend + Frontend) |
-| **VÖB** | Requirements Validation, Akzeptanztest |
-
-### Termine
-
-**Start**: Nach M2 Abnahme
-**Abnahme**: [TBD]
-
-### Dependencies
-
-- M2: Authentifizierung + Extension Framework
-- LLM Token-Zaehlung: StackIT AI Model Serving gibt Token-Counts in Response zurueck (OpenAI-kompatibel)
-
----
-
-## M4: Advanced Features (Analytics, Branding, Prompts)
-
-### Beschreibung
-
-Analytics, Branding und System Prompts Management Module sind implementiert.
-
-### Liefergegenstände
-
-- **Branding Modul (`ext_branding`)** — ✅ bereits deployed (DEV+TEST, 2026-03-08, vorgezogen aus M3)
-  - Logo/Titel via Config in `web/src/components/header/` (Core-Datei #5) mit Fallback auf Original
-  - CSS Variables mit `--ext-` Prefix in `web/src/lib/constants.ts` (Core-Datei #6)
-  - Nav-Items in `web/src/app/layout.tsx` (Core-Datei #4)
-  - Login-Tagline, Login-Logo, Admin-Sidebar (Core-Dateien #8-10)
-
-- **System Prompts Modul (`ext_custom_prompts`)**
-  - Prompt Injection Hook in `backend/onyx/chat/prompt_utils.py` (Core-Datei #7)
-  - Prompt Template Management
-  - Prompt Versioning
-  - Admin-Endpunkte fuer Prompt Management
-
-- **Analytics Modul (`ext_analytics`)** — ⏭️ ÜBERSPRUNGEN
+- **Analytics Modul (`ext-analytics`)** — ⏭️ ÜBERSPRUNGEN
   - Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model)
   - Kein Mehrwert als eigenes Modul
 
+- **Document Access Control (`ext-access`)** — ⏳ blockiert (braucht RBAC)
+  - Additiver Permission-Check in `backend/onyx/access/access.py` (Core-Datei #3)
+
 - **Testing**
-  - Unit Tests
-  - Integration Tests
+  - Unit Tests (ext-branding)
+  - Integration Tests (ext-rbac — nach Entra ID)
 
 - **Dokumentation**
-  - Modulspezifikationen (Branding, Prompts, Analytics)
-  - Admin Guides
+  - Modulspezifikationen: [ext-branding.md](../technisches-feinkonzept/ext-branding.md)
+  - RBAC Rollenmodell: [rbac-rollenmodell.md](../referenz/rbac-rollenmodell.md)
 
 ### Akzeptanzkriterien
 
 | Nr. | Kriterium | Erfuellt? |
 |-----|-----------|---------|
-| M4-1 | Custom Logo wird in UI angezeigt (mit Fallback auf Original) | [ ] Ja [ ] Nein |
-| M4-2 | CSS Variables mit `--ext-` Prefix werden angewendet | [ ] Ja [ ] Nein |
-| M4-3 | System Prompts koennen erstellt/editiert/versioniert werden | [ ] Ja [ ] Nein |
-| M4-4 | Prompt Injection (prepend) funktioniert ohne bestehenden Prompt-Flow zu veraendern | [ ] Ja [ ] Nein |
-| M4-5 | ext-token Usage Dashboard zeigt Timeline, Per-User und Per-Model Statistiken | [ ] Ja [ ] Nein |
-| M4-6 | ~~Analytics~~ Entfaellt (Funktionalitaet in ext-token enthalten) | N/A |
-| M4-7 | Alle Module hinter Feature Flags (`EXT_BRANDING_ENABLED`, etc.) | [ ] Ja [ ] Nein |
-| M4-8 | Hook-Pattern: Fehler in ext bricht Onyx nie | [ ] Ja [ ] Nein |
-| M4-9 | Unit + Integration Tests bestanden | [ ] Ja [ ] Nein |
+| M4-1 | Custom Logo wird in UI angezeigt (mit Fallback auf Original) | [x] Ja |
+| M4-2 | CSS Variables mit `--ext-` Prefix werden angewendet | [x] Ja |
+| M4-3 | Login-Tagline, Login-Logo und Admin-Sidebar angepasst | [x] Ja |
+| M4-4 | Greeting, Disclaimer, Popup und Consent konfigurierbar | [x] Ja |
+| M4-5 | ~~Analytics~~ Entfaellt (Funktionalitaet in ext-token/M3 enthalten) | N/A |
+| M4-6 | User-Gruppen koennen erstellt und Benutzer zugewiesen werden | [ ] Ja (blockiert, Entra ID) |
+| M4-7 | Berechtigungen werden basierend auf Gruppen durchgesetzt | [ ] Ja (blockiert, Entra ID) |
+| M4-8 | Alle Module hinter Feature Flags (`EXT_BRANDING_ENABLED`, `EXT_RBAC_ENABLED`, etc.) | [x] Ja |
+| M4-9 | Hook-Pattern: Fehler in ext bricht Onyx nie | [x] Ja |
+| M4-10 | Unit Tests bestanden (ext-branding) | [x] Ja |
 
 ### Verantwortlichkeiten
 
 | Rolle | Aufgaben |
 |-------|----------|
-| **CCJ / Nikolaj Ivanov** | Module Implementation (Backend + Frontend) |
-| **VÖB** | Requirements Validation, Branding-Assets bereitstellen |
+| **CCJ / Nikolaj Ivanov** | Branding Implementation (abgeschlossen), RBAC + Access Implementation (nach Entra ID) |
+| **VÖB** | Requirements Validation, Branding-Assets bereitstellen, Entra ID Zugangsdaten |
 
 ### Termine
 
-**Start**: Nach M3 Abnahme
+**ext-branding deployed**: 2026-03-08
+**ext-rbac / ext-access**: [TBD] — blockiert durch Entra ID
 **Abnahme**: [TBD]
 
 ### Dependencies
 
-- M2: Extension Framework (fuer Router-Registrierung + Feature Flags)
-- M3: Token Limits + RBAC (fuer Admin Permissions)
+- M2: Extension Framework (fuer Router-Registrierung + Feature Flags) — erfuellt
+- M3: Token Limits (fuer Usage-basierte Admin Permissions) — erfuellt
+- Entra ID: VÖB muss Zugangsdaten bereitstellen — **Blocker** fuer RBAC + Access
 
 ---
 
@@ -400,7 +422,7 @@ Vollstaendiges Testing durchgefuehrt. Security-Haertung abgeschlossen. System is
   - [Sicherheitskonzept](../sicherheitskonzept.md) finalisiert
   - [Testkonzept](../testkonzept.md) mit Testergebnissen
   - [Betriebskonzept](../betriebskonzept.md) finalisiert
-  - DSGVO-/BAIT-Compliance-Nachweis
+  - DSGVO-Compliance-Nachweis, BAIT-Orientierung dokumentiert
 
 - **Production Readiness**
   - DNS konfiguriert (VÖB IT)
@@ -419,7 +441,7 @@ Vollstaendiges Testing durchgefuehrt. Security-Haertung abgeschlossen. System is
 | M5-5 | Monitoring + Alerting funktionsfaehig | [ ] Ja [ ] Nein |
 | M5-6 | DNS konfiguriert, TLS/HTTPS aktiv | [ ] Ja [ ] Nein |
 | M5-7 | DSGVO-Compliance bestaetigt | [ ] Ja [ ] Nein |
-| M5-8 | BAIT-Anforderungen erfuellt | [ ] Ja [ ] Nein |
+| M5-8 | BAIT-Orientierung dokumentiert (freiwillig, VÖB kein KWG-Institut) | [ ] Ja [ ] Nein |
 | M5-9 | Alle Dokumentation abgeschlossen | [ ] Ja [ ] Nein |
 | M5-10 | Go-Live Checklist 100% erfuellt | [ ] Ja [ ] Nein |
 
@@ -581,5 +603,5 @@ Falls Abnahme verweigert wird:
 ---
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.4
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.5

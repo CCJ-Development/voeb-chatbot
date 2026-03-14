@@ -10,7 +10,9 @@
 
 - Zugriff auf GitHub-Repo `CCJ-Development/voeb-chatbot`
 - `gh` CLI authentifiziert (oder GitHub UI)
-- Für Cluster-Zugriff: `kubectl` mit gültiger Kubeconfig (Ablauf: **2026-05-28**)
+- Für Cluster-Zugriff: `kubectl` mit gültiger Kubeconfig
+  - DEV/TEST-Cluster `vob-chatbot`: Ablauf **2026-05-28**
+  - PROD-Cluster `vob-prod`: Ablauf **2026-06-09**
 
 ---
 
@@ -130,8 +132,13 @@ kubectl get pods -n onyx-dev
 kubectl get pods -n onyx-dev \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
 
-# API Health Check
+# API Health Check (via Load Balancer IP)
 curl http://188.34.74.187/api/health
+
+# API Health Check (via HTTPS — bevorzugt wenn DNS/TLS aktiv)
+curl https://dev.chatbot.voeb-service.de/api/health    # DEV
+curl https://test.chatbot.voeb-service.de/api/health   # TEST
+curl https://chatbot.voeb-service.de/api/health         # PROD (sobald DNS/TLS aktiv)
 ```
 
 ---
@@ -177,12 +184,15 @@ kubectl set image deployment/onyx-dev-api-server \
 |--------|-------|-------------|
 | `STACKIT_REGISTRY_USER` | Global | Robot Account Name |
 | `STACKIT_REGISTRY_PASSWORD` | Global | Robot Account Token |
-| `STACKIT_KUBECONFIG` | Global | Base64-encoded, **Ablauf: 2026-05-28** |
+| `STACKIT_KUBECONFIG` | Global | Base64-encoded Kubeconfig fuer DEV/TEST-Cluster `vob-chatbot`, **Ablauf: 2026-05-28** |
+| `STACKIT_KUBECONFIG` | Environment `prod` | Base64-encoded Kubeconfig fuer PROD-Cluster `vob-prod`, **Ablauf: 2026-06-09**. Ueberschreibt das globale Secret fuer PROD-Deployments. |
 | `POSTGRES_PASSWORD` | Per Environment | PG Flex App-User Passwort |
 | `S3_ACCESS_KEY_ID` | Per Environment | StackIT Object Storage |
 | `S3_SECRET_ACCESS_KEY` | Per Environment | StackIT Object Storage |
 | `DB_READONLY_PASSWORD` | Per Environment | PG Readonly User |
 | `REDIS_PASSWORD` | Per Environment | Redis Standalone |
+
+> **Wichtig:** `STACKIT_KUBECONFIG` existiert zweimal — einmal global (DEV/TEST) und einmal als Environment Secret in `prod` (PROD). Das Environment Secret ueberschreibt das globale Secret wenn der Deploy-Job im GitHub Environment `prod` laeuft. Bei Kubeconfig-Renewal muessen **beide** Secrets aktualisiert werden.
 
 ### Secret aktualisieren
 
@@ -201,21 +211,49 @@ gh secret set POSTGRES_PASSWORD \
 
 ### Kubeconfig erneuern
 
-Die Kubeconfig läuft am **2026-05-28** ab. Vorher erneuern:
+Es gibt zwei Kubeconfigs fuer zwei separate Cluster:
+
+| Cluster | Environments | Ablauf | GitHub Secret Scope |
+|---------|-------------|--------|---------------------|
+| `vob-chatbot` (DEV/TEST) | dev, test | **2026-05-28** | Global |
+| `vob-prod` (PROD) | prod | **2026-06-09** | Environment `prod` |
+
+**Schritt 1: DEV/TEST-Cluster erneuern**
 
 ```bash
-# Neue Kubeconfig von StackIT holen
-stackit ske kubeconfig create voeb-chatbot-devtest \
+# Neue Kubeconfig fuer DEV/TEST-Cluster holen
+stackit ske kubeconfig create vob-chatbot \
   --project-id b3d2a04e-46de-48bc-abc6-c4dfab38c2cd \
   --login --expiration 90d
 
-# Als GitHub Secret setzen
+# Als GLOBALES GitHub Secret setzen
 gh secret set STACKIT_KUBECONFIG \
   --repo CCJ-Development/voeb-chatbot \
   --body "$(base64 < ~/.kube/config)"
-
-# Neues Ablaufdatum in Workflow-Header und MEMORY.md dokumentieren
 ```
+
+**Schritt 2: PROD-Cluster erneuern**
+
+```bash
+# Neue Kubeconfig fuer PROD-Cluster holen
+stackit ske kubeconfig create vob-prod \
+  --project-id <PROD_PROJECT_ID> \
+  --login --expiration 90d
+
+# Als ENVIRONMENT Secret im GitHub Environment `prod` setzen
+gh secret set STACKIT_KUBECONFIG \
+  --repo CCJ-Development/voeb-chatbot \
+  --env prod \
+  --body "$(base64 < ~/.kube/config)"
+```
+
+**Schritt 3: Dokumentation aktualisieren**
+
+Neue Ablaufdaten aktualisieren in:
+- Diesem Runbook (Tabelle oben + Secrets-Tabelle)
+- Voraussetzungen-Abschnitt (Zeile 13-15)
+- `MEMORY.md` (Kubeconfig-Ablauf)
+- `.claude/rules/voeb-projekt-status.md` (falls Ablaufdatum erwaehnt)
 
 ---
 
@@ -251,8 +289,15 @@ gh secret set STACKIT_KUBECONFIG \
 Der Smoke Test prüft `/api/health` mit 12 Versuchen (alle 10s = 2 Min Timeout).
 
 ```bash
-# Manuell prüfen
-curl -v http://188.34.74.187/api/health
+# Manuell prüfen (via Load Balancer IP)
+curl -v http://188.34.74.187/api/health          # DEV
+curl -v http://188.34.118.201/api/health          # TEST
+curl -v http://188.34.92.162/api/health           # PROD
+
+# Manuell prüfen (via HTTPS — bevorzugt wenn DNS/TLS aktiv)
+curl -v https://dev.chatbot.voeb-service.de/api/health    # DEV
+curl -v https://test.chatbot.voeb-service.de/api/health   # TEST
+curl -v https://chatbot.voeb-service.de/api/health         # PROD (sobald DNS/TLS aktiv)
 
 # Pod-Logs ansehen
 kubectl logs deployment/onyx-dev-api-server -n onyx-dev --tail=50
@@ -269,7 +314,7 @@ Dokumentation der "Warum"-Fragen für Audits und Nachvollziehbarkeit.
 
 ### Warum SHA-gepinnte Actions?
 
-GitHub Actions mit Major-Version-Tags (`@v4`) können jederzeit vom Maintainer geändert werden. Ein kompromittiertes Action-Repository könnte Code injizieren, der Secrets exfiltriert. SHA-Pinning fixiert den exakten Stand und erfordert bewusste Updates. Relevant für: BAIT App. 4.3.2 (Nachvollziehbarkeit), BSI-Grundschutz APP.6.
+GitHub Actions mit Major-Version-Tags (`@v4`) können jederzeit vom Maintainer geändert werden. Ein kompromittiertes Action-Repository könnte Code injizieren, der Secrets exfiltriert. SHA-Pinning fixiert den exakten Stand und erfordert bewusste Updates. Relevant für: BSI-Grundschutz APP.6, orientiert an BAIT (Nachvollziehbarkeit).
 
 ### Warum kein eigener Model Server Build?
 
@@ -304,7 +349,7 @@ War vorher hardcoded in `values-dev.yaml` — steht im Git-Repository. Credentia
 
 | Was | Wann | Wie |
 |-----|------|-----|
-| Kubeconfig-Ablauf | Monatlich | Datum im Workflow-Header prüfen (aktuell: 2026-05-28) |
+| Kubeconfig-Ablauf | Monatlich | Beide Kubeconfigs pruefen: DEV/TEST `vob-chatbot` (aktuell: 2026-05-28) + PROD `vob-prod` (aktuell: 2026-06-09) |
 | GitHub Actions Updates | Bei Dependabot-Alert oder monatlich | SHA im Workflow gegen neuestes Release-Tag prüfen |
 | Model Server Version | Bei Onyx-Release | Docker Hub Tags prüfen, `MODEL_SERVER_TAG` aktualisieren |
 | Robot Account Token | Bei Ablauf | StackIT Portal → Container Registry → Robot Account |

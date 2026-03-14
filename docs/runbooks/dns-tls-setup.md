@@ -90,7 +90,7 @@ Die BSI Technical Guideline TR-02102-2 (Version 2026-01) verlangt:
 
 ### Sicherheitshinweis: DEV/TEST-Zugriff einschraenken
 
-Gemaess BAIT und ISO 27002 (Control 8.31) muessen Entwicklungs-, Test- und Produktionsumgebungen getrennt sein. DEV/TEST sollten **nicht** uneingeschraenkt oeffentlich erreichbar sein.
+Gemaess BSI-Grundschutz und ISO 27002 (Control 8.31) muessen Entwicklungs-, Test- und Produktionsumgebungen getrennt sein (BAIT Kap. 8.3 als freiwillige Orientierung). DEV/TEST sollten **nicht** uneingeschraenkt oeffentlich erreichbar sein.
 
 **Empfehlung (Minimum):** IP-Allowlisting auf Ingress-Ebene:
 - VoeB Buero-IPs

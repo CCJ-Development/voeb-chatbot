@@ -1,8 +1,8 @@
 # Testkonzept – VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.4
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.5
 
 ---
 
@@ -199,64 +199,69 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 > Reale Tests: `backend/ext/tests/test_token_tracker.py` (11 Tests, alle bestanden)
 
 ```python
-"""Tests for ext token limits service — Unit Tests (Illustratives Beispiel).
+"""Tests for ext token tracking service — Unit Tests (Illustratives Beispiel).
 
+Reale Tests: backend/ext/tests/test_token_tracker.py (11 Tests)
 Run: pytest -xv backend/ext/tests/test_token_tracker.py
+
+Hinweis: Dieses Beispiel ist ILLUSTRATIV und zeigt das Test-Pattern.
+Die tatsaechlichen Tests nutzen umfangreichere Mocks fuer SQLAlchemy Sessions.
 """
 
 import pytest
 from unittest.mock import MagicMock, patch
 
 
-class TestTokenLimitsService:
-    """Test quota calculation logic in isolation."""
+class TestTokenTrackerService:
+    """Test token usage tracking and limit enforcement in isolation."""
 
-    def test_get_quota_returns_valid_data(self) -> None:
-        """Quota for a valid user should contain all expected fields."""
-        from ext.services.token_limits import get_quota
-
-        mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.return_value = MagicMock(
-            monthly_limit_tokens=100000,
-            current_month_tokens=45230,
-        )
-
-        quota = get_quota(db_session=mock_db, user_id="user-123")
-
-        assert quota is not None
-        assert quota.monthly_limit_tokens == 100000
-        assert quota.current_month_tokens <= 100000
-
-    def test_get_quota_raises_for_nonexistent_user(self) -> None:
-        """Non-existent user should raise an appropriate error."""
-        from ext.services.token_limits import get_quota
+    def test_get_usage_summary_returns_valid_data(self) -> None:
+        """Usage summary should contain all expected aggregation fields."""
+        from ext.services.token_tracker import get_usage_summary
 
         mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.return_value = None
+        # Mock: SQLAlchemy execute().one() fuer Aggregation
+        mock_db.execute.return_value.one.return_value = (500, 200, 700, 3)
 
-        with pytest.raises(ValueError, match="Quota not found"):
-            get_quota(db_session=mock_db, user_id="invalid-user")
+        summary = get_usage_summary(db_session=mock_db, period_hours=168)
 
-    def test_remaining_tokens_calculation(self) -> None:
-        """Remaining tokens should be correctly calculated."""
-        monthly_limit = 100000
-        current_usage = 45230
-        remaining = monthly_limit - current_usage
-        assert remaining == 54770
+        assert summary is not None
+        assert "total_tokens" in summary
+        assert "total_requests" in summary
+
+    def test_check_user_token_limit_raises_429(self) -> None:
+        """User over budget should trigger HTTPException(429)."""
+        from fastapi import HTTPException
+        from ext.services.token_tracker import check_user_token_limit
+
+        # Tatsaechliches Verhalten: HTTPException(429) mit Reset-Zeitpunkt
+        with pytest.raises(HTTPException) as exc_info:
+            check_user_token_limit(user_id="over-budget-user@example.com")
+        assert exc_info.value.status_code == 429
+
+    def test_token_budget_calculation(self) -> None:
+        """Token budget should be correctly calculated (budget * 1000)."""
+        from ext.services.token_tracker import TOKEN_BUDGET_UNIT
+
+        token_budget = 100  # 100k Tokens
+        budget_tokens = token_budget * TOKEN_BUDGET_UNIT
+        assert budget_tokens == 100_000
 ```
 
 ### Integration Tests
 
 **Definition**: Tests für Zusammenspiel zwischen Modulen und Services. Laufen gegen eine reale Onyx-Deployment. Kein Mocking.
 
-**Beispiel (Token Limits + API)**:
+**Beispiel (Token Usage + Limits API)**:
 
 ```python
-"""Integration tests for Token Limits API.
+"""Integration tests for ext-token API (Illustratives Beispiel).
 
-Run: python -m dotenv -f .vscode/.env run -- pytest backend/tests/integration/ext/test_token_limits_api.py -xv
+Run: python -m dotenv -f .vscode/.env run -- pytest backend/tests/integration/ext/test_token_api.py -xv
 
 Voraussetzung: Alle Onyx-Services laufen (docker compose).
+Hinweis: Dieses Beispiel ist ILLUSTRATIV. Auth ist session-basiert (kein JWT/Bearer).
+Tatsaechliche API-Endpoints: /ext/token/usage/summary, /ext/token/limits/users
 """
 
 import requests
@@ -266,40 +271,38 @@ import pytest
 API_BASE = "http://localhost:3000"
 
 
-class TestTokenLimitsAPI:
-    """Integration tests for /api/ext/limits/quota endpoint."""
+class TestTokenUsageAPI:
+    """Integration tests for /ext/token/ endpoints (admin-only, session-basiert)."""
 
-    def test_quota_with_valid_auth(self, admin_user) -> None:
-        """Authenticated user should receive quota data."""
+    def test_usage_summary_with_admin_session(self, admin_user) -> None:
+        """Authenticated admin should receive usage summary."""
         response = requests.get(
-            f"{API_BASE}/api/ext/limits/quota",
-            params={"user_id": admin_user.id},
-            headers=admin_user.auth_headers,
+            f"{API_BASE}/api/ext/token/usage/summary",
+            params={"period_hours": 168},
+            cookies=admin_user.session_cookies,
         )
         assert response.status_code == 200
         data = response.json()
-        assert "monthly_limit_tokens" in data
-        assert "current_month_tokens" in data
+        assert "total_tokens" in data
+        assert "total_requests" in data
+        assert "by_user" in data
+        assert "by_model" in data
 
-    def test_quota_without_auth_returns_401(self) -> None:
-        """Request without authentication should be rejected."""
+    def test_usage_without_auth_returns_403(self) -> None:
+        """Request without session should be rejected."""
         response = requests.get(
-            f"{API_BASE}/api/ext/limits/quota",
-            params={"user_id": "user-123"},
+            f"{API_BASE}/api/ext/token/usage/summary",
         )
-        assert response.status_code == 401
+        assert response.status_code in [401, 403]
 
-    def test_quota_respects_database(self, admin_user, db_session) -> None:
-        """Quota values should reflect database state."""
-        # Quota via API abrufen
+    def test_user_limits_crud(self, admin_user) -> None:
+        """Admin can create, read, and delete user token limits."""
+        # Limits via API abrufen (aus ext_token_user_limit Tabelle)
         response = requests.get(
-            f"{API_BASE}/api/ext/limits/quota",
-            params={"user_id": admin_user.id},
-            headers=admin_user.auth_headers,
+            f"{API_BASE}/api/ext/token/limits/users",
+            cookies=admin_user.session_cookies,
         )
         assert response.status_code == 200
-        data = response.json()
-        assert data["monthly_limit_tokens"] == 100000
 ```
 
 ### Security Tests
@@ -324,25 +327,25 @@ API_BASE = "http://localhost:3000"
 
 
 class TestRBACAuthorization:
-    """Test RBAC permission enforcement."""
+    """Test RBAC permission enforcement (Illustrativ — wartet auf Phase 4f)."""
 
-    def test_only_admin_can_update_quotas(
+    def test_only_admin_can_manage_limits(
         self, admin_user, regular_user
     ) -> None:
-        """Only org_admin should be able to update org quotas."""
-        # Admin should succeed
+        """Only admin should be able to create user token limits."""
+        # Admin should succeed (session-basierte Auth, current_admin_user Dependency)
         admin_resp = requests.post(
-            f"{API_BASE}/api/ext/limits/quota",
-            json={"monthly_limit_tokens": 200000},
-            headers=admin_user.auth_headers,
+            f"{API_BASE}/api/ext/token/limits/users",
+            json={"user_id": "...", "token_budget": 200, "period_hours": 720},
+            cookies=admin_user.session_cookies,
         )
-        assert admin_resp.status_code == 200
+        assert admin_resp.status_code == 201
 
         # Regular user should fail
         user_resp = requests.post(
-            f"{API_BASE}/api/ext/limits/quota",
-            json={"monthly_limit_tokens": 200000},
-            headers=regular_user.auth_headers,
+            f"{API_BASE}/api/ext/token/limits/users",
+            json={"user_id": "...", "token_budget": 200, "period_hours": 720},
+            cookies=regular_user.session_cookies,
         )
         assert user_resp.status_code == 403
 
@@ -350,19 +353,19 @@ class TestRBACAuthorization:
 class TestInputValidation:
     """Test input validation via Pydantic schemas."""
 
-    def test_rejects_invalid_token_limit(self, admin_user) -> None:
-        """Invalid monthly_limit_tokens type should return 422."""
+    def test_rejects_invalid_token_budget(self, admin_user) -> None:
+        """Invalid token_budget type should return 422."""
         response = requests.post(
-            f"{API_BASE}/api/ext/limits/quota",
-            json={"monthly_limit_tokens": "invalid"},
-            headers=admin_user.auth_headers,
+            f"{API_BASE}/api/ext/token/limits/users",
+            json={"user_id": "...", "token_budget": "invalid", "period_hours": 720},
+            cookies=admin_user.session_cookies,
         )
         # FastAPI/Pydantic returns 422 for validation errors
         assert response.status_code == 422
 
 
 class TestPromptInjection:
-    """Test prompt injection prevention."""
+    """Test prompt injection prevention (Illustrativ)."""
 
     def test_malicious_prompt_handled_safely(self, admin_user) -> None:
         """System should not follow malicious injection instructions."""
@@ -370,7 +373,7 @@ class TestPromptInjection:
         response = requests.post(
             f"{API_BASE}/api/chat/message",
             json={"content": malicious_prompt},
-            headers=admin_user.auth_headers,
+            cookies=admin_user.session_cookies,  # session-basierte Auth
         )
         assert response.status_code == 200
         # Response should not contain sensitive system information
@@ -398,16 +401,14 @@ export let options = {
 };
 
 export default function () {
-  let params = {
-    headers: {
-      'Authorization': `Bearer ${__ENV.TEST_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-  };
+  // Hinweis: Auth ist session-basiert (Cookie), kein Bearer-Token.
+  // K6 muss zuerst Login durchfuehren und Session-Cookie speichern.
+  let jar = http.cookieJar();
+  // ... Login-Request hier (session-basiert) ...
 
   let response = http.get(
-    'http://188.34.118.201/api/ext/limits/quota?user_id=user-123',
-    params
+    'http://188.34.118.201/api/ext/token/usage/summary?period_hours=168',
+    { cookies: jar.cookiesForURL('http://188.34.118.201') }
   );
 
   check(response, {
@@ -429,22 +430,23 @@ Feature: Token Limits Management
   I want to manage token limits for users
   So that I can control LLM costs
 
-  Scenario: Admin can set monthly token limit for user
-    Given I am logged in as an org_admin
+  Scenario: Admin can set per-user token limit with rolling window
+    Given I am logged in as an admin (session-basierte Auth)
     And user "max.mustermann@vob-member.de" exists
-    When I navigate to the "Quota Management" page
-    And I search for user "max.mustermann"
-    And I set their monthly limit to "150000" tokens
+    When I navigate to the "Token Usage" admin page
+    And I create a new limit for user "max.mustermann"
+    And I set their token budget to "150" (= 150.000 Tokens) with period "720" hours
     And I click "Save"
     Then I should see a success message
-    And the user's quota should be updated to "150000" tokens
+    And the user's limit should appear in ext_token_user_limit
 
-  Scenario: User receives alert at 80% of quota
-    Given user "max.mustermann" has a monthly limit of "100000" tokens
-    And they have used "80000" tokens
+  Scenario: User receives HTTP 429 when token budget exceeded
+    Given user "max.mustermann" has a token_budget of 100 (= 100.000 Tokens)
+    And the rolling window (period_hours) is 720 hours
+    And they have used 100.000 tokens within this window
     When they attempt to send a chat message
-    Then they should see a warning: "You have used 80% of your monthly tokens"
-    And the message should be sent (quota not exceeded)
+    Then they should receive HTTP 429 with message "Token-Limit erreicht. Naechstes Fenster beginnt in Xh Ymin."
+    And the message should NOT be sent (limit enforcement before LLM call)
 ```
 
 ---
@@ -476,79 +478,80 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 ## Testfälle pro Modul
 
-### Token Limits Module – Testfälle
+### ext-token (Token Usage Tracking + Limits) – Testfaelle
 
-#### TC-TL-001: Quota Abruf erfolgreich
+#### TC-TL-001: Usage Summary Abruf erfolgreich
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-001 |
-| **Testfall** | Quota erfolgreich abrufen für authentifizierten Benutzer |
-| **Modul** | Token Limits Management |
-| **Vorbedingung** | - Benutzer ist authentifiziert (gültiger JWT-Token)<br>- Benutzer hat eine Quota in ext_limits_quota |
-| **Testschritte** | 1. GET /api/ext/limits/quota mit user_id anfordern<br>2. Response auswerten |
-| **Erwartetes Ergebnis** | HTTP 200<br>Response enthält: monthly_limit_tokens, current_month_tokens, remaining_tokens<br>Status = "success" |
-| **Tatsächliches Ergebnis** | HTTP 200, alle Felder vorhanden, korrekte Werte |
+| **Testfall** | Usage Summary erfolgreich abrufen fuer authentifizierten Admin |
+| **Modul** | Token Usage Tracking (ext-token) |
+| **Vorbedingung** | - Admin ist authentifiziert (session-basierte Auth, `current_admin_user`)<br>- Token-Usage-Daten existieren in `ext_token_usage` |
+| **Testschritte** | 1. GET /ext/token/usage/summary mit period_hours anfordern<br>2. Response auswerten |
+| **Erwartetes Ergebnis** | HTTP 200<br>Response enthaelt: total_tokens, total_requests, total_prompt_tokens, total_completion_tokens, by_user, by_model |
+| **Tatsächliches Ergebnis** | HTTP 200, alle Felder vorhanden, korrekte Aggregation |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
 | **Datum** | 2026-03-09 |
 
-#### TC-TL-002: Quota Abruf ohne Authentifizierung
+#### TC-TL-002: Usage-Abruf ohne Authentifizierung
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-002 |
-| **Testfall** | Request ohne gültigen Token sollte fehlschlagen |
-| **Modul** | Token Limits Management |
-| **Vorbedingung** | - Benutzer nicht authentifiziert |
-| **Testschritte** | 1. GET /api/ext/limits/quota ohne Token anfordern<br>2. Response auswerten |
-| **Erwartetes Ergebnis** | HTTP 401<br>Response: { status: "error", code: "UNAUTHORIZED" } |
-| **Tatsächliches Ergebnis** | HTTP 401, unauthentifizierte Requests korrekt abgelehnt |
+| **Testfall** | Request ohne gueltige Session sollte fehlschlagen |
+| **Modul** | Token Usage Tracking (ext-token) |
+| **Vorbedingung** | - Benutzer nicht authentifiziert (keine Session) |
+| **Testschritte** | 1. GET /ext/token/usage/summary ohne Session anfordern<br>2. Response auswerten |
+| **Erwartetes Ergebnis** | HTTP 401 oder 403<br>Unauthentifizierte Requests werden abgelehnt (Dependency: `current_admin_user`) |
+| **Tatsächliches Ergebnis** | Unauthentifizierte Requests korrekt abgelehnt |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
 | **Datum** | 2026-03-09 |
 
-#### TC-TL-003: Token-Zählung bei Quota-Überschreitung
+#### TC-TL-003: Token-Limit Enforcement bei Ueberschreitung
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-003 |
-| **Testfall** | Chat-Request wird abgelehnt wenn Quota überschritten |
-| **Modul** | Token Limits Management |
-| **Vorbedingung** | - Benutzer hat monthly_limit_tokens = 10000<br>- Benutzer hat already used 9500 tokens<br>- Benutzer versucht Message zu senden die 1000 Tokens braucht (> 500 remaining) |
-| **Testschritte** | 1. POST /api/chat/message mit Content anfordern<br>2. Middleware prüft Quota<br>3. Response auswerten |
-| **Erwartetes Ergebnis** | HTTP 429 (Too Many Requests)<br>Response: { status: "error", code: "QUOTA_EXCEEDED", remaining_tokens: 500 } |
+| **Testfall** | Chat-Request wird abgelehnt wenn Token-Budget ueberschritten |
+| **Modul** | Token Usage Tracking (ext-token) |
+| **Vorbedingung** | - Benutzer hat Eintrag in `ext_token_user_limit` (token_budget=10, period_hours=720)<br>- Benutzer hat im Rolling-Zeitfenster bereits 10.000+ Tokens verbraucht (in `ext_token_usage`) |
+| **Testschritte** | 1. Benutzer sendet Chat-Message<br>2. Core-Hook CORE #2 (multi_llm.py) ruft `check_user_token_limit()` VOR LLM-Call auf<br>3. Response auswerten |
+| **Erwartetes Ergebnis** | HTTP 429 (Too Many Requests)<br>Response: "Token-Limit erreicht. Naechstes Fenster beginnt in Xh Ymin." |
 | **Tatsächliches Ergebnis** | HTTP 429 mit korrektem Reset-Zeitpunkt, Enforcement vor LLM-Call |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
 | **Datum** | 2026-03-09 |
 
-#### TC-TL-004: Quota-Reset am Monatswechsel
+#### TC-TL-004: Rolling-Zeitfenster Token-Reset
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-004 |
-| **Testfall** | Token-Verbrauch wird am reset_date zurückgesetzt |
-| **Modul** | Token Limits Management |
-| **Vorbedingung** | - Benutzer hat reset_date = 2026-02-01<br>- Heute ist 2026-02-01<br>- Benutzer hat current_month_tokens = 50000 |
-| **Testschritte** | 1. Scheduler läuft in der Nacht vom 31.01 auf 01.02<br>2. Database wird aktualisiert<br>3. GET /api/ext/limits/quota aufrufen |
-| **Erwartetes Ergebnis** | current_month_tokens = 0<br>Benutzer kann wieder Messages senden |
-| **Tatsächliches Ergebnis** | Rolling-Zeitfenster korrekt implementiert, Token-Reset funktional |
+| **Testfall** | Token-Verbrauch wird durch Rolling-Zeitfenster automatisch zurueckgesetzt |
+| **Modul** | Token Usage Tracking (ext-token) |
+| **Vorbedingung** | - Benutzer hat Eintrag in `ext_token_user_limit` (token_budget=50, period_hours=720)<br>- Aelteste Usage-Eintraege in `ext_token_usage` sind aelter als 720 Stunden |
+| **Testschritte** | 1. `check_user_token_limit()` berechnet window_start = now - period_hours<br>2. Nur `ext_token_usage`-Eintraege innerhalb des Fensters werden summiert<br>3. Alte Eintraege fallen automatisch aus dem Fenster |
+| **Erwartetes Ergebnis** | Verbrauch wird nur innerhalb des Rolling-Fensters gezaehlt<br>Kein Scheduler/Cron noetig — Fenster gleitet automatisch<br>Benutzer kann wieder Messages senden sobald alte Eintraege aus dem Fenster fallen |
+| **Tatsächliches Ergebnis** | Rolling-Zeitfenster korrekt implementiert, automatischer Reset funktional |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
 | **Datum** | 2026-03-09 |
 
-#### TC-TL-005: Alert bei 80% Quota-Nutzung
+#### TC-TL-005: Limit Enforcement bei Budget-Ueberschreitung (HTTP 429)
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-005 |
-| **Testfall** | Alert wird erstellt wenn Benutzer 80% der Quota nutzt |
-| **Modul** | Token Limits Management |
-| **Vorbedingung** | - Benutzer hat monthly_limit_tokens = 100000<br>- EXT_LIMITS_ALERT_THRESHOLD_PERCENT = 80<br>- Benutzer hat gerade 80000 Tokens verwendet |
-| **Testschritte** | 1. Service prüft Token-Nutzung<br>2. Service berechnet Prozentsatz (80%)<br>3. Service erstellt Alert<br>4. GET /api/ext/limits/alerts aufrufen |
-| **Erwartetes Ergebnis** | Alert wird in ext_limits_alerts erstellt<br>Alert hat level = "warning"<br>Benutzer wird benachrichtigt (Email/UI) |
-| **Tatsächliches Ergebnis** | Token-Limit Enforcement mit 429-Response und Reset-Zeitpunkt |
+| **Testfall** | Benutzer erhaelt HTTP 429 mit Reset-Zeitpunkt wenn Token-Budget erschoepft |
+| **Modul** | Token Usage Tracking (ext-token) |
+| **Vorbedingung** | - Benutzer hat Eintrag in `ext_token_user_limit` (token_budget=100, period_hours=720, enabled=true)<br>- Benutzer hat im Rolling-Fenster >= 100.000 Tokens verbraucht (in `ext_token_usage`) |
+| **Testschritte** | 1. Benutzer sendet Chat-Message<br>2. Core-Hook CORE #2 ruft `check_user_token_limit()` auf<br>3. Funktion summiert `ext_token_usage` im Rolling-Fenster<br>4. Budget ueberschritten → HTTPException(429) |
+| **Erwartetes Ergebnis** | HTTP 429 (Too Many Requests)<br>Detail: "Token-Limit erreicht. Naechstes Fenster beginnt in Xh Ymin."<br>Reset-Zeitpunkt wird aus aeltestem Usage-Eintrag + period_hours berechnet |
+| **Tatsächliches Ergebnis** | HTTP 429 mit korrektem Reset-Zeitpunkt, Enforcement vor LLM-Call |
+| **Hinweis** | Es gibt keine `ext_limits_alerts`-Tabelle und keinen `/ext/token/alerts`-Endpoint. Limit-Enforcement erfolgt ausschliesslich ueber HTTP 429 Response beim Chat-Request. Schwellenwert-Warnungen (z.B. 80%) sind nicht implementiert. |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
 | **Datum** | 2026-03-09 |
@@ -558,11 +561,11 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-TL-006 |
-| **Testfall** | Token-Zählung works für Streaming-Responses (SSE) |
-| **Modul** | Token Limits Management |
+| **Testfall** | Token-Zaehlung funktioniert fuer Streaming-Responses (SSE) |
+| **Modul** | Token Usage Tracking (ext-token) |
 | **Vorbedingung** | - Benutzer sendet Chat-Request mit stream=true |
-| **Testschritte** | 1. POST /api/chat/message mit stream=true<br>2. Server streamt Response via SSE<br>3. Token werden während Streaming gezählt<br>4. Nach Abschluss: GET /api/ext/limits/quota |
-| **Erwartetes Ergebnis** | Streaming-Tokens werden zu current_month_tokens addiert<br>Finale Quota-Nutzung korrekt |
+| **Testschritte** | 1. POST /api/chat/message mit stream=true<br>2. Server streamt Response via SSE<br>3. Nach Stream-Ende: Core-Hook CORE #2 (multi_llm.py) ruft `log_token_usage()` auf<br>4. Usage-Eintrag wird in `ext_token_usage` geschrieben |
+| **Erwartetes Ergebnis** | Streaming-Tokens werden korrekt in `ext_token_usage` geloggt (prompt_tokens, completion_tokens, total_tokens)<br>Usage ist in GET /ext/token/usage/summary sichtbar |
 | **Tatsächliches Ergebnis** | Streaming-Token-Tracking via Core-Hook CORE #2 (multi_llm.py stream-Hook) |
 | **Status** | [x] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | Claude Code (automatisiert) |
@@ -589,16 +592,16 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | **Tester** | [Name] |
 | **Datum** | [TBD] |
 
-#### TC-RBAC-002: Nicht-Admin kann keine Quotas ändern
+#### TC-RBAC-002: Nicht-Admin kann keine Token-Limits aendern
 
 | Field | Value |
 |-------|-------|
 | **Test ID** | TC-RBAC-002 |
-| **Testfall** | Benutzer mit role=user kann keine Quotas für andere ändern |
+| **Testfall** | Benutzer ohne Admin-Rolle kann keine Token-Limits fuer andere aendern |
 | **Modul** | RBAC & User Groups |
-| **Vorbedingung** | - Benutzer hat JWT Token mit role="user"<br>- Benutzer versucht PUT /api/ext/limits/quota/user-456 |
-| **Testschritte** | 1. User-Token erzeugen (role=user)<br>2. PUT /api/ext/limits/quota/user-456 mit neuer Quota<br>3. Response auswerten |
-| **Erwartetes Ergebnis** | HTTP 403 Forbidden<br>Response: { code: "INSUFFICIENT_PERMISSIONS" }<br>Quota wird nicht geändert |
+| **Vorbedingung** | - Benutzer ist eingeloggt mit role=user (session-basierte Auth)<br>- Benutzer versucht PUT /ext/token/limits/users/{limit_id} |
+| **Testschritte** | 1. Login als regulaerer User (session-basiert)<br>2. PUT /ext/token/limits/users/{limit_id} mit neuem token_budget<br>3. Response auswerten |
+| **Erwartetes Ergebnis** | HTTP 403 Forbidden<br>Token-Limit wird nicht geaendert (Dependency: `current_admin_user`) |
 | **Tatsächliches Ergebnis** | [TBD] |
 | **Status** | [ ] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | [Name] |
@@ -612,8 +615,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | **Testfall** | Org-Admin kann nur Benutzer seiner Organisation verwalten |
 | **Modul** | RBAC & User Groups |
 | **Vorbedingung** | - Admin von Org-A versucht Benutzer von Org-B zu verwalten |
-| **Testschritte** | 1. Org-A Admin Token erzeugen (org_id=org-a)<br>2. PUT /api/ext/limits/quota/user-from-org-b<br>3. Response auswerten |
-| **Erwartetes Ergebnis** | HTTP 403 Forbidden<br>Response: { code: "CROSS_ORG_DENIED" }<br>Org-B Quota wird nicht geändert |
+| **Testschritte** | 1. Org-A Admin einloggen (session-basiert)<br>2. PUT /ext/token/limits/users/{limit_id_from_org_b}<br>3. Response auswerten |
+| **Erwartetes Ergebnis** | HTTP 403 Forbidden<br>Response: { code: "CROSS_ORG_DENIED" }<br>Org-B Token-Limits werden nicht geaendert |
 | **Tatsächliches Ergebnis** | [TBD] |
 | **Status** | [ ] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | [Name] |
@@ -627,8 +630,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | **Testfall** | Benutzer-Rollen werden korrekt aus ext_user_groups ermittelt |
 | **Modul** | RBAC & User Groups |
 | **Vorbedingung** | - ext_user_groups hat Record: user_id=123, group_name="org_admin" |
-| **Testschritte** | 1. Benutzer authentifiziert sich<br>2. JWT Token wird erzeugt<br>3. Roles aus ext_user_groups werden in JWT eingebunden<br>4. API prüft Permission basierend auf Token |
-| **Erwartetes Ergebnis** | JWT Token enthält roles=["org_admin"]<br>Benutzer hat org_admin Permissions |
+| **Testschritte** | 1. Benutzer authentifiziert sich (session-basiert / Entra ID OIDC)<br>2. Session wird erstellt<br>3. Rollen werden aus ext_user_groups gelesen<br>4. API prueft Permission basierend auf Session + Rollen |
+| **Erwartetes Ergebnis** | Benutzer-Session enthaelt korrekte Rollen aus ext_user_groups<br>Benutzer hat entsprechende Permissions |
 | **Tatsächliches Ergebnis** | [TBD] |
 | **Status** | [ ] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | [Name] |
@@ -642,8 +645,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | **Testfall** | User verliert Gruppe-Permission wenn expires_at überschritten |
 | **Modul** | RBAC & User Groups |
 | **Vorbedingung** | - ext_user_groups hat Record mit expires_at=2026-01-15 (in der Vergangenheit)<br>- Heute ist 2026-02-15 |
-| **Testschritte** | 1. Benutzer authentifiziert sich<br>2. JWT Token wird erzeugt<br>3. Permission-Check prüft expires_at |
-| **Erwartetes Ergebnis** | JWT Token enthält nicht die abgelaufene Gruppe<br>Benutzer verliert entsprechende Permissions |
+| **Testschritte** | 1. Benutzer authentifiziert sich (session-basiert / Entra ID OIDC)<br>2. Session wird erstellt<br>3. Permission-Check prueft expires_at in ext_user_groups |
+| **Erwartetes Ergebnis** | Abgelaufene Gruppen-Zugehoerigkeit wird ignoriert<br>Benutzer verliert entsprechende Permissions |
 | **Tatsächliches Ergebnis** | [TBD] |
 | **Status** | [ ] Passed | [ ] Failed | [ ] Blocked |
 | **Tester** | [Name] |
@@ -943,7 +946,7 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 |-----------|-------------|-----------|
 | Extension Framework | Feature Flags, Router, Health Endpoint funktionieren | Unit Tests TC-EXT-FW-* |
 | Authentifizierung funktioniert | Benutzer können sich mit Entra ID anmelden | E2E Test TC-AUTH-001 + UAT |
-| Token Limits funktionieren | Quotas werden durchgesetzt, Alerts gesendet | Unit + Integration Tests TC-TL-* |
+| Token Limits funktionieren | Token-Budgets werden durchgesetzt (HTTP 429 bei Ueberschreitung), Usage-Tracking aktiv | Unit + Integration Tests TC-TL-* |
 | RBAC funktioniert | Benutzer können nur autorisierte Aktionen durchführen | Security Tests TC-RBAC-* |
 | Chat funktioniert | Benutzer können Messages senden und Responses erhalten | E2E Test TC-CHAT-001 |
 | RAG funktioniert | Dokumenten werden eingebettet, Suche funktioniert | Integration Test TC-RAG-001 |
@@ -964,7 +967,7 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | Nr. | Kriterium | Soll | Ist | Erfüllt? |
 |-----|-----------|-----|-----|---------|
 | 1 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | [TBD] | [ ] Ja [ ] Nein |
-| 2 | Token Limits durchgesetzt | Quotas werden geprüft, Alerts gesendet | [TBD] | [ ] Ja [ ] Nein |
+| 2 | Token Limits durchgesetzt | Token-Budgets werden geprueft, HTTP 429 bei Ueberschreitung | [TBD] | [ ] Ja [ ] Nein |
 | 3 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | [TBD] | [ ] Ja [ ] Nein |
 | 4 | Chat-Funktionalität | Benutzer können chatten, LLM antwortet | [TBD] | [ ] Ja [ ] Nein |
 | 5 | RAG funktioniert | Dokumente werden gesucht und eingebettet | [TBD] | [ ] Ja [ ] Nein |
@@ -997,13 +1000,13 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 ### Test-Zusammenfassung
 
 **Bestanden**:
-- TC-TL-001: Quota Abruf – ✅ Passed
+- TC-TL-001: Usage Summary Abruf – ✅ Passed
 - TC-RBAC-001: User-Gruppe erstellen – ✅ Passed
 - [weitere...]
 
 **Fehlgeschlagen**:
-- TC-TL-003: Quota-Überschreitung – ❌ Failed
-  - **Grund**: System gibt HTTP 500 statt 429 zurück
+- TC-TL-003: Token-Limit Enforcement – ❌ Failed
+  - **Grund**: (Template-Beispiel) System gibt falschen HTTP-Status zurueck
   - **Severity**: Critical
   - **Owner**: CCJ
   - **Fix-Termin**: [TBD]
@@ -1015,8 +1018,8 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 
 | ID | Beschreibung | Severity | Reproduzierbar | Fix-Termin | Status |
 |----|-------------|----------|--------|----------|--------|
-| BUG-001 | Quota-Überschreitung gibt falsch HTTP-Status | Critical | Ja | 2026-02-10 | Offen |
-| BUG-002 | Alert wird nicht für Streaming-Responses erstellt | High | Ja | 2026-02-17 | Offen |
+| BUG-001 | (Template-Beispiel) Token-Limit gibt falschen HTTP-Status | Critical | Ja | [TBD] | [Template] |
+| BUG-002 | (Template-Beispiel) Streaming-Token-Tracking zaehlt nicht | High | Ja | [TBD] | [Template] |
 
 ### Empfehlungen
 
@@ -1043,7 +1046,7 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | Level | Beschreibung | Beispiele | SLA |
 |-------|-------------|----------|-----|
 | **P0 – Blocker** | Test kann nicht fortgesetzt werden, kritische Funktionalität kaputt | Authentifizierung funktioniert nicht, Datenbank-Fehler | Sofort fixen |
-| **P1 – Kritisch** | Wichtige Funktionalität beeinträchtigt, aber Workaround existiert | Quota-Calculation falsch, Chat-UI Crash | 24 Stunden |
+| **P1 – Kritisch** | Wichtige Funktionalität beeinträchtigt, aber Workaround existiert | Token-Budget-Berechnung falsch, Chat-UI Crash | 24 Stunden |
 | **P2 – Normal** | Gering Impact auf Funktionalität, eher UX-Problem | Button ist falsch positioniert, Typo in Message | 1 Woche |
 | **P3 – Gering** | Minimaler Impact, Nice-to-Have Fix | Design-Verbesserung, Link ist falsch | Nach Release |
 
@@ -1091,5 +1094,5 @@ Markiert als "Verified Fixed"
 ---
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.4
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.5

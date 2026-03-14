@@ -18,7 +18,7 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
    - Audit Trail auf deutschen Servern
 
 2. **Compliance & Regulierung**
-   - BAIT (Banking Information Security Guidance) und Banking-Standards
+   - BAIT (freiwillige Orientierung — VÖB kein KWG-Institut) und Banking-Standards
    - BSI C5 (Cloud Computing Compliance Control Catalogue)
    - BaFin-Anforderungen für FinTech-Lösungen
    - Möglicherweise ISO 27001 oder ähnliche Zertifizierung
@@ -136,7 +136,7 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 ### Warum StackIT?
 
 - **Datensouveränität**: 100% deutscher Betreiber (Schwarz-Gruppe), kein US-Zugriff (CLOUD Act)
-- **BSI C5 / ISO 27001**: Zertifizierungen vorhanden, BAIT-konform
+- **BSI C5 / ISO 27001**: Zertifizierungen vorhanden, Banking-kompatibel
 - **Managed Kubernetes (SKE)**: Produktionsreif, Terraform-provisionierbar
 - **PostgreSQL Flex**: Managed DB mit ACL, Backups, SSL
 - **AI Model Serving**: LLM-Hosting direkt auf StackIT (GPT-OSS 120B, Qwen3-VL 235B)
@@ -164,7 +164,7 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 
 - **BSI C5**: Cloud Computing Compliance zertifiziert
 - **ISO 27001**: Informationssicherheit zertifiziert
-- **BAIT-relevant**: Erfüllt Banking-Anforderungen
+- **Banking-kompatibel**: Erfüllt Anforderungen des Finanzsektors (BAIT-orientiert)
 - **Banking-Fokus**: Viele Fintech-Kunden (Verständnis der Anforderungen)
 
 #### 3. Technische Qualität

@@ -39,7 +39,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 1. **Blast Radius** — DEV/TEST-Fehler duerfen PROD nie beeinflussen
 2. **Eigenes Maintenance-Window** — K8s-Upgrades unabhaengig planbar
 3. **Strengere Security** — eigene RBAC, Audit Logging, Kubeconfig-Trennung
-4. **Compliance** — nachweisbare Trennung Produktiv vs. Test (BAIT/BSI)
+4. **Compliance** — nachweisbare Trennung Produktiv vs. Test (BSI-Grundschutz, orientiert an BAIT)
 5. **Eigene Kubeconfig** — verschiedene Credentials, verschiedene Zugriffsrechte
 
 ---

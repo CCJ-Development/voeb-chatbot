@@ -647,14 +647,14 @@ gh workflow run stackit-deploy.yml -f environment=dev -f image_tag='"; echo PWNE
 - [ ] Bandit fuer Python, ESLint Security fuer TypeScript
 
 ### L5: Penetrationstest
-- [ ] Externer Pentest vor PROD-Go-Live (BAIT-Anforderung)
+- [ ] Externer Pentest vor PROD-Go-Live (Best Practice, orientiert an BAIT)
 
 ### L6: Notfallhandbuch
 - [ ] Incident-Response-Plan erstellen
 - [ ] Eskalationswege definieren (VoB, CCJ, StackIT)
 
 ### L7: Change-Management-Richtlinie
-- [ ] Formaler Change-Prozess (BAIT ORP.4)
+- [ ] Formaler Change-Prozess (BSI ORP.4, orientiert an BAIT)
 
 ### L8: Secret-Rotationskonzept
 - [ ] Rotationsintervalle definieren (PG-Passwoerter, API-Keys, Kubeconfig)
@@ -664,16 +664,16 @@ gh workflow run stackit-deploy.yml -f environment=dev -f image_tag='"; echo PWNE
 
 ## Fehlende regulatorische Dokumente
 
-| Dokument | DSGVO/BAIT Referenz | Prioritaet |
+| Dokument | Regulatorische Referenz | Prioritaet |
 |----------|---------------------|------------|
 | DSFA (Datenschutzfolgenabschaetzung) | Art. 35 DSGVO | CRITICAL — KI + personenbezogene Daten |
 | Loeschkonzept | Art. 17 DSGVO | CRITICAL |
 | AVV mit StackIT | Art. 28 DSGVO | HIGH |
 | Datenschutzerklaerung | Art. 13/14 DSGVO | HIGH |
-| Notfallhandbuch | BSI SYS.1.6, BAIT | MEDIUM |
-| Change-Management-Richtlinie | BAIT ORP.4 | MEDIUM |
+| Notfallhandbuch | BSI SYS.1.6 | MEDIUM |
+| Change-Management-Richtlinie | BSI ORP.4, orientiert an BAIT | MEDIUM |
 | Secret-Rotationskonzept | BSI OPS.1.1.3 | MEDIUM |
-| Pentest-Bericht | BAIT | LOW (vor PROD) |
+| Pentest-Bericht | Best Practice (BAIT-orientiert) | LOW (vor PROD) |
 
 ---
 

@@ -18,7 +18,7 @@ Es existieren **keine NetworkPolicies** im gesamten Projekt — weder im Onyx He
 
 - DEV-Pods (`onyx-dev`) koennen uneingeschraenkt TEST-Pods (`onyx-test`) erreichen und umgekehrt
 - Kompromittierte Pods koennen lateral zu jedem anderen Service im Cluster kommunizieren
-- Keine Einhaltung des Least-Privilege-Prinzips (BSI IT-Grundschutz, BAIT)
+- Keine Einhaltung des Least-Privilege-Prinzips (BSI IT-Grundschutz, orientiert an BAIT)
 - Kein Nachweis der Umgebungstrennung fuer die VoeB-Abnahme (ISO 27002 Control 8.31)
 
 ### 1.2 Pruefung: Existierende NetworkPolicies

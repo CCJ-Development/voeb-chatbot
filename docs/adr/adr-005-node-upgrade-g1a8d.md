@@ -62,5 +62,5 @@ Mit dem bisherigen g1a.4d Node-Typ (4 vCPU, 16 GB RAM, 50 GB Disk) reichen die R
 ## Konsequenzen
 
 - ~~K8s v1.32.12 ist laut StackIT deprecated — Update auf v1.33+ einplanen~~ → ✅ Erledigt: K8s v1.33.8 (2026-03-08)
-- Recreate-Strategie (kubectl patch) moeglicherweise nicht mehr noetig (genug CPU fuer RollingUpdate)
+- Recreate-Strategie beibehalten — Grund ist DB Connection Pool Exhaustion bei RollingUpdate (alte + neue Pods erschoepfen max_connections), nicht CPU-Mangel. Wird auf allen Environments (DEV, TEST, PROD) aktiv erzwungen.
 - PROD-Sizing steht fest: 2x g1a.8d (eigener Cluster, ADR-004)

@@ -81,7 +81,7 @@ Der Entra-ID-Weg ist sauberer, weil unberechtigte User gar nicht erst bis zu uns
 - **Standard** (empfohlen fuer Usability): User loggt sich ein, Session laeuft 7 Tage. Auch wenn Entra ID das Token nach 1 Stunde ablaufen laesst, bleibt der User im Chatbot eingeloggt.
 - **Strikt** (empfohlen fuer Compliance): Wenn Entra ID das Token widerruft (z.B. Mitarbeiter gesperrt), wird der User sofort aus dem Chatbot geworfen.
 
-**Warum das wichtig ist:** Bei einem Bankendienstleister mit BAIT-Anforderungen ist der strikte Modus moeglicherweise Pflicht. Wenn ein Mitarbeiter das Unternehmen verlaesst und in Entra ID deaktiviert wird, soll er im strikten Modus sofort keinen Zugang mehr haben — nicht erst nach 7 Tagen.
+**Warum das wichtig ist:** Bei einem Bankendienstleister (BAIT als freiwillige Orientierung, BSI-Grundschutz) ist der strikte Modus moeglicherweise empfehlenswert. Wenn ein Mitarbeiter das Unternehmen verlaesst und in Entra ID deaktiviert wird, soll er im strikten Modus sofort keinen Zugang mehr haben — nicht erst nach 7 Tagen.
 
 **Zustaendig:** VÖB entscheidet (ggf. in Abstimmung mit Compliance/Informationssicherheit). Wir setzen die entsprechende Konfiguration.
 
@@ -141,4 +141,4 @@ DNS -> TLS-Zertifikat -> HTTPS -> OIDC funktioniert
 | **Wer richtet App Registration ein** | Klaerung Verantwortlichkeit |
 | **Domain-Entscheidung** | Redirect URI + DNS + TLS |
 | **User-Scope** | Alle oder nur bestimmte Gruppen |
-| **Session Policy** | Standard vs. Strikt (BAIT-relevant) |
+| **Session Policy** | Standard vs. Strikt (Compliance-relevant) |

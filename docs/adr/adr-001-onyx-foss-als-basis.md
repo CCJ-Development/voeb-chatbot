@@ -188,7 +188,7 @@ Die folgenden Optionen waren zur Diskussion:
 - **Datenschutz**: Daten geht an US-basierte Server (DSGVO-Risiko)
 - **Datenhoheit**: Keine volle Kontrolle über Infrastruktur
 - **Vendor Lock-In**: Schwierig zu wechseln, Abhängigkeit von Pricing
-- **Compliance**: BAIT und Banking-Standards schwer umsetzbar
+- **Compliance**: Banking-Standards (BSI-Grundschutz, BAIT-Orientierung) schwer umsetzbar
 - **Kosten**: Recurring Costs für SaaS-Nutzung, skaliert mit Nutzung
 
 **Entscheidung**: Abgelehnt – Nicht akzeptabel für deutsche Bankenwirtschaft (Datenhoheit, Compliance)

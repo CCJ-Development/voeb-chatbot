@@ -3,7 +3,7 @@
 > **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD deployed (2026-03-12, Helm Rev 3).
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) deployed (2026-03-12, Helm Rev 3)
-> **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), BAIT Kap. 5
+> **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), orientiert an BAIT Kap. 5 (freiwillig)
 > **Helm Release:** `monitoring` in Namespace `monitoring` (separater Release, nicht im Onyx Chart)
 > **Chart:** `prometheus-community/kube-prometheus-stack`
 

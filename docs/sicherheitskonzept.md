@@ -699,7 +699,7 @@ azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415     # v4
 | Provider | StackIT AI Model Serving (vLLM-Backend) |
 | API-Protokoll | OpenAI-kompatible API über HTTPS |
 | Region | EU01 Frankfurt (Daten bleiben in Deutschland) |
-| Chat-Modelle | GPT-OSS 120B (131K Kontext), Qwen3-VL 235B (218K Kontext) |
+| Chat-Modelle | GPT-OSS 120B (131K Kontext), Qwen3-VL 235B (218K Kontext), Llama 3.3 70B, Llama 3.1 8B |
 | Embedding-Modell | Qwen3-VL-Embedding 8B (aktiv auf DEV + TEST + PROD, 4096 Dim, multilingual) |
 | Auth | Token-basiert (StackIT AI Model Serving Token) |
 | Preise | 0,45 EUR / 1M Input-Tokens, 0,65 EUR / 1M Output-Tokens |

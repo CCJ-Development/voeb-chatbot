@@ -6,7 +6,7 @@
 > **Prioritaet:** Hoch — schliesst groesste Luecke im Monitoring-Stack
 > **Abhaengigkeit:** kube-prometheus-stack (deployed 2026-03-10)
 > **Feature-Branch:** `feature/monitoring-exporter`
-> **Compliance:** Schliesst BSI OPS.1.1.5 + BAIT Kap. 5 Luecke (DB-Monitoring)
+> **Compliance:** Schliesst BSI OPS.1.1.5 Luecke (DB-Monitoring), orientiert an BAIT Kap. 5 (freiwillig)
 
 ---
 
@@ -33,7 +33,7 @@ Dieses Modul ergaenzt zwei Exporter:
 | Rolle | Nutzen |
 |-------|--------|
 | Ops / Tech Lead | DB- und Cache-Performance auf einen Blick, Alerting bei Problemen |
-| VoeB IT (spaeter) | Nachweis Datenbankueberwachung (BSI OPS.1.1.5, BAIT Kap. 5) |
+| VoeB IT (spaeter) | Nachweis Datenbankueberwachung (BSI OPS.1.1.5, orientiert an BAIT Kap. 5) |
 
 ---
 

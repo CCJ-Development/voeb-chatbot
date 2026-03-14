@@ -17,7 +17,7 @@ Mit der erfolgreichen Inbetriebnahme der DEV-Umgebung (Phase 2, 2026-02-27) und 
 1. **Umgebungsisolation** — DEV-Aktivitäten (Entwicklung, Debugging, Load-Tests) dürfen TEST nicht beeinflussen
 2. **Unabhängige Datenhaltung** — Jede Umgebung braucht eigene Datenbank und Storage (unabhängig resettbar)
 3. **Kosteneffizienz** — VÖB erwartet keine Produktionskosten für Vorproduktionsumgebungen
-4. **BAIT/BSI-Konformität** — Nachvollziehbare Umgebungstrennung für Audit-Zwecke
+4. **BSI-Konformität** — Nachvollziehbare Umgebungstrennung für Audit-Zwecke (orientiert an BAIT)
 5. **Deployment-Pipeline** — Kontrollierte Promotion von Code über Stages hinweg
 6. **PROD-Vorbereitung** — Die Architektur muss auf eine spätere PROD-Umgebung skalieren
 
@@ -128,14 +128,14 @@ PROD wird in einem **separaten SKE-Cluster** betrieben (deployed 2026-03-11, 19 
 2. **Unabhängig resettbar** — TEST-DB löschen ohne DEV-Impact
 3. **Eigene Credentials** — Saubere Secrets-Trennung pro GitHub Environment
 4. **Eigenes Backup** — Restore möglich ohne die andere Umgebung zu beeinflussen
-5. **Banking-Standard** — Bei BAIT-Audit nachweisbare Datentrennung
+5. **Banking-Standard** — Nachweisbare Datentrennung (BSI-Grundschutz, orientiert an BAIT)
 
 ### Warum PROD in eigenem Cluster?
 
 1. **Blast Radius** — DEV/TEST-Fehler (kaputte Network Policy, versehentliches `kubectl delete ns`) dürfen PROD nie beeinflussen
 2. **Maintenance Window** — PROD-K8s-Upgrades unabhängig von DEV/TEST planbar
 3. **Security** — Strengere RBAC, Network Policies, Audit Logging nur für PROD
-4. **Compliance** — BAIT fordert nachweisbare Trennung von Produktiv- und Testumgebungen
+4. **Compliance** — BSI-Grundschutz und BAIT (freiwillige Orientierung) empfehlen nachweisbare Trennung von Produktiv- und Testumgebungen
 5. **Kubeconfig-Trennung** — Verschiedene Credentials, verschiedene Zugriffsrechte
 
 ---
@@ -215,7 +215,7 @@ PROD wird in einem **separaten SKE-Cluster** betrieben (deployed 2026-03-11, 19 
 2. **Performance-Isolation** — Keine CPU/RAM-Konkurrenz zwischen Umgebungen
 3. **Ausfallsicherheit** — Node-Ausfall betrifft nur eine Umgebung
 4. **Saubere Datentrennung** — Eigene PG + Bucket = unabhängig resettbar
-5. **Audit-konform** — Nachweisbare Umgebungstrennung (BAIT/BSI)
+5. **Audit-konform** — Nachweisbare Umgebungstrennung (BSI-Grundschutz, orientiert an BAIT)
 6. **PROD-ready Pattern** — Skaliert natürlich zu eigenem PROD-Cluster
 
 ### Negative Auswirkungen / Mitigation

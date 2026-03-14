@@ -996,7 +996,7 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 | Monitoring-Konzept | `docs/referenz/monitoring-konzept.md` | Prometheus, Grafana, AlertManager, Exporters |
 | Monitoring-Exporter | `docs/technisches-feinkonzept/monitoring-exporter.md` | PG + Redis Exporter Spezifikation |
 | ADR-004 | `docs/adr/adr-004-umgebungstrennung-dev-test-prod.md` | Umgebungstrennung (PROD = eigener Cluster) |
-| Sicherheitskonzept | `docs/sicherheitskonzept.md` | DSGVO, BSI-Grundschutz, BSI C5 (StackIT), orientiert an BAIT |
+| Sicherheitskonzept | `docs/sicherheitskonzept.md` | DSGVO, EU AI Act, BSI-Grundschutz, BSI C5 (StackIT), orientiert an BAIT (freiwillig) |
 | Testkonzept | `docs/testkonzept.md` | Teststrategie, Abnahmekriterien |
 | Changelog | `docs/CHANGELOG.md` | Versionshistorie |
 

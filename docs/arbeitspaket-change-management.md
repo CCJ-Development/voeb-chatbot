@@ -11,11 +11,11 @@
 
 Die technische Umsetzung (CI/CD Pipeline, Branch-Strategie, Helm Deployments) ist funktional und verifiziert. Die **Dokumentation** dieser Prozesse ist jedoch auf interne Arbeitsanweisungen (`.claude/rules/`) verteilt und nicht audit-fähig.
 
-BAIT (Bankaufsichtliche Anforderungen an die IT) fordert unter anderem:
-- Nachvollziehbares Änderungsmanagement (Kap. 8)
-- Trennung von Entwicklung und Betrieb (Kap. 8.3)
-- Tests vor Produktivnahme (Kap. 8.5)
-- Freigabeverfahren mit dokumentierter Verantwortlichkeit (Kap. 8.6)
+Als freiwillige Orientierung an BAIT (VÖB ist kein KWG-Institut, BAIT nicht direkt anwendbar) werden folgende Best Practices umgesetzt:
+- Nachvollziehbares Änderungsmanagement (orientiert an BAIT Kap. 8)
+- Trennung von Entwicklung und Betrieb (orientiert an BAIT Kap. 8.3)
+- Tests vor Produktivnahme (orientiert an BAIT Kap. 8.5)
+- Freigabeverfahren mit dokumentierter Verantwortlichkeit (orientiert an BAIT Kap. 8.6)
 
 Ein externer Auditor sucht diese Informationen in **Betriebs- und Sicherheitskonzept**, nicht in AI-Instruktionsdateien.
 
@@ -61,7 +61,7 @@ Ein externer Auditor sucht diese Informationen in **Betriebs- und Sicherheitskon
 **Wo**: `docs/betriebskonzept.md` (Change Management) + `docs/sicherheitskonzept.md` (Zugriffskontrollen)
 
 **Inhalt**:
-- BAIT fordert: Keine Änderung an Produktion ohne zweite Freigabe
+- Best Practice (orientiert an BAIT): Keine Änderung an Produktion ohne zweite Freigabe
 - Aktueller Stand (1-Person-Team): Tech Lead = Entwickler = Reviewer
 - Geplante Umsetzung:
   - **GitHub Branch Protection** auf `main`: Require Pull Request, Require 1 Approval
@@ -179,7 +179,7 @@ GitHub → Repository Settings → Environments → prod:
 
 ## Abnahmekriterium
 
-Ein externer BAIT-Auditor findet in `docs/betriebskonzept.md` und `docs/sicherheitskonzept.md`:
+Ein externer Auditor (BSI-Grundschutz / BAIT-orientiert) findet in `docs/betriebskonzept.md` und `docs/sicherheitskonzept.md`:
 - Nachvollziehbaren Change-Management-Prozess mit Freigabestufen
 - Dokumentierte Zugriffsmatrix mit Rollen und Berechtigungen
 - Release-Management-Prozess mit Checkliste

@@ -726,12 +726,12 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 ## Security-Härtung (Audit-Findings, 2026-03-02)
 
 > **Quelle**: Enterprise-Audit der TEST-Infrastruktur vor erstem Deploy.
-> Diese Items stammen aus einer systematischen Überprüfung gegen BAIT/BSI-Grundschutz.
+> Diese Items stammen aus einer systematischen Überprüfung gegen BSI-Grundschutz (BAIT als freiwillige Orientierung).
 > Priorisierung: P0 = vor TEST-Deploy, P1 = vor PROD, P2 = vor VÖB-Abnahme.
 
 ### SEC-01: PostgreSQL ACL einschränken (P0 — vor TEST-Deploy)
 
-**Problem**: `pg_acl = ["0.0.0.0/0"]` in allen Environments — PostgreSQL ist für das gesamte Internet erreichbar. Für eine Banking-Anwendung unter BAIT ist das ein Showstopper.
+**Problem**: `pg_acl = ["0.0.0.0/0"]` in allen Environments — PostgreSQL ist für das gesamte Internet erreichbar. Für eine Banking-nahe Anwendung (BSI-Grundschutz, BAIT-orientiert) ist das ein Showstopper.
 
 **Betrifft**:
 - `deployment/terraform/modules/stackit/main.tf` (DEV-Modul, Zeile 75)
@@ -775,7 +775,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 Begründung (Details im Sicherheitskonzept):
 - ADR-004 sagt explizit: "Kein Dedicated-Node-Affinity nötig" (Zeile 61)
 - Bestehende Isolation ausreichend: Namespace-Isolation + NetworkPolicies (SEC-03) + separate PG/S3/Secrets/LoadBalancer
-- BAIT/BSI-Grundschutz fordern keine Node-Level-Isolation für DEV/TEST
+- BSI-Grundschutz und BAIT (freiwillige Orientierung) fordern keine Node-Level-Isolation für DEV/TEST
 - DEV/TEST enthalten keine Produktionsdaten
 - PROD wird eigener Cluster (ADR-004) — dort irrelevant
 - Technische Einschränkung: 1 Node Pool = Labels nur uniform per Terraform; persistente Per-Node-Labels erfordern separate Node Pools (Kostenimpact)
@@ -841,7 +841,7 @@ Begründung (Details im Sicherheitskonzept):
 - FileVault aktiv (Full-Disk-Encryption), State gitignored, CI/CD nutzt kein Terraform
 - PG ACL als Defense-in-Depth (Passwort allein reicht nicht für DB-Zugang)
 - Remote State tauscht ein lokales Secret gegen ein anderes (S3-Credentials müssten lokal liegen)
-- Kein BAIT/BSI-Requirement für Remote IaC State
+- Kein BSI/BAIT-Requirement für Remote IaC State (BAIT ohnehin freiwillig)
 - Kosten bei Umsetzung: 0,03 EUR/Monat (reine GB-Abrechnung, kein Bucket-Grundpreis)
 
 **Quick Win umgesetzt**: `chmod 600` auf alle State-Dateien (war `644`).
@@ -859,7 +859,7 @@ Begründung (Details im Sicherheitskonzept):
 - PROD wird eigener Cluster (ADR-004) — separates Kubeconfig ergibt sich automatisch. Blast-Radius-Reduktion ist architektonisch gelöst.
 - Solo-Entwickler — Namespace-scoped RBAC isoliert den einzigen Operator vor sich selbst (kein praktischer Nutzen)
 - CI/CD bereits gehärtet: SHA-gepinnte Actions, `permissions: contents: read`, Environment-gated Deploys
-- Kein BAIT/BSI-Requirement für Pre-Production bei Solo-Dev (BAIT Kap. 8.6 gilt für Produktionsumgebung)
+- Kein BSI-Requirement für Pre-Production bei Solo-Dev (BAIT Kap. 8.6 als freiwillige Orientierung gilt für Produktionsumgebung)
 - DEV/TEST enthalten keine Kundendaten
 
 **Opportunistische Umsetzung**: Beim Kubeconfig-Renewal (Ablauf 2026-05-28) kostenneutral mitnehmbar — neue ServiceAccounts + namespace-scoped RoleBindings statt erneuter Cluster-Admin-Kubeconfig.
