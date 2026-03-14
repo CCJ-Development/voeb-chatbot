@@ -34,26 +34,29 @@ fi
 echo "=== Monitoring NetworkPolicies anwenden (Namespace: $NAMESPACE) ==="
 
 # 1. Allow-Policies zuerst
-echo "[1/7] DNS Egress..."
+echo "[1/8] DNS Egress..."
 kubectl apply -f "$SCRIPT_DIR/02-allow-dns-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[2/7] Scrape Egress..."
+echo "[2/8] Scrape Egress..."
 kubectl apply -f "$SCRIPT_DIR/03-allow-scrape-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[3/7] Intra-Namespace..."
+echo "[3/8] Intra-Namespace..."
 kubectl apply -f "$SCRIPT_DIR/04-allow-intra-namespace.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[4/7] K8s API Egress..."
+echo "[4/8] K8s API Egress..."
 kubectl apply -f "$SCRIPT_DIR/05-allow-k8s-api-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[5/7] PG Exporter Egress (Port 5432)..."
+echo "[5/8] PG Exporter Egress (Port 5432)..."
 kubectl apply -f "$SCRIPT_DIR/06-allow-pg-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[6/7] Redis Exporter Egress (Port 6379)..."
+echo "[6/8] Redis Exporter Egress (Port 6379)..."
 kubectl apply -f "$SCRIPT_DIR/07-allow-redis-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
+echo "[7/8] AlertManager Webhook Egress (Port 443)..."
+kubectl apply -f "$SCRIPT_DIR/08-allow-alertmanager-webhook-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
 # 2. Default-Deny zuletzt
-echo "[7/7] Default-Deny (Zero-Trust Baseline)..."
+echo "[8/8] Default-Deny (Zero-Trust Baseline)..."
 kubectl apply -f "$SCRIPT_DIR/01-default-deny-all.yaml" -n "$NAMESPACE" $DRY_RUN
 
 echo ""

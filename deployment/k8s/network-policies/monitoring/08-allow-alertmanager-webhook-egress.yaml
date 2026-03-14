@@ -1,0 +1,29 @@
+# NetworkPolicy: Allow AlertManager Webhook Egress — Monitoring Namespace
+#
+# Erlaubt AlertManager Egress auf Port 443 (HTTPS) fuer Webhook-Notifications.
+# Verwendet fuer Microsoft Teams Alerting (externe HTTPS-Endpoints).
+# Ziel-IPs bewusst nicht eingeschraenkt: Teams-Webhook-IPs koennen sich aendern.
+# podSelector schraenkt auf AlertManager-Pods ein (Least Privilege).
+#
+# Referenz: docs/referenz/monitoring-konzept.md
+# Anwendung: kubectl apply -f 08-allow-alertmanager-webhook-egress.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alertmanager-webhook-egress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP
