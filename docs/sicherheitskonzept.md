@@ -88,9 +88,9 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 | Anforderung | Status | Details |
 |-------------|--------|---------|
 | Kubernetes-Orchestrierung | IMPLEMENTIERT | SKE Cluster mit automatischem Pod-Restart |
-| Datenbank-Backups | IMPLEMENTIERT | PG Flex: tägliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, PROD 03:00-05:00 UTC Maintenance-Window, StackIT Managed). PROD: PG Flex 4.8 HA (3-Node), automatische Backups + Point-in-Time Recovery |
+| Datenbank-Backups | IMPLEMENTIERT | PG Flex: taegliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, PROD 01:00 UTC, StackIT Managed). PROD: PG Flex 4.8 HA (3-Node), automatische Backups + PITR sekundengenau. StackIT Service Certificate V1.1: RPO/RTO 4h/4h, 30d Retention. Restore per Self-Service Clone. Details: `docs/backup-recovery-konzept.md` |
 | Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed auf DEV/TEST (2026-03-10) und PROD (2026-03-12): Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter, PG Exporter, Redis Exporter. PROD: 9 Pods, 3 Targets UP, separater Teams PROD-Kanal mit `[PROD]`-Prefix, `send_resolved: true`. Konzept: `docs/referenz/monitoring-konzept.md` |
-| DDoS-Mitigation | OFFEN | Kein Rate Limiting und keine WAF implementiert |
+| DDoS-Mitigation | TEILWEISE | Upload-Limit 20 MB (XREF-007, 2026-03-15). Kein Rate Limiting und keine WAF implementiert |
 | Hochverfügbarkeit | IMPLEMENTIERT (PROD) | PROD: 2x API HA, 2x Web HA, PG Flex 4.8 HA (3-Node). DEV/TEST: Single-Replica |
 
 ---
@@ -345,8 +345,8 @@ API Base: https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1
 #### PostgreSQL Datenbank (StackIT Managed Flex)
 
 - **Backup-Verschlüsselung**: StackIT Managed Service — AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08)
-- **Backup-Schedule**: Täglich (DEV: 02:00 UTC, TEST: 03:00 UTC, PROD: Maintenance-Window 03:00-05:00 UTC, konfiguriert per Terraform)
-- **PROD HA**: PG Flex 4.8 HA (3-Node Cluster) — automatische Backups + Point-in-Time Recovery
+- **Backup-Schedule**: Taeglich (DEV: 02:00 UTC, TEST: 03:00 UTC, PROD: 01:00 UTC, konfiguriert per Terraform `pg_backup_schedule`). K8s Maintenance-Window (PROD: 03:00-05:00 UTC) ist separat.
+- **PROD HA**: PG Flex 4.8 HA (3-Node Cluster) — automatische Backups + PITR sekundengenau, 30d Retention, Restore per Self-Service Clone (StackIT Service Certificate V1.1: RPO/RTO 4h/4h)
 - **Column-Level Encryption**: Nicht implementiert. API Keys werden von Onyx im Klartext in der DB gespeichert (Onyx-Standardverhalten)
 
 #### Vespa Index (Vektorspeicher)
@@ -603,15 +603,25 @@ Onyx prüft beim App-Start, dass alle API-Routen entweder eine Authentifizierung
 check_router_auth(application)
 ```
 
-### Rate Limiting
+### Rate Limiting & Upload-Limits
 
-**Status: NICHT IMPLEMENTIERT**
+**Status: TEILWEISE IMPLEMENTIERT**
+
+**Upload-Limit (XREF-007, implementiert 2026-03-15):**
+- **20 MB** maximale Request-Body-Groesse (Kickoff-Beschluss)
+- Konfiguriert via NGINX Ingress Controller ConfigMap: `proxy-body-size: "20m"` in `values-common.yaml`
+- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD) und ALLE Ingress-gerouteten Requests
+- Schuetzt vor DoS durch uebergrosse Uploads (vorher: kein explizites Limit, NGINX Default 1m)
+- Docker Compose (lokal): `client_max_body_size 20m` in `deployment/data/nginx/app.conf`
+- **Bekannte Abweichung:** Onyx Helm Chart Template (`nginx-conf.yaml`) enthaelt `client_max_body_size 5G` fuer den internen NGINX-Proxy (Port 1024). Dieser Port ist NICHT per LoadBalancer exponiert — externer Traffic geht ueber den Ingress Controller (20 MB Limit). Chart-Template ist READ-ONLY (Upstream). Fix bei naechstem Upstream-Sync evaluieren.
+
+**Request-Rate-Limiting: NICHT IMPLEMENTIERT**
 
 Aktuell ist kein Rate Limiting auf Anwendungsebene implementiert. Das LLM-Backend (StackIT AI Model Serving) hat eigene Rate Limits:
 - TPM: 200.000 Tokens/Minute (Output-Tokens 5x gewichtet)
 - RPM: 30-600 Requests/Minute (modellabhängig)
 
-Für PROD sollte Rate Limiting auf Ingress-Ebene (NGINX) oder Anwendungsebene evaluiert werden.
+Für PROD sollte Request-Rate-Limiting auf Ingress-Ebene (NGINX `limit-req-*` Annotations) oder Anwendungsebene evaluiert werden (SEC-09).
 
 ### CSRF Protection
 
@@ -920,7 +930,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
-| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **OFFEN** — NGINX Ingress Annotations oder Anwendungsebene, vor PROD Go-Live |
+| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **TEILWEISE** — Upload-Limit 20 MB via `proxy-body-size` (XREF-007, 2026-03-15). Request-Rate-Limiting noch OFFEN. |
 | SEC-10 | Cluster-API ACL auf Egress-IP einschränken | P3 | **OFFEN** — `cluster_acl` in Terraform von `0.0.0.0/0` einschränken (empfohlen, nicht kritisch) |
 
 ### SEC-01: PostgreSQL ACL (ERLEDIGT)

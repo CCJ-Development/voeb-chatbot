@@ -173,7 +173,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 | PostgreSQL | StackIT Managed Flex (Extern) | Relationale Daten | Flex 2.4 Single | Flex 4.8 HA (3-Node) |
 | Object Storage | StackIT S3-kompatibel (Extern) | File Store | Managed | Managed |
 | LLM | StackIT AI Model Serving | Chat, RAG | Managed | Managed |
-| Ingress | NGINX Ingress Controller | Load Balancing, Routing | 1 pro Namespace | 1 |
+| Ingress | NGINX Ingress Controller | Load Balancing, Routing, Upload-Limit 20 MB (XREF-007) | 1 pro Namespace | 1 |
 
 ### Umgebungen
 
@@ -659,6 +659,23 @@ Für dringende Fixes auf einer bereits released Version:
 
 ## Backup und Recovery
 
+> Detailliertes Konzept: `docs/backup-recovery-konzept.md` (BSI CON.3)
+> StackIT-Recherche: `audit-output/stackit-backup-recherche.md`
+
+### StackIT Service Certificate V1.1 (gueltig ab 12.09.2025)
+
+| Parameter | Wert |
+|-----------|------|
+| RPO (vertraglich) | 4 Stunden |
+| RTO (vertraglich) | 4 Stunden (fuer DB < 500 GB) |
+| Retention | 30 Tage (Default) |
+| PITR | Sekundengenau innerhalb Retention-Fenster |
+| Restore-Methode | **Clone** (neue Instanz, kein In-Place Restore) |
+| HA Failover | < 60 Sekunden (Patroni, synchrone Replikation) |
+| Verfuegbarkeits-SLA | 99.95% (Maintenance ausgenommen) |
+| Backup-Monitoring | **Kundenverantwortung** |
+| Backup-Kosten | Separat abgerechnet (pro GB/Stunde) |
+
 ### Backup-Strategie
 
 #### PostgreSQL (Managed)
@@ -666,49 +683,56 @@ Für dringende Fixes auf einer bereits released Version:
 - **Automatische Backups**:
   - DEV: Taeglich um 02:00 UTC (konfiguriert per Terraform: `pg_backup_schedule = "0 2 * * *"`)
   - TEST: Taeglich um 03:00 UTC (1h nach DEV, kein Overlap: `pg_backup_schedule = "0 3 * * *"`)
-  - PROD: StackIT Managed (Flex 4.8 HA, 3-Node Cluster) — automatische Backups + Point-in-Time Recovery (PITR)
-- **Retention**: 30 Tage (StackIT Managed, taeglich automatisch)
-- **PITR (Point-in-Time Recovery)**: PROD: Verfuegbar durch HA-Tier (Flex 4.8). DEV/TEST: Abhaengig vom StackIT Flex Tier.
+  - PROD: Taeglich um 01:00 UTC (`pg_backup_schedule = "0 1 * * *"`) — Flex 4.8 HA (3-Node), WAL-basiert + PITR
+- **Retention**: 30 Tage (StackIT Default)
+- **PITR (Point-in-Time Recovery)**: PROD: Verfuegbar, sekundengenau, Restore per Clone-Funktion (Self-Service). DEV/TEST: Abhaengig vom StackIT Flex Tier (Flex 2.4 Single — PITR-Verfuegbarkeit nicht bestaetigt).
 - **Lifecycle Protection**: `prevent_destroy = true` in Terraform
+- **Kritisch**: Backups sind instanzgebunden — bei Loeschung der PG-Instanz sind alle Backups unwiederbringlich verloren
 
 #### Object Storage
 - **Anbieter**: StackIT Object Storage (S3-kompatibel)
-- **Replikation**: Managed durch StackIT
+- **Replikation**: Managed durch StackIT (automatisch ueber 3 AZs, 99.999999999% Durability)
 - **Buckets**: `vob-dev`, `vob-test`, `vob-prod` (jeweils fuer File Store)
-- **Versionierung**: Object Storage unterstuetzt Versionierung (Schutz vor versehentlichem Ueberschreiben)
+- **Versionierung**: Unterstuetzt, aber **nicht aktiviert** in Terraform (Audit H3 offen)
+- **Verschluesselung**: AES-256 at Rest (StackIT Default), TLS 1.3 in Transit
 
 #### Applikation
 - **Code**: Git Repository (GitHub)
 - **Konfiguration**: Helm Values in Git, Secrets in GitHub Environments
 - **Infrastruktur**: Terraform State (lokal, Remote-Backend vorbereitet)
-- **Vespa-Daten**: Persistent Volumes (20 GB pro Umgebung), kein separates Backup
+- **Vespa-Daten**: Persistent Volumes (PROD: 50 GB), kein separates Backup — Re-Indexierung aus Quelldaten moeglich
 
 #### Redis
 - **Kein Backup**: Redis dient als Cache und Celery Broker. Datenverlust hat keine Auswirkung auf persistente Daten.
 
 ### RTO/RPO Targets
 
-[AUSSTEHEND -- Klärung mit VÖB für PROD-SLAs]
+[AUSSTEHEND — RTO offiziell mit VÖB vereinbaren. RPO 24h im Kickoff beschlossen.]
 
 | Szenario | RTO (Recovery Time) | RPO (Data Loss) | Anmerkung |
 |----------|---------------------|------------------|-----------|
 | Einzelner Pod Fehler | 1-2 Min | 0 (stateless) | Kubernetes Restart |
+| API-Server Ausfall (PROD) | 0 (kein Ausfall) | 0 | HA: zweite Replica uebernimmt |
 | Helm Rollback | ~5 Min | 0 | `helm rollback` |
-| PostgreSQL Restore | Abhängig von StackIT | Bis letztes Backup | Managed Service |
-| Cluster-Neuaufbau | Stunden | Bis letztes PG-Backup | Terraform + Helm |
+| PG Failover (PROD HA) | < 60 Sek | 0 | Patroni automatisches Failover |
+| PG Restore aus Clone | 1-2 Stunden | Sekundengenau (PITR) | Clone-Erstellung + Umstellung |
+| Cluster-Neuaufbau | 2-4 Stunden | Bis letztes PG-Backup | Terraform + Helm |
+
+**StackIT-Garantien:** RPO 4h, RTO 4h (fuer DB < 500 GB). Unsere DB ist aktuell < 1 GB.
+**Kickoff-Vereinbarung:** RPO 24h (taeglich), erster Monat Beobachtung, ggf. Anpassung.
 
 ### Disaster Recovery Prozess
 
-1. **Detection**: CI/CD Smoke Test schlägt fehl / manuelle Meldung
-2. **Assessment**: `kubectl get pods`, `helm status`, StackIT Console prüfen
+1. **Detection**: Monitoring-Alert (Teams-Kanal) / CI/CD Smoke Test / manuelle Meldung
+2. **Assessment**: `kubectl get pods`, `helm status`, StackIT Console pruefen
 3. **Recovery**:
    - Pod-Fehler: Kubernetes-Restart oder `kubectl delete pod`
    - Deployment-Fehler: `helm rollback`
-   - Datenbank-Fehler: StackIT Support kontaktieren (Managed Restore)
-   - Cluster-Fehler: Terraform + Helm Re-Deploy (Runbooks folgen)
-4. **Validation**: Health Check, funktionale Prüfung
-5. **Notification**: VÖB informieren
-6. **Post-Incident**: Root Cause Analysis dokumentieren
+   - Datenbank-Fehler: **Self-Service Clone** per StackIT Portal (PITR, sekundengenau). Applikation auf Clone-Instanz umstellen (Connection-String aendern, Helm Re-Deploy). Siehe `docs/runbooks/stackit-postgresql.md` Abschnitt "Backup & Recovery".
+   - Cluster-Fehler: Terraform + Helm Re-Deploy (Runbooks: stackit-projekt-setup, helm-deploy)
+4. **Validation**: Health Check, funktionale Pruefung
+5. **Notification**: VÖB informieren (P1: sofort, P2: innerhalb 1h)
+6. **Post-Incident**: Root Cause Analysis dokumentieren (Template: `docs/runbooks/rollback-verfahren.md`)
 
 ---
 

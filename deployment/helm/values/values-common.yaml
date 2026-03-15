@@ -104,6 +104,12 @@ nginx:
   enabled: true
   controller:
     config:
+      # XREF-007: Upload-Limit 20 MB (Kickoff-Beschluss, DoS-Schutz).
+      # Setzt client_max_body_size fuer ALLE Ingress-gerouteten Requests.
+      # NGINX Ingress Controller Default waere 1m — wir setzen explizit 20m
+      # damit File-Uploads (Dokumente fuer Knowledge Base) funktionieren.
+      # Gilt fuer alle Umgebungen (DEV, TEST, PROD).
+      proxy-body-size: "20m"
       http-snippet: |
         # Security Headers (BSI TR-02102 / VÖB Enterprise)
         add_header X-Content-Type-Options "nosniff" always;
