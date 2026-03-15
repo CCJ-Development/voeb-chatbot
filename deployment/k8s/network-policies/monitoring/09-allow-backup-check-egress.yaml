@@ -1,0 +1,34 @@
+# NetworkPolicy: Allow Backup Check Egress — Monitoring Namespace
+#
+# Erlaubt dem pg-backup-check CronJob Egress auf Port 443 (HTTPS)
+# fuer Zugriff auf die StackIT API:
+#   - service-account.api.stackit.cloud (Token Exchange)
+#   - postgres-flex-service.api.eu01.stackit.cloud (Backup API)
+#
+# Ziel-IPs bewusst nicht eingeschraenkt: StackIT API-IPs koennen sich aendern.
+# podSelector schraenkt auf pg-backup-check Pods ein (Least Privilege).
+#
+# Referenz: docs/backup-recovery-konzept.md (Abschnitt 8)
+# Anwendung: kubectl apply -f 09-allow-backup-check-egress.yaml -n monitoring
+#
+# Erstellt: 2026-03-15
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backup-check-egress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app: pg-backup-check
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP

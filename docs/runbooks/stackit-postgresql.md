@@ -137,6 +137,128 @@ kubectl delete pod pg-client -n <NS>
 
 ---
 
+## Backup & Recovery
+
+> Detailliertes Konzept: `docs/backup-recovery-konzept.md`
+> StackIT-Recherche: `audit-output/stackit-backup-recherche.md`
+> Quelle: StackIT Service Certificate V1.1 (gueltig ab 12.09.2025)
+
+### Backup-Schedule (Terraform-konfiguriert)
+
+| Umgebung | Cron | Uhrzeit (UTC) | PG Config | PITR |
+|----------|------|---------------|-----------|------|
+| DEV | `0 2 * * *` | 02:00 | Flex 2.4 Single | Unklar |
+| TEST | `0 3 * * *` | 03:00 | Flex 2.4 Single | Unklar |
+| PROD | `0 1 * * *` | 01:00 | Flex 4.8 HA (3-Node) | **Ja** (sekundengenau) |
+
+**Retention:** 30 Tage (StackIT Default)
+**RPO/RTO (vertraglich):** 4h / 4h (fuer DB < 500 GB)
+**Backup-Kosten:** Separat abgerechnet (pro GB/Stunde)
+
+### Restore per Clone (PROD)
+
+**WICHTIG:** StackIT PG Flex bietet **kein In-Place Restore**. Restore erstellt immer eine neue (geklonte) Instanz. Die Applikation muss auf die Clone-Instanz umgestellt werden.
+
+**Voraussetzung:** Zugriff auf StackIT Portal oder CLI/API
+
+**Verfahren:**
+
+```bash
+# 1. Clone erstellen (StackIT Portal)
+#    PostgreSQL Flex → PROD-Instanz → Clone → Zeitpunkt waehlen
+#    Alternativ per CLI: stackit postgresflex instance clone --help
+
+# 2. Clone-Credentials abfragen
+#    StackIT Portal → Clone-Instanz → Credentials / Connection Info
+#    CLONE_HOST, CLONE_PASSWORD notieren
+
+# 3. Clone validieren
+kubectl run pg-verify --restart=Never --namespace onyx-prod \
+  --image=postgres:16-alpine \
+  --env="PGPASSWORD=<CLONE_PASSWORD>" \
+  --command -- psql -h <CLONE_HOST> -p 5432 -U onyx_app -d onyx \
+  -c "SELECT count(*) FROM chat_message; SELECT max(time_sent) FROM chat_message;"
+
+sleep 10 && kubectl logs pg-verify -n onyx-prod
+kubectl delete pod pg-verify -n onyx-prod
+
+# 4. Applikation umstellen
+#    Option A: Helm Re-Deploy mit neuem Connection String
+#      values-prod-secrets.yaml → POSTGRES_HOST auf CLONE_HOST aendern
+#      helm upgrade onyx-prod ... -f values-prod-secrets.yaml
+#
+#    Option B: K8s Secret direkt patchen (schneller, fuer Notfaelle)
+#      kubectl edit secret <pg-secret> -n onyx-prod
+#      Pods neustarten: kubectl rollout restart deployment -n onyx-prod
+
+# 5. Health Check
+curl -s https://prod.chatbot.voeb-service.de/api/health | jq .
+
+# 6. Alte Instanz erst nach 24h Beobachtung loeschen
+```
+
+**Geschaetzte Dauer:** Clone ~30 Min + Umstellung ~30 Min = **1-2 Stunden** (DB aktuell < 1 GB)
+
+### Backup-Verifizierung
+
+```bash
+# Pruefen ob PG-Instanz erreichbar und Daten konsistent
+# <NS> = onyx-dev | onyx-test | onyx-prod
+kubectl run pg-backup-check --restart=Never --namespace <NS> \
+  --image=postgres:16-alpine \
+  --env="PGPASSWORD=<PG_PASSWORD>" \
+  --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx \
+  -c "SELECT 'tables' AS check_type, count(*) AS result FROM information_schema.tables WHERE table_schema='public' UNION ALL SELECT 'chat_msgs', count(*) FROM chat_message UNION ALL SELECT 'users', count(*) FROM \"user\";"
+
+sleep 10 && kubectl logs pg-backup-check -n <NS>
+kubectl delete pod pg-backup-check -n <NS>
+```
+
+### PGBackupCheckFailed Alert
+
+Wenn der Alert `PGBackupCheckFailed` oder `PGBackupCheckNotScheduled` feuert:
+
+**Schritt 1: CronJob-Logs pruefen**
+```bash
+# Letzten fehlgeschlagenen Job finden
+kubectl get jobs -n monitoring -l app=pg-backup-check --sort-by='.status.startTime'
+
+# Logs des fehlgeschlagenen Jobs lesen
+kubectl logs -n monitoring job/<JOB_NAME>
+```
+
+**Schritt 2: Ursache identifizieren**
+
+| Log-Meldung | Ursache | Loesung |
+|-------------|---------|---------|
+| "SA Key ID nicht gefunden" | Secret `stackit-backup-check` fehlt oder falsch | Secret pruefen: `kubectl get secret stackit-backup-check -n monitoring -o yaml` |
+| "StackIT-Authentifizierung fehlgeschlagen" | SA Key abgelaufen oder ungueltig | Neuen SA Key in StackIT Portal erstellen, Secret aktualisieren |
+| "Keine Antwort von StackIT Backup API" | API nicht erreichbar | NetworkPolicy `09-allow-backup-check-egress` pruefen, StackIT Status pruefen |
+| "Keine Backups vorhanden" | Instanz hat keine Backups | StackIT Portal pruefen, Backup-Schedule verifizieren |
+| "Letztes Backup fehlgeschlagen: ..." | StackIT Backup-Job Fehler | StackIT Support kontaktieren |
+| "Backup ist Xh alt (Limit: 26h)" | Backup nicht gelaufen | StackIT Portal → PG Instanz → Backups pruefen |
+
+**Schritt 3: Manuellen Check ausfuehren**
+```bash
+kubectl create job --from=cronjob/pg-backup-check pg-backup-check-manual -n monitoring
+kubectl logs -n monitoring job/pg-backup-check-manual -f
+kubectl delete job pg-backup-check-manual -n monitoring
+```
+
+**Schritt 4: Eskalation**
+- Wenn StackIT-seitiges Problem: StackIT Support kontaktieren
+- P1 (kein Backup seit >48h): VÖB Operations informieren (sofort)
+- P2 (kein Backup seit >26h): VÖB Operations informieren (innerhalb 1h)
+
+### Kritische Hinweise
+
+1. **Backups sind instanzgebunden.** Bei Loeschung der PG-Instanz (z.B. `terraform destroy`) sind ALLE Backups unwiederbringlich verloren. `prevent_destroy = true` schuetzt, aber bei manueller Override nicht.
+2. **Backup-Monitoring ist Kundenverantwortung.** StackIT bietet keine Alerts bei Backup-Fehlern. Der `pg-backup-check` CronJob uebernimmt diese Aufgabe.
+3. **Geloeschte Instanzen:** 5 Tage Soft-Delete, Restore per Clone moeglich.
+4. **DSGVO bei Restore:** Nach Restore muessen zwischenzeitlich geloeschte Daten erneut geloescht werden (EDSA Feb 2026).
+
+---
+
 ## Troubleshooting
 
 | Problem | Ursache | Lösung |

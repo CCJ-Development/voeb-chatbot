@@ -204,7 +204,9 @@ coreDns:
   enabled: false
 
 # --- Alert Rules ---
-# Gleiche 20 Regeln wie DEV/TEST — environment-Label differenziert automatisch.
+# 22 Regeln: 20 Basis (wie DEV/TEST) + 2 Backup-Check (PROD-only).
+# Backup-Check Alerts erfordern den pg-backup-check CronJob
+# (deployment/k8s/monitoring-exporters/pg-backup-check-prod.yaml).
 additionalPrometheusRulesMap:
   voeb-chatbot-alerts:
     groups:
@@ -418,3 +420,40 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "PostgreSQL Cache Hit Ratio <90% ({{ $labels.environment }})"
               description: "Hit Ratio: {{ $value | humanizePercentage }}. Shared Buffers koennte zu klein sein."
+
+      # --- Backup Check Alert Rules (PROD-only, erfordert pg-backup-check CronJob) ---
+      - name: voeb-backup-check.rules
+        rules:
+          # 21. Backup Check CronJob fehlgeschlagen
+          # Feuert wenn der pg-backup-check CronJob fehlschlaegt (Exit Code != 0).
+          # Ursachen: Backup zu alt, Backup-Fehler, API nicht erreichbar, Auth-Fehler.
+          # Runbook: docs/runbooks/stackit-postgresql.md#pgbackupcheckfailed-alert
+          - alert: PGBackupCheckFailed
+            expr: |
+              kube_job_status_failed{namespace="monitoring", job_name=~"pg-backup-check-.*"} > 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL Backup Check fehlgeschlagen (PROD)"
+              description: >-
+                Der pg-backup-check CronJob ist fehlgeschlagen. Moegliche Ursachen:
+                Backup zu alt (>26h), Backup-Fehler auf StackIT, API nicht erreichbar,
+                oder Authentifizierung fehlgeschlagen. Logs pruefen:
+                kubectl logs -n monitoring job/{{ $labels.job_name }}
+              runbook_url: "https://github.com/CCJ-Development/voeb-chatbot/blob/main/docs/runbooks/stackit-postgresql.md"
+
+          # 22. Backup Check CronJob nicht gelaufen
+          # Feuert wenn der CronJob laenger als 6 Stunden nicht gescheduled wurde.
+          # Ursachen: CronJob suspended, Cluster-Problem, Namespace-Problem.
+          - alert: PGBackupCheckNotScheduled
+            expr: |
+              time() - kube_cronjob_status_last_schedule_time{namespace="monitoring", cronjob="pg-backup-check"} > 21600
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PostgreSQL Backup Check nicht gelaufen (PROD)"
+              description: >-
+                Der pg-backup-check CronJob wurde seit >6 Stunden nicht gescheduled.
+                CronJob-Status pruefen: kubectl get cronjob pg-backup-check -n monitoring

@@ -118,15 +118,23 @@ kubectl exec -n onyx-{env} deployment/onyx-{env}-api-server -- \
 
 ### PG-Backup-Restore (letzter Ausweg)
 
-Falls ein Alembic-Downgrade nicht möglich ist:
+Falls ein Alembic-Downgrade nicht moeglich ist:
 
-1. StackIT Support kontaktieren
-2. Point-in-Time Recovery (PITR) oder letztes tägliches Backup anfordern
-3. Backup-Zeitpunkt bestimmen:
-   - DEV: Tägliches Backup um 02:00 UTC
-   - TEST: Tägliches Backup um 03:00 UTC
-   - PROD: Automatisch täglich, Retention 30 Tage (Flex 4.8 HA, PITR aktiviert). Maintenance-Window: 03:00-05:00 UTC.
-4. **Achtung**: Alle Daten nach dem Backup-Zeitpunkt gehen verloren
+> Detaillierte Prozedur: `docs/runbooks/stackit-postgresql.md` Abschnitt "Backup & Recovery"
+> Konzept: `docs/backup-recovery-konzept.md`
+
+1. **Self-Service Clone** per StackIT Portal erstellen (PITR sekundengenau, 30 Tage Fenster)
+   - StackIT Portal → PostgreSQL Flex → Instanz → Clone → Zeitpunkt waehlen
+   - **Kein In-Place Restore moeglich** — Clone erstellt neue Instanz
+2. Clone validieren (Tabellen, Datenzaehlung, letzter Timestamp)
+3. Applikation auf Clone-Instanz umstellen (Connection-String aendern, Helm Re-Deploy)
+4. Backup-Zeitpunkte (Terraform-konfiguriert):
+   - DEV: Taeglich 02:00 UTC (`0 2 * * *`)
+   - TEST: Taeglich 03:00 UTC (`0 3 * * *`)
+   - PROD: Taeglich 01:00 UTC (`0 1 * * *`), Flex 4.8 HA, PITR aktiviert
+5. **Achtung**: Bei Clone zu einem frueheren Zeitpunkt gehen alle Daten nach diesem Zeitpunkt verloren
+6. Alte Instanz erst nach 24h Beobachtung loeschen
+7. **Letzter Ausweg**: StackIT Support kontaktieren (nur wenn Clone-Funktion nicht verfuegbar)
 
 ---
 

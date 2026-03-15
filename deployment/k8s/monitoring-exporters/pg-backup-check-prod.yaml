@@ -1,0 +1,253 @@
+# StackIT PostgreSQL Backup Check — PROD CronJob
+#
+# Prueft alle 4 Stunden den Backup-Status der PROD PG Flex Instanz
+# ueber die StackIT REST API. Bei Fehler → CronJob schlaegt fehl →
+# kube-state-metrics → Prometheus Alert PGBackupCheckFailed.
+#
+# StackIT exponiert KEINE Prometheus-Metrik fuer Backup-Status.
+# Daher: API-Polling als einzige zuverlaessige Monitoring-Methode.
+#
+# Voraussetzungen:
+#   1. StackIT Service Account mit project.reader (oder project.admin)
+#   2. SA Key erstellen (StackIT Portal: IAM → Service Accounts → Create Key)
+#   3. K8s Secret erstellen (siehe unten)
+#
+# Secret erstellen:
+#   kubectl create secret generic stackit-backup-check -n monitoring \
+#     --from-file=sa-key.json=<pfad/zu/sa-key.json> \
+#     --from-file=private-key.pem=<pfad/zu/private-key.pem> \
+#     --from-literal=PROJECT_ID=<stackit-project-id> \
+#     --from-literal=PG_INSTANCE_ID=<aus "terraform output pg_instance_id" in environments/prod>
+#
+# SA Key JSON Format (von StackIT Portal):
+#   {
+#     "credentials": {
+#       "aud": "https://stackit-service-account-prod.apps...",
+#       "iss": "stackit@sa.stackit.cloud/projects/...",
+#       "kid": "<key-id>",
+#       "sub": "<service-account-id>"
+#     },
+#     ...
+#   }
+#
+# Referenz:
+#   - docs/backup-recovery-konzept.md (Abschnitt 8: Backup-Monitoring)
+#   - docs/runbooks/stackit-postgresql.md (Abschnitt: PGBackupCheckFailed Alert)
+#   - StackIT API: https://docs.api.eu01.stackit.cloud/documentation/postgres-flex-service/version/v2
+#   - StackIT Auth: https://docs.stackit.cloud/platform/getting-started/create-a-service-account/
+#
+# Deployment:
+#   kubectl apply -f pg-backup-check-prod.yaml
+#   (oder via apply.sh im monitoring-exporters Verzeichnis)
+#
+# Erstellt: 2026-03-15
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pg-backup-check
+  namespace: monitoring
+  labels:
+    app: pg-backup-check
+    environment: prod
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: backup-monitoring
+spec:
+  # Alle 4 Stunden: 05 Minuten nach der vollen Stunde (versetzt zu Backup um 01:00)
+  schedule: "5 */4 * * *"
+  # Nicht nachholen wenn Cluster down war
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      # Job-Timeout: 5 Minuten (API-Call + Verarbeitung)
+      activeDeadlineSeconds: 300
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: pg-backup-check
+            environment: prod
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            fsGroup: 65534
+          containers:
+            - name: backup-check
+              image: alpine:3.20
+              command: ["/bin/sh", "-e", "-c"]
+              args:
+                - |
+                  # --- StackIT PostgreSQL Backup Check ---
+                  # Prueft ob das letzte Backup juenger als MAX_AGE_SECONDS ist
+                  # und keinen Fehler hat.
+
+                  apk add --no-cache curl jq openssl > /dev/null 2>&1
+
+                  MAX_AGE_SECONDS="${MAX_AGE_SECONDS:-93600}"  # 26h = 93600s (24h Schedule + 2h Puffer)
+                  REGION="${REGION:-eu01}"
+                  TOKEN_ENDPOINT="https://service-account.api.stackit.cloud/token"
+                  API_BASE="https://postgres-flex-service.api.${REGION}.stackit.cloud"
+
+                  echo "=== PG Backup Check ($(date -u '+%Y-%m-%d %H:%M:%S UTC')) ==="
+                  echo "Instanz: ${PG_INSTANCE_ID}"
+                  echo "Max Alter: ${MAX_AGE_SECONDS}s ($(( MAX_AGE_SECONDS / 3600 ))h)"
+
+                  # --- 1. JWT erstellen und Access Token holen ---
+                  SA_KEY_ID=$(cat /var/run/secrets/stackit/sa-key.json | jq -r '.credentials.kid')
+                  SA_ISS=$(cat /var/run/secrets/stackit/sa-key.json | jq -r '.credentials.iss')
+                  SA_SUB=$(cat /var/run/secrets/stackit/sa-key.json | jq -r '.credentials.sub')
+                  SA_AUD=$(cat /var/run/secrets/stackit/sa-key.json | jq -r '.credentials.aud')
+
+                  if [ -z "$SA_KEY_ID" ] || [ "$SA_KEY_ID" = "null" ]; then
+                    echo "FEHLER: SA Key ID nicht gefunden in sa-key.json"
+                    exit 1
+                  fi
+
+                  # JWT Header (RS256)
+                  JWT_HEADER=$(printf '{"alg":"RS256","kid":"%s","typ":"JWT"}' "$SA_KEY_ID" \
+                    | openssl base64 -A | tr '+/' '-_' | tr -d '=')
+
+                  # JWT Payload
+                  NOW=$(date +%s)
+                  EXP=$((NOW + 300))
+                  JTI=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "backup-check-$NOW")
+                  JWT_PAYLOAD=$(printf '{"iss":"%s","sub":"%s","aud":"%s","jti":"%s","iat":%d,"exp":%d}' \
+                    "$SA_ISS" "$SA_SUB" "$SA_AUD" "$JTI" "$NOW" "$EXP" \
+                    | openssl base64 -A | tr '+/' '-_' | tr -d '=')
+
+                  # JWT Signatur
+                  JWT_SIGNATURE=$(printf '%s.%s' "$JWT_HEADER" "$JWT_PAYLOAD" \
+                    | openssl dgst -sha256 -sign /var/run/secrets/stackit/private-key.pem \
+                    | openssl base64 -A | tr '+/' '-_' | tr -d '=')
+
+                  JWT="${JWT_HEADER}.${JWT_PAYLOAD}.${JWT_SIGNATURE}"
+
+                  # Token Exchange
+                  TOKEN_RESPONSE=$(curl -sf --max-time 30 -X POST "$TOKEN_ENDPOINT" \
+                    -H "Content-Type: application/x-www-form-urlencoded" \
+                    -d "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=$JWT")
+
+                  ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty')
+                  if [ -z "$ACCESS_TOKEN" ]; then
+                    echo "FEHLER: StackIT-Authentifizierung fehlgeschlagen"
+                    echo "Response: $(echo "$TOKEN_RESPONSE" | jq -c '.' 2>/dev/null || echo "$TOKEN_RESPONSE")"
+                    exit 1
+                  fi
+                  echo "Auth: OK (Token erhalten)"
+
+                  # --- 2. Backup-Liste abrufen ---
+                  BACKUP_URL="${API_BASE}/v2/projects/${PROJECT_ID}/regions/${REGION}/instances/${PG_INSTANCE_ID}/backups"
+                  BACKUP_RESPONSE=$(curl -sf --max-time 30 \
+                    -H "Authorization: Bearer $ACCESS_TOKEN" \
+                    "$BACKUP_URL")
+
+                  if [ -z "$BACKUP_RESPONSE" ]; then
+                    echo "FEHLER: Keine Antwort von StackIT Backup API"
+                    exit 1
+                  fi
+
+                  BACKUP_COUNT=$(echo "$BACKUP_RESPONSE" | jq -r '.count // 0')
+                  echo "Backups gefunden: $BACKUP_COUNT"
+
+                  if [ "$BACKUP_COUNT" -eq 0 ]; then
+                    echo "FEHLER: Keine Backups vorhanden!"
+                    exit 1
+                  fi
+
+                  # --- 3. Letztes Backup pruefen ---
+                  # Sortiere nach endTime (neuestes zuerst)
+                  LATEST=$(echo "$BACKUP_RESPONSE" | jq -r '
+                    [.items[] | select(.endTime != null and .endTime != "")]
+                    | sort_by(.endTime) | reverse | .[0]')
+
+                  if [ "$LATEST" = "null" ] || [ -z "$LATEST" ]; then
+                    echo "FEHLER: Kein abgeschlossenes Backup gefunden"
+                    exit 1
+                  fi
+
+                  BACKUP_ID=$(echo "$LATEST" | jq -r '.id // "unknown"')
+                  BACKUP_END=$(echo "$LATEST" | jq -r '.endTime // empty')
+                  BACKUP_ERROR=$(echo "$LATEST" | jq -r '.error // empty')
+                  BACKUP_SIZE=$(echo "$LATEST" | jq -r '.size // 0')
+
+                  echo "Letztes Backup: ID=$BACKUP_ID"
+                  echo "  EndTime: $BACKUP_END"
+                  echo "  Size:    $BACKUP_SIZE Bytes"
+
+                  # Fehler-Check
+                  if [ -n "$BACKUP_ERROR" ]; then
+                    echo "FEHLER: Letztes Backup fehlgeschlagen: $BACKUP_ERROR"
+                    exit 1
+                  fi
+
+                  # Alter-Check
+                  # Versuche verschiedene Datumsformate (StackIT API kann variieren)
+                  BACKUP_TS=$(date -d "$BACKUP_END" +%s 2>/dev/null || \
+                    date -D '%Y-%m-%dT%H:%M:%S' -d "$BACKUP_END" +%s 2>/dev/null || \
+                    echo "0")
+
+                  if [ "$BACKUP_TS" -eq 0 ]; then
+                    echo "WARNUNG: Konnte Backup-Zeitpunkt nicht parsen: $BACKUP_END"
+                    echo "Backup existiert aber Alter nicht pruefbar — OK (manuell pruefen)"
+                    exit 0
+                  fi
+
+                  AGE=$((NOW - BACKUP_TS))
+                  AGE_HOURS=$((AGE / 3600))
+
+                  echo "  Alter:   ${AGE}s (${AGE_HOURS}h)"
+
+                  if [ "$AGE" -gt "$MAX_AGE_SECONDS" ]; then
+                    echo "FEHLER: Backup ist ${AGE_HOURS}h alt (Limit: $((MAX_AGE_SECONDS / 3600))h)"
+                    exit 1
+                  fi
+
+                  echo "OK: Backup ist ${AGE_HOURS}h alt (< $((MAX_AGE_SECONDS / 3600))h Limit)"
+              env:
+                - name: PROJECT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: stackit-backup-check
+                      key: PROJECT_ID
+                - name: PG_INSTANCE_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: stackit-backup-check
+                      key: PG_INSTANCE_ID
+                - name: REGION
+                  value: "eu01"
+                - name: MAX_AGE_SECONDS
+                  value: "93600"  # 26h (24h Schedule + 2h Puffer)
+              volumeMounts:
+                - name: stackit-credentials
+                  mountPath: /var/run/secrets/stackit
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false  # apk braucht schreibbares Filesystem
+                capabilities:
+                  drop:
+                    - ALL
+          volumes:
+            - name: stackit-credentials
+              secret:
+                secretName: stackit-backup-check
+                items:
+                  - key: sa-key.json
+                    path: sa-key.json
+                  - key: private-key.pem
+                    path: private-key.pem
+                    mode: 0400

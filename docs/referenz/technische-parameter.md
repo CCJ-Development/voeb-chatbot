@@ -80,7 +80,7 @@
 | User (RO) | db_readonly_user | db_readonly_user | db_readonly_user |
 | Port | 5432 | 5432 | 5432 |
 | Verbindung | SSL/TLS (sslmode=require) | SSL/TLS | SSL/TLS |
-| Backup | Taeglich 02:00 UTC, 30 Tage | Taeglich 03:00 UTC, 30 Tage | StackIT Managed (HA) + PITR |
+| Backup | Taeglich 02:00 UTC, 30 Tage | Taeglich 03:00 UTC, 30 Tage | Taeglich 01:00 UTC, 30 Tage, PITR sekundengenau (Flex 4.8 HA) |
 | Encryption at Rest | AES-256 (StackIT Default) | AES-256 | AES-256 |
 | Lifecycle Protection | prevent_destroy = true (Terraform) | prevent_destroy = true | prevent_destroy = true |
 | User-Rollen | login, createdb | login, createdb | login, createdb |
@@ -176,7 +176,7 @@
 | Kanal | Microsoft Teams Webhook | Microsoft Teams (separater PROD-Kanal) |
 | Receiver | teams-niko | teams-prod |
 | Alert-Prefix | -- | [PROD] |
-| Alert-Rules | 20 | 20 (mit Mindest-Traffic Guards) |
+| Alert-Rules | 20 | 22 (20 Basis + 2 Backup-Check, mit Mindest-Traffic Guards) |
 | send_resolved | true | true |
 | group_wait | 30s | 30s |
 | group_interval | 5m | 5m |
@@ -302,9 +302,16 @@
 | vob-prod (PROD) | 03:00-05:00 | K8s Managed (StackIT, Terraform-konfiguriert) |
 
 **PG Backups:**
-- DEV: taeglich 02:00 UTC
-- TEST: taeglich 03:00 UTC
-- PROD: StackIT Managed (Flex 4.8 HA, automatisch + PITR)
+- DEV: taeglich 02:00 UTC (`pg_backup_schedule = "0 2 * * *"`)
+- TEST: taeglich 03:00 UTC (`pg_backup_schedule = "0 3 * * *"`)
+- PROD: taeglich 01:00 UTC (`pg_backup_schedule = "0 1 * * *"`) — Flex 4.8 HA, WAL-basiert + PITR sekundengenau
+
+**StackIT Service Certificate V1.1 (gueltig ab 12.09.2025):**
+- RPO vertraglich: 4 Stunden | RTO vertraglich: 4 Stunden (DB < 500 GB)
+- Retention: 30 Tage (Default) | Restore: Self-Service per Clone (kein In-Place)
+- Backup-Monitoring: Kundenverantwortung | Kosten: separat (pro GB/h)
+- Backups instanzgebunden — bei Instanz-Loeschung unwiederbringlich verloren
+- Konzept: `docs/backup-recovery-konzept.md`
 
 ---
 
@@ -393,7 +400,9 @@
 | Aktuelle CPU-Auslastung (DEV+TEST, 2026-03-06) | ~5% (813m von 15.820m) |
 | Aktuelle RAM-Auslastung (DEV+TEST, 2026-03-06) | ~28% (16.345 Mi von ~56,6 Gi) |
 | HPA | Nicht aktiv, nachruestbar |
-| Upload-Limit (technisch) | 5 GB (nginx hardcoded, Upstream) |
-| Upload-Limit (vereinbart, Kickoff) | 20 MB [Nicht technisch durchgesetzt] |
+| Upload-Limit (Ingress Controller) | **20 MB** (`proxy-body-size: "20m"` in values-common.yaml, XREF-007, 2026-03-15) |
+| Upload-Limit (interner NGINX, Chart) | 5 GB (Upstream Helm Chart, READ-ONLY — Port 1024 nicht exponiert) |
+| Upload-Limit (Docker Compose) | 20 MB (`client_max_body_size 20m` in app.conf, XREF-007) |
+| Upload-Limit (Backend App) | 2 GB Default (`MAX_FILE_SIZE_BYTES`, via Env-Var konfigurierbar) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
 | Vespa PVC | 20 GB pro Umgebung (kein separates Backup) |
