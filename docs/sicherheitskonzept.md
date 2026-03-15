@@ -16,7 +16,8 @@
 | 0.3 | 2026-03-05 | Nikolaj Ivanov | Cloud-Infrastruktur-Audit (2026-03-04) referenziert, SEC-03 als ERLEDIGT (NetworkPolicies DEV+TEST), 3 Quick Wins dokumentiert: C6 (DB_READONLY→K8s Secret), H8 (Security-Header), H11 (Script Injection Fix), Audit-Datum korrigiert |
 | 0.4 | 2026-03-05 | Nikolaj Ivanov | Zugriffsmatrix (M-CM-3) hinzugefügt, 4-Augen-Prinzip (M-CM-2) dokumentiert mit BAIT-Referenz, Interims-Lösung und geplanten GitHub-Protection-Maßnahmen |
 | 0.5 | 2026-03-09 | Nikolaj Ivanov | TLS/HTTPS als IMPLEMENTIERT aktualisiert (Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 auf DEV+TEST seit 2026-03-09), SEC-06 Phase 1 erledigt (privileged: false), SEC-07 als verifiziert (StackIT AES-256), BAIT-Compliance-Tabelle korrigiert, URLs auf HTTPS-FQDNs aktualisiert |
-| 0.6 | 2026-03-12 | Nikolaj Ivanov | PROD-Umgebung eingearbeitet (19 Pods, SKE `vob-prod`, PG Flex 4.8 HA 3-Node), SEC-06 Phase 2 ERLEDIGT (`runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme), NetworkPolicies monitoring-NS PROD (7 Policies), Monitoring PROD (Teams PROD-Kanal), Extensions als Sicherheitsmaßnahmen dokumentiert (ext-token Kostenkontrolle, ext-prompts LLM-Steuerung), GitHub Environment `prod` (Required Reviewer + 6 Secrets), StackIT BSI C5 Type 2 referenziert |
+| 0.6 | 2026-03-12 | Nikolaj Ivanov | PROD-Umgebung eingearbeitet (19 Pods, SKE `vob-prod`, PG Flex 4.8 HA 3-Node), SEC-06 Phase 2 ERLEDIGT (`runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme), NetworkPolicies monitoring-NS PROD (8 Policies inkl. AlertManager-Webhook-Egress), Monitoring PROD (Teams PROD-Kanal), Extensions als Sicherheitsmaßnahmen dokumentiert (ext-token Kostenkontrolle, ext-prompts LLM-Steuerung), GitHub Environment `prod` (Required Reviewer + 6 Secrets), StackIT BSI C5 Type 2 referenziert |
+| 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: DSFA-Status GEPLANT→ENTWURF IN ARBEIT, NP 7→8 (AlertManager-Webhook-Egress), HSTS-Details ergänzt, AES-256 explizit bei SEC-07 |
 
 ---
 
@@ -466,7 +467,7 @@ Externe Services (über Internet):
 - Full-Set kommt zusammen mit DNS/TLS-Hardening
 - Lesson Learned: Einzelne Allow-Policies ohne Basis-Policies (default-deny + allow-intra + allow-dns) erzeugen implizite Denies und brechen den App-Traffic
 
-**Monitoring-Namespaces (alle Cluster)** — 7 NetworkPolicies (Zero-Trust):
+**Monitoring-Namespaces (alle Cluster)** — 8 NetworkPolicies (inkl. AlertManager-Webhook-Egress, Zero-Trust):
 - `01-default-deny-all`: Default-Deny für allen Ingress + Egress
 - `02-allow-dns-egress`: DNS-Egress
 - `03-allow-scrape-egress`: Egress zu allen App-Namespaces (Port 8080 für Metriken)
@@ -474,6 +475,7 @@ Externe Services (über Internet):
 - `05-allow-k8s-api-egress`: Egress zum K8s API Server (kube-state-metrics)
 - `06-allow-pg-exporter-egress`: PG Exporter → StackIT PG:5432
 - `07-allow-redis-exporter-egress`: Redis Exporter → Redis:6379
+- `08-allow-alertmanager-webhook-egress`: AlertManager → Teams Webhook (HTTPS Egress)
 - Zusätzlich: 3 Policies in App-NS für Monitoring-Ingress (Scrape + Redis Exporter)
 
 ### PostgreSQL Netzwerk-ACL
@@ -523,8 +525,9 @@ pg_acl = [
 - ECDSA P-384 (BSI TR-02102-2 konform), TLSv1.3, HTTP/2
 - Auto-Renewal aktiv, ClusterIssuers READY
 - Details: `docs/runbooks/dns-tls-setup.md`
-- HSTS-Header (benötigt aktives HTTPS)
 - SSL-Redirect
+
+**HSTS (HTTP Strict Transport Security):** Konfiguriert via NGINX Ingress Annotation. DEV/TEST: `max-age=3600`, PROD: `max-age=31536000` (1 Jahr). Verhindert HTTP-Downgrade-Angriffe.
 
 ### WAF (Web Application Firewall)
 
@@ -779,7 +782,7 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
 | BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST seit 2026-03-09, PROD wartet auf DNS) |
 | BAIT | Freiwillig | Zugangskontrolle | TEILWEISE (Basic Auth auf DEV/TEST/PROD, Entra ID geplant) |
-| BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 7 Policies monitoring-NS alle Cluster, App-NS PROD ausstehend) |
+| BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 8 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress, App-NS PROD ausstehend) |
 | BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme) |
 | BSI-Grundschutz | Freiwillig | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
 
@@ -829,7 +832,7 @@ Der VÖB Service Chatbot wird als **Limited Risk System** eingestuft (Art. 6, An
 
 ### DSFA-Pflicht (Datenschutz-Folgenabschätzung)
 
-**Status: GEPLANT**
+**Status: ENTWURF IN ARBEIT** — DSFA-Entwurf wird erstellt (Art. 35 DSGVO). Hinweis: Die Kickoff-Einschätzung "nicht relevant" wurde durch den Dokumentations-Audit (2026-03-14) korrigiert. DSFA ist gesetzliche Pflicht (DSK Muss-Liste Nr. 10).
 
 Eine DSFA nach Art. 35 DSGVO ist für den VÖB Service Chatbot **gesetzlich vorgeschrieben**. Drei unabhängige Trigger:
 
@@ -915,7 +918,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — Quick Win `chmod 600` umgesetzt, Remote State optional |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — PROD = eigener Cluster (ADR-004), löst sich automatisch |
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
-| SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — StackIT Default |
+| SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
 | SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **OFFEN** — NGINX Ingress Annotations oder Anwendungsebene, vor PROD Go-Live |
 | SEC-10 | Cluster-API ACL auf Egress-IP einschränken | P3 | **OFFEN** — `cluster_acl` in Terraform von `0.0.0.0/0` einschränken (empfohlen, nicht kritisch) |

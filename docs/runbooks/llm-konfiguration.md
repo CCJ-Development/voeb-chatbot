@@ -5,6 +5,24 @@
 
 ---
 
+## Zweck
+
+**Wann dieses Runbook verwenden:**
+- Neues LLM-Chat-Modell konfigurieren oder Default-Modell aendern
+- Embedding-Modell wechseln (loest Re-Indexing aus)
+- Modell-Probleme debuggen (API-Fehler, Tool Calling, Rate Limits)
+
+**Zielgruppe:** Admin / Tech Lead
+
+**Voraussetzungen:**
+- Onyx-Instanz laeuft (alle Pods 1/1 Running)
+- Admin-Zugang zur Onyx-UI
+- StackIT AI Model Serving Token vorhanden
+
+**Geschaetzte Dauer:** 15-30 Min (Modell-Konfiguration + Validierung)
+
+---
+
 ## Voraussetzungen
 
 - Onyx-Instanz laeuft (alle Pods 1/1 Running)
@@ -270,13 +288,31 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 
 | Feld | DEV | TEST | PROD |
 |------|-----|------|------|
-| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` | TBD |
-| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | TBD |
-| Chat Default | GPT-OSS 120B | GPT-OSS 120B | TBD |
-| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | TBD |
-| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | TBD |
+| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` | `https://chatbot.voeb-service.de` [DNS ausstehend] |
+| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | Noch nicht konfiguriert (wartet auf DNS/TLS-Aktivierung) |
+| Chat Default | GPT-OSS 120B | GPT-OSS 120B | Noch nicht konfiguriert |
+| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | Noch nicht konfiguriert |
+| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | Noch nicht konfiguriert |
 
 > **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
+
+---
+
+## Eskalation
+
+| Situation | Aktion | Kontakt |
+|-----------|--------|---------|
+| Runbook-Schritte schlagen fehl | Troubleshooting-Tabelle pruefen, ggf. Rollback | Tech Lead (CCJ) |
+| PROD-Ausfall > 15 Min | Incident-Prozess starten (P1/P2) | Tech Lead (CCJ), VÖB Operations [AUSSTEHEND] |
+| StackIT-Infrastruktur-Problem | StackIT Support kontaktieren | StackIT Support [AUSSTEHEND] |
+
+> Vollstaendiger Eskalationsprozess: Siehe `docs/betriebskonzept.md` Abschnitt "Incident Management" und `docs/runbooks/rollback-verfahren.md`.
+
+---
+
+## Verwandte Runbooks
+
+- [Helm Deploy](./helm-deploy.md) — Fuer Restart nach Modell-Konfigurationsaenderung
 
 ---
 

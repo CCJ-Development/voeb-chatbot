@@ -91,3 +91,5 @@ ingress-nginx/
 
 # direnv (lokale Env-Vars, nie committen)
 .envrc
+
+audit-output/

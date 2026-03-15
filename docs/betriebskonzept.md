@@ -1,8 +1,8 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.6
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.6.1
 
 ---
 
@@ -44,7 +44,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ IngressClass: nginx                                   │  │ │
 │  │  │ LoadBalancer IP: 188.34.74.187                        │  │ │
 │  │  │                                                       │  │ │
-│  │  │  Pods:                                                │  │ │
+│  │  │  Pods (16):                                            │  │ │
 │  │  │  ├── onyx-dev-web-server       (Frontend, 1 Replica)  │  │ │
 │  │  │  ├── onyx-dev-api-server       (Backend, 1 Replica)   │  │ │
 │  │  │  ├── onyx-dev-celery-beat      (Scheduler, 1 Replica) │  │ │
@@ -58,7 +58,8 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-dev-inference-model  (Model Server, 1 Rep.) │  │ │
 │  │  │  ├── onyx-dev-indexing-model   (Model Server, 1 Rep.) │  │ │
 │  │  │  ├── vespa                     (Vector Store, 1 Rep.) │  │ │
-│  │  │  └── redis                     (Cache, 1 Replica)     │  │ │
+│  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
+│  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
@@ -78,6 +79,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
 │  │  │ Namespace: onyx-prod (PROD)                           │  │ │
+│  │  │ IngressClass: nginx (eigener Cluster, kein Konflikt)  │  │ │
 │  │  │ LoadBalancer IP: 188.34.92.162                        │  │ │
 │  │  │                                                       │  │ │
 │  │  │  Pods (19):                                           │  │ │
@@ -105,7 +107,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │   PG Exporter, Redis Exporter, Operator               │  │ │
 │  │  │ 3 Targets UP: onyx-api-prod, postgres-prod, redis-prod│  │ │
 │  │  │ Alerting: Microsoft Teams PROD-Kanal                  │  │ │
-│  │  │ 7 NetworkPolicies (Zero-Trust)                        │  │ │
+│  │  │ 8 NetworkPolicies (Zero-Trust)                        │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -142,6 +144,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  Alle Envs: 4 Chat-Modelle konfiguriert (2026-03-08):      │ │
 │  │    GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B │ │
 │  │  Embedding DEV+TEST: Qwen3-VL-Embedding 8B (aktiv)           │ │
+│  │  Embedding PROD: Noch nicht konfiguriert (RAG-Tests ausstehend)│ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
@@ -335,10 +338,10 @@ Nach jedem Deploy wird ein Health Check gegen `/api/health` ausgeführt:
 | Environment | Versuche | Interval | Timeout | Gesamt |
 |-------------|----------|----------|---------|--------|
 | DEV | 12 | 10s | 5s pro Request | ~2 Min |
-| TEST | 12 | 10s | 5s pro Request | ~2 Min |
+| TEST | 18 | 10s | 5s pro Request | ~3 Min |
 | PROD | 18 | 10s | 5s pro Request | ~3 Min |
 
-PROD hat mehr Versuche, da HA-Deployments (mehrere Replicas) länger zum Starten brauchen können. Die Domain wird dynamisch aus der Kubernetes ConfigMap `env-configmap` gelesen.
+TEST und PROD haben mehr Versuche, da HA-Deployments (mehrere Replicas) länger zum Starten brauchen können. Die Domain wird dynamisch aus der Kubernetes ConfigMap `env-configmap` gelesen.
 
 #### Model Server Pinning
 
@@ -608,9 +611,9 @@ Für dringende Fixes auf einer bereits released Version:
 3. **AlertManager**: 20 Alert-Rules pro Cluster, Zustellung via Microsoft Teams Webhook. DEV+TEST: gemeinsamer Teams-Kanal. PROD: separater Teams PROD-Kanal mit `[PROD]`-Prefix. `send_resolved: true` fuer Entwarnung.
 4. **Exporters**: postgres_exporter v0.19.1 + redis_exporter v1.82.0 (DEV+TEST: 4 Pods, PROD: 2 Pods)
 5. **kube-state-metrics + node-exporter**: Cluster-weite Pod/Node/Deployment-Metriken (PROD: 2x node-exporter fuer 2 Nodes)
-6. **CI/CD Smoke Tests**: Jeder Deploy prueft `/api/health` (DEV/TEST: 12 Versuche a 10s = 120s, PROD: 18 Versuche a 10s = 180s)
+6. **CI/CD Smoke Tests**: Jeder Deploy prueft `/api/health` (DEV: 12 Versuche a 10s = 120s, TEST/PROD: 18 Versuche a 10s = 180s)
 7. **StackIT Console**: Managed-Service-Metriken fuer PostgreSQL und Object Storage
-8. **NetworkPolicies (Monitoring)**: 7 Policies pro Monitoring-Namespace (Zero-Trust: Default-Deny, DNS-Egress, Scrape-Egress, Intra-Namespace, K8s-API, PG-Exporter, Redis-Exporter)
+8. **NetworkPolicies (Monitoring)**: 8 Policies pro Monitoring-Namespace (Zero-Trust: Default-Deny, DNS-Egress, Scrape-Egress, Intra-Namespace, K8s-API, PG-Exporter, Redis-Exporter, AlertManager-Webhook-Egress)
 
 **Monitoring-Pods (PROD)**: 9 Pods im Namespace `monitoring` — Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, prometheus-operator.
 
@@ -618,7 +621,7 @@ Für dringende Fixes auf einer bereits released Version:
 
 - **API Server**: `httpGet /health:8080` (Readiness: 30s+6x10s=90s, Liveness: 60s+8x15s=180s)
 - **Webserver**: `tcpSocket :3000` (Readiness: 20s+6x10s=80s, Liveness: 30s+5x15s=105s)
-- **Health Endpoint**: `GET /api/health` — prueft DB-Connectivity, gibt `{"success": true}` zurueck
+- **Health Endpoint**: `GET /api/health` — prueft DB-Connectivity, gibt `{"success": true}` zurueck. Extern: `/api/health` (via NGINX Proxy), Intern: `/health:8080` (K8s Probes)
 - **Lesson Learned**: Next.js hat keinen HTTP-Health-Endpoint — TCP Socket Probe statt httpGet
 
 ### Monitoring-Ressourcen
@@ -664,7 +667,7 @@ Für dringende Fixes auf einer bereits released Version:
   - DEV: Taeglich um 02:00 UTC (konfiguriert per Terraform: `pg_backup_schedule = "0 2 * * *"`)
   - TEST: Taeglich um 03:00 UTC (1h nach DEV, kein Overlap: `pg_backup_schedule = "0 3 * * *"`)
   - PROD: StackIT Managed (Flex 4.8 HA, 3-Node Cluster) — automatische Backups + Point-in-Time Recovery (PITR)
-- **Retention**: Managed durch StackIT (Details in StackIT-Dokumentation)
+- **Retention**: 30 Tage (StackIT Managed, taeglich automatisch)
 - **PITR (Point-in-Time Recovery)**: PROD: Verfuegbar durch HA-Tier (Flex 4.8). DEV/TEST: Abhaengig vom StackIT Flex Tier.
 - **Lifecycle Protection**: `prevent_destroy = true` in Terraform
 
@@ -947,7 +950,7 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **Zurückgestellt** (2026-03-08) — Solo-Dev, FileVault, Quick Win `chmod 600` umgesetzt |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **Zurückgestellt** (2026-03-08) — PROD = eigener Cluster, opportunistisch bei Renewal |
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` aktiv auf PROD (Vespa = dokumentierte Ausnahme) |
-| SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **Umgesetzt** (2026-03-08) — StackIT Default |
+| SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **Umgesetzt** (2026-03-08) — AES-256 (StackIT Default, verifiziert) |
 
 ### Betriebsmaßnahmen (OPS)
 
@@ -1003,16 +1006,17 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.6
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 0.6.1
 
 ### Versionshistorie
 
-| Version | Datum | Aenderungen |
-|---------|-------|-------------|
-| 0.6 | 2026-03-12 | PROD-Cluster (vob-prod) durchgaengig eingearbeitet: Architektur, Infrastruktur, Monitoring (9 Pods, Teams PROD-Kanal, Sidecar-Dashboards), PG Flex 4.8 HA, Backup/PITR, Wartungsfenster 03:00-05:00 UTC, Skalierung/Kapazitaet (150 User), SEC-06 Phase 2, Environment Protection |
-| 0.5 | 2026-03-08 | Monitoring-Stack, Health Probes, Security-Audit, Change Management |
-| 0.4 | 2026-03-05 | CI/CD Details, Smoke Tests, NetworkPolicies |
-| 0.3 | 2026-03-03 | TEST-Umgebung, Helm Values, Runbooks |
-| 0.2 | 2026-02-27 | DEV live, erste Architektur |
-| 0.1 | 2026-02-22 | Initialer Entwurf |
+| Version | Datum | Autor | Aenderungen |
+|---------|-------|-------|-------------|
+| 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 8 Cross-Ref-Fixes (XREF-002/010/013/014/015/016/019/034) |
+| 0.6 | 2026-03-12 | COFFEESTUDIOS | PROD-Cluster (vob-prod) durchgaengig eingearbeitet: Architektur, Infrastruktur, Monitoring (9 Pods, Teams PROD-Kanal, Sidecar-Dashboards), PG Flex 4.8 HA, Backup/PITR, Wartungsfenster 03:00-05:00 UTC, Skalierung/Kapazitaet (150 User), SEC-06 Phase 2, Environment Protection |
+| 0.5 | 2026-03-08 | COFFEESTUDIOS | Monitoring-Stack, Health Probes, Security-Audit, Change Management |
+| 0.4 | 2026-03-05 | COFFEESTUDIOS | CI/CD Details, Smoke Tests, NetworkPolicies |
+| 0.3 | 2026-03-03 | COFFEESTUDIOS | TEST-Umgebung, Helm Values, Runbooks |
+| 0.2 | 2026-02-27 | COFFEESTUDIOS | DEV live, erste Architektur |
+| 0.1 | 2026-02-22 | COFFEESTUDIOS | Initialer Entwurf |

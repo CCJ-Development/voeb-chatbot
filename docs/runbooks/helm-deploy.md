@@ -5,6 +5,24 @@
 
 ---
 
+## Zweck
+
+**Wann dieses Runbook verwenden:**
+- Manuelles Helm-Deployment oder -Update durchfuehren (ausserhalb der CI/CD Pipeline)
+- Helm-Konfiguration aendern (Values, Secrets) und anwenden
+- Deployment-Probleme debuggen (Pod-Fehler, Readiness, Rollout-Deadlock)
+
+**Zielgruppe:** DevOps / Tech Lead
+
+**Voraussetzungen:**
+- SKE Cluster laeuft (`kubectl get nodes` zeigt Ready)
+- `helm` und `kubectl` installiert, Kubeconfig gueltig
+- Namespace mit Image Pull Secret existiert
+
+**Geschaetzte Dauer:** 20-45 Min (Deploy + Validierung)
+
+---
+
 ## Voraussetzungen
 
 - SKE Cluster läuft (`kubectl get nodes` → Ready)
@@ -257,3 +275,23 @@ WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 | 502 Bad Gateway | api-server noch nicht bereit | Warten bis Alembic + Uvicorn gestartet |
 | Login-Loop: 403 auf `/me` | `WEB_DOMAIN` ist HTTPS, Zugriff per HTTP | `WEB_DOMAIN: "http://<IP>"` setzen |
 | Login klappt, Verifizierung hängt | `REQUIRE_EMAIL_VERIFICATION` ohne SMTP | `REQUIRE_EMAIL_VERIFICATION: "false"` |
+
+---
+
+## Eskalation
+
+| Situation | Aktion | Kontakt |
+|-----------|--------|---------|
+| Runbook-Schritte schlagen fehl | Troubleshooting-Tabelle pruefen, ggf. Rollback | Tech Lead (CCJ) |
+| PROD-Ausfall > 15 Min | Incident-Prozess starten (P1/P2) | Tech Lead (CCJ), VÖB Operations [AUSSTEHEND] |
+| StackIT-Infrastruktur-Problem | StackIT Support kontaktieren | StackIT Support [AUSSTEHEND] |
+
+> Vollstaendiger Eskalationsprozess: Siehe `docs/betriebskonzept.md` Abschnitt "Incident Management" und `docs/runbooks/rollback-verfahren.md`.
+
+---
+
+## Verwandte Runbooks
+
+- [CI/CD Pipeline](./ci-cd-pipeline.md) — Automatisiertes Deployment ueber GitHub Actions
+- [Rollback-Verfahren](./rollback-verfahren.md) — Rollback bei fehlerhaftem Deploy
+- [LLM-Konfiguration](./llm-konfiguration.md) — LLM/Embedding-Modelle nach Deploy konfigurieren

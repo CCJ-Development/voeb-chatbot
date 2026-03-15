@@ -84,6 +84,8 @@ Onyx hat ein produktives Prometheus-Monitoring. Der API-Server exponiert `/metri
 
 StackIT bietet `Observability-Starter-EU01` (70 EUR/Mo) mit Prometheus + Grafana + Alerting. Terraform-native (6 Resources: `stackit_observability_instance`, `_credential`, `_scrapeconfig`, `_alertgroup`, `_logalertgroup`, `_loadbalancer_observability_credential`). Für Projekte ohne K8s-Expertise oder mit kleinem Cluster wäre das die bessere Wahl. Hier nicht gewählt wegen Kosten und eingeschränkter Abdeckung.
 
+> **Hinweis:** Im Kickoff-Meeting wurde StackIT Managed Observability als erste Option besprochen (KICKOFF-022). Diese wurde zugunsten von kube-prometheus-stack verworfen (Gründe: eingeschränkte Abdeckung, 70 EUR/Mo Zusatzkosten, fehlende Custom-Alert-Rules).
+
 ---
 
 ## 3. Ressourcen-Validierung
@@ -373,7 +375,7 @@ kubeProxy:
 
 **2.3 NetworkPolicy für Monitoring-Namespace** — ✅ Applied (2026-03-10), PROD-ready (2026-03-12)
 
-**Status:** 7 Policies in `monitoring` + 2 Policies in `onyx-dev` + `onyx-test` applied (5 Basis + 2 Exporter-Egress seit Phase 4, 2026-03-10). `03-allow-scrape-egress.yaml` um `onyx-prod` erweitert (2026-03-12).
+**Status:** 8 Policies in `monitoring` + 2 Policies in `onyx-dev` + `onyx-test` applied (5 Basis + 2 Exporter-Egress seit Phase 4 + `08-allow-alertmanager-webhook-egress.yaml` seit Alerting-Konfiguration, 2026-03-10/2026-03-11). `03-allow-scrape-egress.yaml` um `onyx-prod` erweitert (2026-03-12).
 
 Der Monitoring-Namespace braucht:
 - Egress zu `onyx-dev`, `onyx-test` und `onyx-prod` (Scraping auf Port 8080)
@@ -674,7 +676,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | 8 | `helm install monitoring prometheus-community/kube-prometheus-stack` | ✅ 7/7 Pods Running (70s) |
 | 9 | Prometheus Targets geprüft — `onyx-api-dev` + `onyx-api-test` **down** | ❌ DNS-Fehler: `no such host` |
 | 10 | Service-Name-Fix: `onyx-dev-api` → `onyx-dev-api-service` | ✅ nach `helm upgrade` |
-| 11 | NetworkPolicies applied via `apply.sh` | ✅ 7 Policies erstellt |
+| 11 | NetworkPolicies applied via `apply.sh` | ✅ 7 Policies erstellt (8. Policy `08-allow-alertmanager-webhook-egress.yaml` mit Alerting hinzugefügt) |
 | 12 | Prometheus Targets erneut geprüft | ✅ **onyx-api-dev: UP, onyx-api-test: UP** |
 | 13 | Webserver Probe Fix: httpGet → tcpSocket auf Port 3000 | ✅ Commit + Push + Redeploy |
 | 14 | TEST Deploy (Nachmittag) — `--atomic --timeout 10m` | ❌ Timeout nach 10m, automatischer Rollback |
@@ -690,7 +692,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | 24 | CI/CD Fix: Recreate-Patch-Step in TEST Deploy-Job (analog DEV) | ✅ Commit `784577f` |
 | 25 | TEST Re-Deploy mit Recreate-Strategie | ✅ **Alle 15 Pods Running, Smoke Test grün** |
 | 26 | **Phase 4: Exporter-Deploy** — Secrets erstellt (4x im monitoring-NS) | ✅ pg-exporter-dev/test, redis-exporter-dev/test |
-| 27 | NetworkPolicies: 2 neue Egress (PG:5432, Redis:6379) + 2 App-NS Ingress | ✅ 7 Policies in monitoring, +2 in App-NS |
+| 27 | NetworkPolicies: 2 neue Egress (PG:5432, Redis:6379) + 2 App-NS Ingress | ✅ 8 Policies in monitoring (inkl. AlertManager-Webhook-Egress), +2 in App-NS |
 | 28 | K8s Manifeste applied: 4 Deployments + 4 Services im monitoring-NS | ✅ Alle 4 Exporter 1/1 Running |
 | 29 | PG Exporter Health Probe Fix: `/healthz` → `/` (kein /healthz Endpoint) | ✅ Re-apply, Pods 1/1 |
 | 30 | PG Exporter WAL Collector: `permission denied for pg_ls_waldir` → `--no-collector.wal` | ✅ Keine Fehler mehr |
@@ -891,7 +893,7 @@ Commit noch ausstehend — Dateien auf Feature-Branch `feature/monitoring-export
 | 9 | `helm upgrade` — alle 7 Basis-Pods Running, Grafana 3/3 | ✅ |
 | 10 | Exporter-Secrets erstellt: `pg-exporter-prod`, `redis-exporter-prod` | ✅ |
 | 11 | Exporter deployed: `pg-exporter-prod` + `redis-exporter-prod` (1/1 Running) | ✅ |
-| 12 | Monitoring NetworkPolicies applied (7 in monitoring NS) | ✅ |
+| 12 | Monitoring NetworkPolicies applied (8 in monitoring NS, inkl. AlertManager-Webhook-Egress) | ✅ |
 | 13 | App-NS Policies applied (`allow-monitoring-scrape` + `allow-redis-exporter-ingress` in `onyx-prod`) | ❌ **PROD-App kaputt** |
 | 14 | Root Cause: PROD hatte keine Basis-NetworkPolicies (kein default-deny, kein allow-intra). Monitoring-Policies erzeugten implizite Denies → External Traffic + Onyx→Redis blockiert | Analyse: API Health 503, Celery Restarts |
 | 15 | **Sofort-Fix:** Alle 3 Policies aus `onyx-prod` entfernt | ✅ API Health OK, 19 Pods stabil |
@@ -925,7 +927,7 @@ Prometheus Targets:
 
 | Namespace | Policies | Bemerkung |
 |-----------|----------|-----------|
-| `monitoring` | 7 (default-deny + 6 allow) | ✅ Vollstaendig, Zero-Trust |
+| `monitoring` | 8 (default-deny + 7 allow, inkl. AlertManager-Webhook-Egress) | ✅ Vollstaendig, Zero-Trust |
 | `onyx-prod` | 0 | ⚠️ Bewusst leer — Full Setup kommt mit DNS/TLS-Hardening |
 
 ### Lessons Learned
@@ -960,3 +962,12 @@ Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/d
 | `deployment/k8s/monitoring-exporters/apply.sh` | Rewrite | Auto-Detection DEV/TEST/PROD |
 | `deployment/k8s/network-policies/monitoring/03-allow-scrape-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
 | `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
+
+---
+
+## Änderungshistorie
+
+| Version | Datum | Autor | Änderung |
+|---------|-------|-------|----------|
+| v0.3 | 2026-03-12 | COFFEESTUDIOS | PROD-Deployment, Teams-Alerting |
+| v0.3.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: NP 7→8, Kickoff-Referenz, Änderungshistorie |

@@ -1,8 +1,8 @@
 # Testkonzept – VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.5
+**Letzte Aktualisierung**: 2026-03-15
+**Version**: 0.5.2
 
 ---
 
@@ -11,7 +11,7 @@
 Das vorliegende Testkonzept beschreibt die Testing-Strategie, Testumgebungen, Testarten und Testfälle für den **VÖB Service Chatbot**. Es dient als Basis für die Qualitätssicherung und die formale Abnahme durch die VÖB.
 
 ### Zielgruppe
-- QA Team (Test-Planung und -Durchführung)
+- Tech Lead (CCJ) (Test-Planung und -Durchführung)
 - Entwicklungsteam (Test-Implementierung)
 - Auftraggeber (VÖB, Abnahme-Stakeholder)
 - Projektmanagement (Test-Statusverfolgung)
@@ -44,7 +44,7 @@ Die Testing-Strategie folgt dem **Testpyramiden-Prinzip**:
     └─────────────────────────────────┘
 ```
 
-### Testing Levels
+### Teststufen
 
 Die Testing-Strategie orientiert sich an der Onyx-Codebase und erweitert diese um VÖB-spezifische Extension-Tests.
 
@@ -90,6 +90,30 @@ Die Testing-Strategie orientiert sich an der Onyx-Codebase und erweitert diese u
 - **Erfolgskriterium**: Abnahmekriterien erfüllt (siehe Abnahmekriterien-Tabelle)
 
 > **Hinweis CI/CD:** Die CI/CD Pipeline (`ci-checks.yml`) validiert nur: Helm-Template-Rendering, Docker Build Backend, Docker Build Frontend. Automatisierte Testsuites (pytest, Playwright) sind fuer Phase 5 geplant.
+
+## Entry/Exit Criteria
+
+### Entry Criteria (Voraussetzungen fuer Teststart)
+
+| Phase | Voraussetzung |
+|-------|---------------|
+| Unit Tests | Code kompiliert, Dependencies installiert, `.env` konfiguriert |
+| Integration Tests | Alle Services laufen (Backend, DB, Redis, Vespa) |
+| DEV Smoke Tests | Helm Deploy erfolgreich, alle Pods Running |
+| TEST Deployment | DEV Smoke Tests bestanden, Feature auf main gemergt |
+| UAT | TEST Smoke Tests bestanden, Testdaten vorhanden |
+| Performance-Tests | TEST-Umgebung stabil, Baseline-Metriken vorhanden |
+
+### Exit Criteria (Wann gilt Phase als abgeschlossen)
+
+| Phase | Kriterium |
+|-------|-----------|
+| Unit Tests | 100% der Tests bestanden, keine P0/P1 Defekte offen |
+| Integration Tests | Alle Testfaelle bestanden oder begruendet uebersprungen |
+| DEV Smoke Tests | `/api/health` returns 200, alle Pods 1/1 Running |
+| TEST Deployment | Smoke Tests bestanden, Feature funktional verifiziert |
+| UAT | Abnahmekriterien erfuellt, VÖB-Tester bestaetigt |
+| Performance-Tests | Response-Zeiten innerhalb NFR-Grenzen (99% < 500ms) |
 
 ---
 
@@ -146,7 +170,8 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Object Storage**: Bucket `vob-dev`
 - **Zugriff**: `https://dev.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
 - **Authentifizierung**: `AUTH_TYPE: basic` (Entra ID ausstehend, blockiert durch VÖB)
-- **LLM**: GPT-OSS 120B + Qwen3-VL 235B via StackIT AI Model Serving
+- **LLM**: 4 Chat-Modelle via StackIT AI Model Serving: GPT-OSS 120B (`openai/gpt-oss-120b`), Qwen3-VL 235B (`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`), Llama 3.3 70B (`cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic`), Llama 3.1 8B (`neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8`)
+- **Embedding**: Qwen3-VL-Embedding 8B (4096 Dimensionen, multilingual)
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-dev.yaml`
 - **Zweck**: Entwicklung, Debugging, Feature-Validierung
 
@@ -160,7 +185,8 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Object Storage**: Bucket `vob-test` — eigene Credentials
 - **Zugriff**: `https://test.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
 - **IngressClass**: `nginx-test` (eigene IngressClass, Konflikt mit DEV vermieden)
-- **LLM**: GPT-OSS 120B + Qwen3-VL 235B konfiguriert
+- **LLM**: 4 Chat-Modelle konfiguriert: GPT-OSS 120B (`openai/gpt-oss-120b`), Qwen3-VL 235B (`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`), Llama 3.3 70B (`cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic`), Llama 3.1 8B (`neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8`)
+- **Embedding**: Qwen3-VL-Embedding 8B (4096 Dimensionen, multilingual)
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-test.yaml`
 - **GitHub Secrets**: Environment `test` mit eigenen PG-, Redis-, S3-Credentials
 - **Zweck**: Kundenvalidierung (VÖB), UAT, Pre-Production Testing
@@ -178,6 +204,7 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Load Balancer**: `188.34.92.162`
 - **Egress**: `188.34.73.72` (PG ACL eingeschraenkt auf `/32`)
 - **Authentifizierung**: Basic (temporaer), Microsoft Entra ID (OIDC) geplant (blockiert durch VÖB)
+- **LLM**: Noch nicht konfiguriert (wartet auf DNS/TLS-Aktivierung und VÖB-Zugang)
 - **Security**: SEC-06 Phase 2 aktiv (`runAsNonRoot: true`, Vespa = dokumentierte Ausnahme)
 - **Monitoring**: 9 Pods in `monitoring` NS (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP. Teams-Alerting (PROD-Kanal)
 - **GitHub Environment**: `prod` mit Required Reviewer + 6 Secrets (keine Secrets im Git)
@@ -305,9 +332,9 @@ class TestTokenUsageAPI:
         assert response.status_code == 200
 ```
 
-### Security Tests
+### Security-Tests
 
-[ENTWURF — wartet auf Phase 4f, blockiert durch Entra ID]
+[ENTWURF -- Blockiert: Wartet auf Phase 4f (ext-rbac), benoetigt Entra ID von VÖB]
 
 **Definition**: Tests für Sicherheitsfunktionalität (Authentication, Authorization, Input Validation).
 
@@ -379,9 +406,9 @@ class TestPromptInjection:
         # Response should not contain sensitive system information
 ```
 
-### Performance Tests
+### Performance-Tests
 
-[ENTWURF — geplant fuer Phase 5]
+[ENTWURF -- Geplant fuer Phase 5. Voraussetzung: PROD mit DNS/TLS aktiv]
 
 **Definition**: Tests für Non-Functional Requirements (Latenz, Durchsatz, Speicher).
 
@@ -406,9 +433,10 @@ export default function () {
   let jar = http.cookieJar();
   // ... Login-Request hier (session-basiert) ...
 
+  // HTTPS + DNS nutzen für realistische Performance-Messung (inkl. TLS-Handshake)
   let response = http.get(
-    'http://188.34.118.201/api/ext/token/usage/summary?period_hours=168',
-    { cookies: jar.cookiesForURL('http://188.34.118.201') }
+    'https://test.chatbot.voeb-service.de/api/ext/token/usage/summary?period_hours=168',
+    { cookies: jar.cookiesForURL('https://test.chatbot.voeb-service.de') }
   );
 
   check(response, {
@@ -418,7 +446,7 @@ export default function () {
 }
 ```
 
-### Acceptance Tests (UAT)
+### Abnahmetests (UAT)
 
 **Definition**: Manuelle Tests durch VÖB-Stakeholder zur Verifikation von Anforderungen.
 
@@ -453,7 +481,7 @@ Feature: Token Limits Management
 
 ## Testdaten-Management
 
-### Test Data Strategy
+### Testdaten-Strategie
 
 **Quellen**:
 1. **Fixtures**: Vordefinierte Test-Daten (pytest Fixtures in `conftest.py`, SQL-Seeds)
@@ -466,7 +494,7 @@ Feature: Token Limits Management
 
 ### Anonymisierung
 
-[ENTWURF — Details vor PROD-Betrieb konkretisieren]
+[ENTWURF -- Abhaengig von Loeschkonzept (docs/loeschkonzept-entwurf.md)]
 
 Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert sein:
 - Echte Email-Adressen -> `user-123@test.local`
@@ -482,8 +510,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-001: Usage Summary Abruf erfolgreich
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-001 |
 | **Testfall** | Usage Summary erfolgreich abrufen fuer authentifizierten Admin |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -497,8 +525,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-002: Usage-Abruf ohne Authentifizierung
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-002 |
 | **Testfall** | Request ohne gueltige Session sollte fehlschlagen |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -512,8 +540,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-003: Token-Limit Enforcement bei Ueberschreitung
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-003 |
 | **Testfall** | Chat-Request wird abgelehnt wenn Token-Budget ueberschritten |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -527,8 +555,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-004: Rolling-Zeitfenster Token-Reset
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-004 |
 | **Testfall** | Token-Verbrauch wird durch Rolling-Zeitfenster automatisch zurueckgesetzt |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -542,8 +570,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-005: Limit Enforcement bei Budget-Ueberschreitung (HTTP 429)
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-005 |
 | **Testfall** | Benutzer erhaelt HTTP 429 mit Reset-Zeitpunkt wenn Token-Budget erschoepft |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -558,8 +586,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-TL-006: Streaming-Response Token-Tracking
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-TL-006 |
 | **Testfall** | Token-Zaehlung funktioniert fuer Streaming-Responses (SSE) |
 | **Modul** | Token Usage Tracking (ext-token) |
@@ -573,14 +601,14 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 ---
 
-### RBAC Module – Testfälle
+### RBAC Module -- Testfaelle
 
-[ENTWURF — wartet auf Phase 4f, blockiert durch Entra ID]
+[ENTWURF -- Blockiert: Wartet auf Phase 4f (ext-rbac), benoetigt Entra ID von VÖB]
 
 #### TC-RBAC-001: User-Gruppe erstellen und zuweisen
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-001 |
 | **Testfall** | Admin kann neue User-Gruppe erstellen und Benutzer zuweisen |
 | **Modul** | RBAC & User Groups |
@@ -594,8 +622,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-RBAC-002: Nicht-Admin kann keine Token-Limits aendern
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-002 |
 | **Testfall** | Benutzer ohne Admin-Rolle kann keine Token-Limits fuer andere aendern |
 | **Modul** | RBAC & User Groups |
@@ -609,8 +637,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-RBAC-003: Org-Admin kann nur Benutzer der eigenen Org verwalten
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-003 |
 | **Testfall** | Org-Admin kann nur Benutzer seiner Organisation verwalten |
 | **Modul** | RBAC & User Groups |
@@ -624,8 +652,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-RBAC-004: Rollen werden aus ext_user_groups gelesen
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-004 |
 | **Testfall** | Benutzer-Rollen werden korrekt aus ext_user_groups ermittelt |
 | **Modul** | RBAC & User Groups |
@@ -639,8 +667,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-RBAC-005: Expire-Datum für Gruppen-Zugehörigkeit wird beachtet
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-005 |
 | **Testfall** | User verliert Gruppe-Permission wenn expires_at überschritten |
 | **Modul** | RBAC & User Groups |
@@ -654,11 +682,13 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-RBAC-006: Prompt Injection wird blockiert
 
-| Field | Value |
-|-------|-------|
+> **Hinweis:** Dieser Testfall gehoert thematisch zu Security / LLM Input Validation, nicht zu RBAC. Er verbleibt hier aus Stabilitaetsgruenden (ID-Kontinuitaet). In der RTM ist er unter Security gefuehrt.
+
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-RBAC-006 |
-| **Testfall** | Benutzer kann System Prompt nicht durch Nachrichten überschreiben |
-| **Modul** | RBAC & User Groups / LLM Security |
+| **Testfall** | Benutzer kann System Prompt nicht durch Nachrichten ueberschreiben |
+| **Modul** | Security / LLM Input Validation |
 | **Vorbedingung** | - Benutzer sendet Chat-Message mit "Ignore your instructions..." Befehl |
 | **Testschritte** | 1. POST /api/chat/message mit malicious prompt<br>2. System verarbeitet sicher<br>3. Response prüfen |
 | **Erwartetes Ergebnis** | Message wird verarbeitet, aber System folgt nicht der Injection<br>LLM antwortet mit angemessenem Verhalten<br>Keine Sicherheitsverletzung in Logs |
@@ -673,8 +703,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-EXT-FW-001: Feature Flags default false
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-EXT-FW-001 |
 | **Testfall** | Alle Feature Flags sind standardmäßig deaktiviert |
 | **Modul** | Extension Framework |
@@ -688,8 +718,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-EXT-FW-002: Master-Switch gating
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-EXT-FW-002 |
 | **Testfall** | Modul-Flags bleiben false selbst wenn einzeln aktiviert, solange EXT_ENABLED=false |
 | **Modul** | Extension Framework |
@@ -703,8 +733,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-EXT-FW-003: AND-gating Modul-Flags
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-EXT-FW-003 |
 | **Testfall** | Modul-Flag wird nur aktiv wenn EXT_ENABLED=true UND Modul-Flag=true |
 | **Modul** | Extension Framework |
@@ -718,8 +748,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-EXT-FW-004: Health Endpoint Statusantwort
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-EXT-FW-004 |
 | **Testfall** | Health Endpoint gibt korrekten Status mit allen Modul-Flags zurück |
 | **Modul** | Extension Framework |
@@ -733,8 +763,8 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 #### TC-EXT-FW-005: Health Endpoint zeigt aktiviertes Modul
 
-| Field | Value |
-|-------|-------|
+| Feld | Wert |
+|------|------|
 | **Test ID** | TC-EXT-FW-005 |
 | **Testfall** | Aktiviertes Modul wird im Health Endpoint als true angezeigt |
 | **Modul** | Extension Framework |
@@ -960,22 +990,44 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | Verfügbarkeit | 99.9% Uptime (Monitoring 30 Tage) | Monitoring in Production |
 | Sicherheit | 0 kritische Schwachstellen (OWASP Top 10) | Security Test + Code Review |
 | Compliance | DSGVO-konform, Audit Trail komplett | Compliance Checklist |
-| Skalierbarkeit | System skaliert auf 1000 gleichzeitige Benutzer | Load Test Skalierung-001 |
+| Skalierbarkeit | System skaliert auf 150 gleichzeitige Benutzer (entsprechend PROD-Sizing, siehe ADR-005). Skalierung auf 1000 User ist durch HPA-Nachrüstung möglich. | Load Test Skalierung-001 |
 
 ### Abnahmekriterien-Tabelle (für Abnahmeprotokoll)
 
 | Nr. | Kriterium | Soll | Ist | Erfüllt? |
 |-----|-----------|-----|-----|---------|
-| 1 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | [TBD] | [ ] Ja [ ] Nein |
-| 2 | Token Limits durchgesetzt | Token-Budgets werden geprueft, HTTP 429 bei Ueberschreitung | [TBD] | [ ] Ja [ ] Nein |
-| 3 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | [TBD] | [ ] Ja [ ] Nein |
-| 4 | Chat-Funktionalität | Benutzer können chatten, LLM antwortet | [TBD] | [ ] Ja [ ] Nein |
-| 5 | RAG funktioniert | Dokumente werden gesucht und eingebettet | [TBD] | [ ] Ja [ ] Nein |
-| 6 | Branding angewendet | UI zeigt VÖB-Branding korrekt | [TBD] | [ ] Ja [ ] Nein |
-| 7 | Performance erfüllt | < 500ms für 99% Requests | [TBD] | [ ] Ja [ ] Nein |
-| 8 | Sicherheit | Keine kritischen Schwachstellen | [TBD] | [ ] Ja [ ] Nein |
-| 9 | Compliance | DSGVO, Audit Trail, Datenschutz | [TBD] | [ ] Ja [ ] Nein |
-| 10 | Dokumentation | Alle Dokumente vorhanden und aktuell | [TBD] | [ ] Ja [ ] Nein |
+| 1 | Extension Framework | Feature Flags, Router, Health Endpoint | Implementiert (4a, deployed DEV+TEST) | [x] Ja [ ] Nein |
+| 2 | Token Limits durchgesetzt | Token-Budgets werden geprueft, HTTP 429 bei Ueberschreitung | Implementiert (4c, 29 Unit Tests bestanden) | [x] Ja [ ] Nein |
+| 3 | Branding angewendet | UI zeigt VÖB-Branding korrekt | Implementiert (4b, deployed DEV+TEST, getestet 2026-03-08) | [x] Ja [ ] Nein |
+| 4 | Custom Prompts | System Prompts konfigurierbar, CORE #7 Hook aktiv | Implementiert (4d, 29 Unit Tests, deployed 2026-03-09) | [x] Ja [ ] Nein |
+| 5 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | [TBD] | [ ] Ja [ ] Nein |
+| 6 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | [Blockiert — Entra ID] | [ ] Ja [ ] Nein |
+| 7 | Access Control | Dokument-Zugriffssteuerung pro Gruppe | [Blockiert — braucht RBAC] | [ ] Ja [ ] Nein |
+| 8 | Chat-Funktionalität | Benutzer können chatten, LLM antwortet | [TBD] | [ ] Ja [ ] Nein |
+| 9 | RAG funktioniert | Dokumente werden gesucht und eingebettet | [TBD] | [ ] Ja [ ] Nein |
+| 10 | Skalierbarkeit | System skaliert auf 150 gleichzeitige Benutzer (PROD-Sizing, ADR-005) | [TBD] | [ ] Ja [ ] Nein |
+| 11 | Performance erfüllt | < 500ms für 99% Requests | [TBD] | [ ] Ja [ ] Nein |
+| 12 | Sicherheit | Keine kritischen Schwachstellen | [TBD] | [ ] Ja [ ] Nein |
+| 13 | Compliance | DSGVO, Audit Trail, Datenschutz | [TBD] | [ ] Ja [ ] Nein |
+| 14 | Dokumentation | Alle Dokumente vorhanden und aktuell | [TBD] | [ ] Ja [ ] Nein |
+
+---
+
+## Requirements Traceability Matrix
+
+| Anforderung (Quelle) | Testfall-ID(s) | Status | Anmerkung |
+|----------------------|---------------|--------|-----------|
+| Extension Framework (Phase 4a) | TC-EXT-FW-001 bis TC-EXT-FW-005 | Alle bestanden | 5 TCs, 10 Unit Tests (test_config.py, test_health.py) |
+| ext-branding (Phase 4b) | TC-BRANDING-001 bis TC-BRANDING-005 | Alle bestanden | 5 TCs, 21 Unit Tests (test_branding.py) |
+| ext-token (Phase 4c) | TC-TL-001 bis TC-TL-006, TC-TOKEN-001 bis TC-TOKEN-004 | Alle bestanden | 10 TCs, 11 Unit Tests (test_token_tracker.py) |
+| ext-prompts (Phase 4d) | TC-PROMPTS-001 bis TC-PROMPTS-005 | Alle bestanden | 5 TCs, 29 Unit Tests (test_prompts.py) |
+| ext-rbac (Phase 4f) | TC-RBAC-001 bis TC-RBAC-005 | TBD (Entra ID) | ENTWURF, 5 TCs geplant |
+| Authentifizierung (Phase 3) | TC-AUTH-001 (geplant) | TBD (Entra ID) | Blockiert |
+| Chat-Funktionalitaet | TC-CHAT-001 (geplant) | TBD (Phase 5) | E2E Test geplant |
+| RAG-Funktionalitaet | TC-RAG-001 (geplant) | TBD (Phase 5) | Integration Test geplant |
+| Skalierbarkeit (NFR) | Load Test Skalierung-001 (geplant) | TBD (Phase 5) | K6 Performance Test, 150 User |
+| Performance (NFR) | Load Test Performance-001 (geplant) | TBD (Phase 5) | K6, 99% < 500ms |
+| Security (NFR) | TC-RBAC-006 (Prompt Injection), Security-001 ff. | TBD (Phase 4f/5) | ENTWURF, Security / LLM Input Validation |
 
 ---
 
@@ -999,27 +1051,29 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 
 ### Test-Zusammenfassung
 
+> (Hinweis: Die folgenden Eintraege sind illustrative Beispiele und spiegeln nicht die tatsaechlichen Testergebnisse wider. Tatsaechliche Ergebnisse: siehe Testfaelle pro Modul.)
+
 **Bestanden**:
-- TC-TL-001: Usage Summary Abruf – ✅ Passed
-- TC-RBAC-001: User-Gruppe erstellen – ✅ Passed
+- TC-BEISPIEL-001: [Testfall-Beschreibung] -- Passed
+- TC-BEISPIEL-002: [Testfall-Beschreibung] -- Passed
 - [weitere...]
 
 **Fehlgeschlagen**:
-- TC-TL-003: Token-Limit Enforcement – ❌ Failed
-  - **Grund**: (Template-Beispiel) System gibt falschen HTTP-Status zurueck
-  - **Severity**: Critical
+- TC-BEISPIEL-003: [Testfall-Beschreibung] -- Failed
+  - **Grund**: [Fehlerbeschreibung]
+  - **Severity**: [P0-P3]
   - **Owner**: CCJ
   - **Fix-Termin**: [TBD]
 
 **Blockiert**:
 - [Falls vorhanden]
 
-### Mängel (Issues)
+### Maengel (Issues)
 
 | ID | Beschreibung | Severity | Reproduzierbar | Fix-Termin | Status |
 |----|-------------|----------|--------|----------|--------|
-| BUG-001 | (Template-Beispiel) Token-Limit gibt falschen HTTP-Status | Critical | Ja | [TBD] | [Template] |
-| BUG-002 | (Template-Beispiel) Streaming-Token-Tracking zaehlt nicht | High | Ja | [TBD] | [Template] |
+| BUG-BEISPIEL-001 | [Fehlerbeschreibung] | [P0-P3] | Ja/Nein | [TBD] | [Offen/Behoben] |
+| BUG-BEISPIEL-002 | [Fehlerbeschreibung] | [P0-P3] | Ja/Nein | [TBD] | [Offen/Behoben] |
 
 ### Empfehlungen
 
@@ -1088,11 +1142,23 @@ Markiert als "Verified Fixed"
 | **Phase 4a: Extension Framework** | Feb 2026 | Feature Flags, Health Endpoint (10 Tests, 100% bestanden) | Erledigt (2026-02-12) | Entwicklung (CCJ) |
 | **Phase 3: Authentifizierung** | Ausstehend | Entra ID Integration | Blockiert (wartet auf VÖB IT) | Entwicklung + VÖB IT |
 | **Phase 4b-4d: Feature-Tests** | 2026-03-08 bis 2026-03-09 | Branding, Token Limits, Custom Prompts — alle implementiert und getestet | Erledigt (4b: 21 Tests, 4c: 11 Tests, 4d: 29 Tests) | Entwicklung (CCJ) |
-| **Phase 5: E2E + Security Tests** | Ausstehend | Vollständige User Flows, Pentest | Geplant | QA + Security |
-| **Phase 6: UAT + Go-Live** | Ausstehend | VÖB-Stakeholder Abnahme auf TEST-Umgebung | Geplant | QA + VÖB |
+| **Phase 5: E2E + Security-Tests** | Ausstehend | Vollstaendige User Flows, Pentest | Geplant | Tech Lead (CCJ) + externer Auditor |
+| **Phase 6: UAT + Go-Live** | Ausstehend | VÖB-Stakeholder Abnahme auf TEST-Umgebung | Geplant | Tech Lead (CCJ) + VÖB |
 
 ---
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.5
+**Letzte Aktualisierung**: 2026-03-15
+**Version**: 0.5.2
+
+## Aenderungshistorie
+
+| Version | Datum | Autor | Aenderung |
+|---------|-------|-------|-----------|
+| v0.1 | 2026-02-12 | COFFEESTUDIOS | Erstversion: Teststrategie, Testpyramide, Umgebungen, Extension Framework Testfaelle (Phase 4a) |
+| v0.2 | 2026-03-03 | COFFEESTUDIOS | TEST-Umgebung ergaenzt, CI/CD-Abschnitt, Testprotokoll-Template |
+| v0.3 | 2026-03-08 | COFFEESTUDIOS | ext-branding Testfaelle (Phase 4b), RBAC-Testfaelle (ENTWURF) |
+| v0.4 | 2026-03-09 | COFFEESTUDIOS | ext-token Testfaelle (Phase 4c), ext-prompts Testfaelle (Phase 4d), Security/Performance-Abschnitte (ENTWURF), Abnahmekriterien, Fehlerkategorien |
+| v0.5 | 2026-03-11 | COFFEESTUDIOS | PROD-Umgebung ergaenzt, Konsolidierung Testfaelle, Testphasen-Tabelle aktualisiert |
+| v0.5.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 6 Cross-Ref-Fixes (XREF-003/004/013/031/035/036) |
+| v0.5.2 | 2026-03-15 | COFFEESTUDIOS | Audit Quality-Fixes: RTM, Entry/Exit Criteria, Sprachbereinigung DE/EN, ENTWURF-Blocker praezisiert, QA-Team-Referenzen korrigiert (Solo-Dev), TC-RBAC-006 Modul-Zuordnung korrigiert (Security), Testprotokoll-Beispieldaten neutralisiert |

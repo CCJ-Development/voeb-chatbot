@@ -1,7 +1,7 @@
 # ADR-002: Extension-Architektur ("Extend, don't modify")
 
 **Status**: Akzeptiert
-**Aktualisiert**: 2026-02-12 (Pfade und Core-Dateien nach Phase 4a korrigiert)
+**Aktualisiert**: 2026-03-14 (Nummerierung, Upstream-Merge-Frequenz, ext-Tabellen)
 **Author**: CCJ / Coffee Studios
 
 ---
@@ -67,10 +67,10 @@ Wie bauen wir **Custom Features** (Token Limits, RBAC, Branding, Analytics) für
 │ │ 1. backend/onyx/main.py         (Route Registration)       │ │
 │ │ 2. backend/onyx/llm/multi_llm.py (Token Hook)             │ │
 │ │ 3. backend/onyx/access/access.py (Access Control Hook)     │ │
-│ │ 4. backend/onyx/chat/prompt_utils.py (Prompt Injection)    │ │
-│ │ 5. web/src/app/layout.tsx        (Navigation)              │ │
-│ │ 6. web/src/components/header/    (Branding)                │ │
-│ │ 7. web/src/lib/constants.ts      (CSS Variables)           │ │
+│ │ 4. web/src/app/layout.tsx        (Navigation)              │ │
+│ │ 5. web/src/components/header/    (Branding)                │ │
+│ │ 6. web/src/lib/constants.ts      (CSS Variables)           │ │
+│ │ 7. backend/onyx/chat/prompt_utils.py (Prompt Injection)    │ │
 │ └─────────────────────────────────────────────────────────────┘ │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -99,16 +99,17 @@ Nur folgende **10 Files** dürfen im Core modifiziert werden:
 1. backend/onyx/main.py                     (Extension Routes registrieren)
 2. backend/onyx/llm/multi_llm.py            (Token Hook nach LLM-Response)
 3. backend/onyx/access/access.py             (Additiver Permission-Check)
-4. backend/onyx/chat/prompt_utils.py         (Custom Prompt Injection)
-5. web/src/app/layout.tsx                    (Nav-Items für ext/-Seiten)
-6. web/src/components/header/                (Branding mit Fallback)
-7. web/src/lib/constants.ts                  (CSS Variables mit --ext- Prefix)
+4. web/src/app/layout.tsx                    (Nav-Items für ext/-Seiten)
+5. web/src/components/header/                (Branding mit Fallback)
+6. web/src/lib/constants.ts                  (CSS Variables mit --ext- Prefix)
+7. backend/onyx/chat/prompt_utils.py         (Custom Prompt Injection)
 8. web/src/app/auth/login/LoginText.tsx      (Login-Tagline, seit ext-branding)
 9. web/src/components/auth/AuthFlowContainer.tsx (Login-Logo + App-Name, seit ext-branding)
 10. web/src/sections/sidebar/AdminSidebar.tsx (Billing→Branding, seit ext-branding)
 ```
 
 > Details zu erlaubten Änderungen pro Datei: siehe `.claude/rules/core-dateien.md`
+> Hinweis: Autoritative Nummerierung in `.claude/rules/core-dateien.md`
 
 **Alles andere bleibt unverändert!**
 
@@ -186,6 +187,8 @@ except ImportError:
 - `ext_analytics_events`
 - Etc.
 
+> Hinweis (2026-03-14): Die tatsächlichen Tabellennamen weichen von der initialen Planung ab. Aktuelle Tabellen: `ext_branding_config`, `ext_token_usage`, `ext_token_user_limit`, `ext_prompt_templates`. Siehe jeweilige Feinkonzepte für aktuelle Schemas.
+
 **Foreign Keys**: Extensions können auf Core-Tabellen verweisen (z. B. FK zu `user.id`), aber Core referenziert nicht auf Extension-Tabellen.
 
 ```sql
@@ -254,10 +257,10 @@ Frontend-Extensions leben in `web/src/ext/` und werden über die 3 Frontend-Core
 1. **backend/onyx/main.py**: Extension Routes müssen in FastAPI registriert werden
 2. **backend/onyx/llm/multi_llm.py**: Token-Tracking nach LLM-Calls
 3. **backend/onyx/access/access.py**: Additiver Permission-Check (Access Control)
-4. **backend/onyx/chat/prompt_utils.py**: Custom Prompt Injection (prepend)
-5. **web/src/app/layout.tsx**: Navigation für Extension-Seiten
-6. **web/src/components/header/**: Branding (Logo/Titel über Config)
-7. **web/src/lib/constants.ts**: CSS Variables für Extension-Theming
+4. **web/src/app/layout.tsx**: Navigation für Extension-Seiten
+5. **web/src/components/header/**: Branding (Logo/Titel über Config)
+6. **web/src/lib/constants.ts**: CSS Variables für Extension-Theming
+7. **backend/onyx/chat/prompt_utils.py**: Custom Prompt Injection (prepend)
 8. **web/src/app/auth/login/LoginText.tsx**: Login-Tagline durch Branding-Wert ersetzen (seit ext-branding)
 9. **web/src/components/auth/AuthFlowContainer.tsx**: Login-Logo + App-Name (seit ext-branding)
 10. **web/src/sections/sidebar/AdminSidebar.tsx**: Billing→Branding in Admin-Sidebar (seit ext-branding)
@@ -327,7 +330,8 @@ Punkte 1-7 sind **minimal notwendig** für das Extension Framework. Punkte 8-10 
 ### Positive Auswirkungen
 
 1. **Einfache Upstream-Merges**
-   - Neue Onyx-Versionen alle 3-6 Monate integrierbar
+   - Core-Patches bleiben 3-6 Monate ohne Konflikte integrierbar (Integrierbarkeits-Horizont, nicht Merge-Frequenz)
+   - Merge-Frequenz: Mindestens quartalsweise (siehe Betriebskonzept). Wöchentlicher CI-Check (`upstream-check.yml`) als Frühwarnung.
    - Konflikt-Potential minimal
    - Security Updates einfach einzuspielen
 
@@ -378,7 +382,7 @@ voeb-chatbot/
 │   │   ├── main.py              (CORE #1 – Extension Route Hook)
 │   │   ├── llm/multi_llm.py    (CORE #2 – Token Hook)
 │   │   ├── access/access.py    (CORE #3 – Access Control Hook)
-│   │   ├── chat/prompt_utils.py (CORE #7 – Prompt Hook)
+│   │   ├── chat/prompt_utils.py (CORE #7 – Prompt Hook, Nummerierung gem. core-dateien.md)
 │   │   ├── db/models.py        (READ-ONLY)
 │   │   └── server/             (READ-ONLY)
 │   │
@@ -399,9 +403,10 @@ voeb-chatbot/
 │
 ├── web/
 │   ├── src/
-│   │   ├── app/layout.tsx       (CORE #4 – Nav Items)
+│   │   ├── app/layout.tsx       (CORE #4 – Nav Items, Nummerierung gem. core-dateien.md)
 │   │   ├── components/header/   (CORE #5 – Branding)
 │   │   ├── lib/constants.ts     (CORE #6 – CSS Variables)
+│   │   │   (Hinweis: Autoritative Nummerierung in .claude/rules/core-dateien.md)
 │   │   └── ext/                 (NEW – Frontend Extensions)
 │   │       ├── components/
 │   │       ├── pages/
@@ -471,4 +476,4 @@ voeb-chatbot/
 
 **ADR Status**: Akzeptiert
 **Letzte Aktualisierung**: 2026-02-12
-**Version**: 1.1 (Implementierungsdetails nach Phase 4a an tatsächliche Architektur angepasst)
+**Version**: 1.2 (Nummerierung an core-dateien.md angeglichen, Upstream-Merge-Frequenz klargestellt, ext-Tabellen aktualisiert)

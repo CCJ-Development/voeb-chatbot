@@ -1,7 +1,24 @@
 # Runbook: StackIT PostgreSQL Flex — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-02-27
+**Zuletzt verifiziert:** 2026-02-27 (DEV/TEST). PROD-Abschnitt ergaenzt 2026-03-15.
 **Ausgeführt von:** Nikolaj Ivanov
+
+---
+
+## Zweck
+
+**Wann dieses Runbook verwenden:**
+- Neue Datenbank auf einer StackIT PG Flex Instanz anlegen
+- PG-Verbindungsprobleme debuggen (ACL, Credentials, Rollen)
+
+**Zielgruppe:** DevOps / Tech Lead
+
+**Voraussetzungen:**
+- PG Flex Instanz provisioniert (Terraform apply)
+- User-Credentials aus `terraform output`
+- `kubectl` Zugriff auf den Cluster (fuer temporaeren Pod)
+
+**Geschaetzte Dauer:** 10-20 Min
 
 ---
 
@@ -26,7 +43,7 @@ Terraform erstellt die PG-Instanz und den Applikations-User, aber NICHT die Date
 |----------|-----------|---------|-----------|
 | DEV | `onyx-dev` | Aus `terraform output -raw pg_host` (environments/dev) | Shared Cluster |
 | TEST | `onyx-test` | Aus `terraform output -raw pg_host` (environments/test) | Shared Cluster |
-| PROD | `onyx-prod` | Aus `terraform output -raw pg_host` (environments/prod) | Eigener Cluster `vob-prod` |
+| PROD | `onyx-prod` | Aus `terraform output -raw pg_host` (environments/prod) | Eigener Cluster `vob-prod`, Flex 4.8 HA (3-Node), PITR aktiviert |
 
 ### Befehl (via temporären Pod)
 
@@ -128,3 +145,22 @@ kubectl delete pod pg-client -n <NS>
 | `permission denied to create role` | Managed PG hat kein CREATEROLE | User per Terraform anlegen |
 | `Connection refused` | PG Flex ACL blockiert | ACL in `environments/{env}/main.tf` prüfen. DEV+TEST: Egress `188.34.93.194/32`, PROD: Egress `188.34.73.72/32` (jeweils + Admin-IP) |
 | `password authentication failed` | Falsches Passwort | `terraform output -raw pg_password` prüfen |
+
+---
+
+## Eskalation
+
+| Situation | Aktion | Kontakt |
+|-----------|--------|---------|
+| Runbook-Schritte schlagen fehl | Troubleshooting-Tabelle pruefen, ggf. Rollback | Tech Lead (CCJ) |
+| PROD-Ausfall > 15 Min | Incident-Prozess starten (P1/P2) | Tech Lead (CCJ), VÖB Operations [AUSSTEHEND] |
+| StackIT-Infrastruktur-Problem | StackIT Support kontaktieren | StackIT Support [AUSSTEHEND] |
+
+> Vollstaendiger Eskalationsprozess: Siehe `docs/betriebskonzept.md` Abschnitt "Incident Management" und `docs/runbooks/rollback-verfahren.md`.
+
+---
+
+## Verwandte Runbooks
+
+- [Helm Deploy](./helm-deploy.md) — DB-Credentials in Helm Secrets konfigurieren
+- [Rollback-Verfahren](./rollback-verfahren.md) — PG-Backup-Restore bei Datenbank-Problemen

@@ -221,7 +221,7 @@ PROD wird in einem **separaten SKE-Cluster** betrieben (deployed 2026-03-11, 19 
 ### Negative Auswirkungen / Mitigation
 
 1. **Höhere Kosten (~+300 EUR/Monat für TEST)**
-   - Mitigation: Notwendig für Enterprise-Qualität; ~550 EUR/Monat gesamt (DEV+TEST) immer noch kosteneffizient
+   - Mitigation: Notwendig für Enterprise-Qualität; ~868 EUR/Monat gesamt (DEV+TEST, nach Node-Upgrade auf g1a.8d, siehe ADR-005) immer noch kosteneffizient
    - Impact: Akzeptabel im Projektbudget
 
 2. **Mehr Terraform-Ressourcen zu verwalten**

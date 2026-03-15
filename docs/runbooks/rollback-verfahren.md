@@ -125,6 +125,7 @@ Falls ein Alembic-Downgrade nicht möglich ist:
 3. Backup-Zeitpunkt bestimmen:
    - DEV: Tägliches Backup um 02:00 UTC
    - TEST: Tägliches Backup um 03:00 UTC
+   - PROD: Automatisch täglich, Retention 30 Tage (Flex 4.8 HA, PITR aktiviert). Maintenance-Window: 03:00-05:00 UTC.
 4. **Achtung**: Alle Daten nach dem Backup-Zeitpunkt gehen verloren
 
 ---

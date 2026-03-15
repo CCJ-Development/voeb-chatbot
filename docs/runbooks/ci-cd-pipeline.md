@@ -2,7 +2,25 @@
 
 > **Workflow**: `.github/workflows/stackit-deploy.yml`
 > **Verifiziert**: 2026-03-02 (Run #5, Commit `ea70a11`)
-> **Letzte Änderung**: 2026-03-02
+> **Letzte Änderung**: 2026-03-15
+
+---
+
+## Zweck
+
+**Wann dieses Runbook verwenden:**
+- Deployment auf DEV, TEST oder PROD ausloesen (automatisch oder manuell)
+- Deploy-Status pruefen und Pipeline-Fehler debuggen
+- Secrets (Kubeconfig, Registry, DB) aktualisieren oder rotieren
+
+**Zielgruppe:** DevOps / Tech Lead
+
+**Voraussetzungen:**
+- Zugriff auf GitHub-Repo `CCJ-Development/voeb-chatbot`
+- `gh` CLI authentifiziert
+- Fuer Cluster-Zugriff: `kubectl` mit gueltiger Kubeconfig
+
+**Geschaetzte Dauer:** 15-30 Min (Deploy + Verifikation)
 
 ---
 
@@ -239,6 +257,7 @@ gh secret set STACKIT_KUBECONFIG \
 stackit ske kubeconfig create vob-prod \
   --project-id <PROD_PROJECT_ID> \
   --login --expiration 90d
+# PROD Projekt-ID: Siehe StackIT Portal, Projekt `vob-prod`. GitHub Environment: `prod` (Required Reviewer).
 
 # Als ENVIRONMENT Secret im GitHub Environment `prod` setzen
 gh secret set STACKIT_KUBECONFIG \
@@ -365,3 +384,22 @@ gh api repos/actions/checkout/git/ref/tags/v4 --jq '.object.sha'
 # ALT: uses: actions/checkout@<alter-sha> # v4
 # NEU: uses: actions/checkout@<neuer-sha> # v4
 ```
+
+---
+
+## Eskalation
+
+| Situation | Aktion | Kontakt |
+|-----------|--------|---------|
+| Runbook-Schritte schlagen fehl | Troubleshooting-Tabelle pruefen, ggf. Rollback | Tech Lead (CCJ) |
+| PROD-Ausfall > 15 Min | Incident-Prozess starten (P1/P2) | Tech Lead (CCJ), VÖB Operations [AUSSTEHEND] |
+| StackIT-Infrastruktur-Problem | StackIT Support kontaktieren | StackIT Support [AUSSTEHEND] |
+
+> Vollstaendiger Eskalationsprozess: Siehe `docs/betriebskonzept.md` Abschnitt "Incident Management" und `docs/runbooks/rollback-verfahren.md`.
+
+---
+
+## Verwandte Runbooks
+
+- [Helm Deploy](./helm-deploy.md) — Manuelles Helm-Deployment oder -Update
+- [Rollback-Verfahren](./rollback-verfahren.md) — Rollback bei fehlerhaftem Deploy

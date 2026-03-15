@@ -20,7 +20,7 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 2. **Compliance & Regulierung**
    - BAIT (freiwillige Orientierung — VÖB kein KWG-Institut) und Banking-Standards
    - BSI C5 (Cloud Computing Compliance Control Catalogue)
-   - BaFin-Anforderungen für FinTech-Lösungen
+   - Banking-Standards (BSI-Grundschutz, BAIT als freiwillige Orientierung)
    - Möglicherweise ISO 27001 oder ähnliche Zertifizierung
 
 3. **Datenschutz**
@@ -369,6 +369,21 @@ Aktueller Stand: SEC-01 umgesetzt (PG ACL). SEC-03 umgesetzt (NetworkPolicies). 
 
 ---
 
+### Nachtrag: Sealed Secrets (2026-03-14)
+
+Status: Nicht implementiert. PROD wurde am 2026-03-11 ohne Sealed Secrets deployed.
+
+Aktuelle Mitigation:
+- Kubernetes RBAC beschränkt kubectl-Zugriff
+- Encryption-at-Rest (AES-256, StackIT Default)
+- Kubeconfig mit 90-Tage-Ablauf
+- Secrets nur in gitignored Values-Dateien
+
+Risikobewertung: Akzeptiertes Restrisiko für aktuelle Phase (Solo-Dev, kein Multi-Team-Zugriff).
+Empfehlung: Bei Multi-User-Betrieb (nach Entra ID) erneut evaluieren (SOPS oder External Secrets Operator).
+
+---
+
 **ADR Status**: Akzeptiert
-**Letzte Aktualisierung**: 2026-03-04
-**Version**: 1.1
+**Letzte Aktualisierung**: 2026-03-14
+**Version**: 1.2

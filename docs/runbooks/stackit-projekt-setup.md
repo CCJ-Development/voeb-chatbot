@@ -1,8 +1,27 @@
 # Runbook 1: StackIT Projekt-Setup
 
-**Zuletzt verifiziert:** 2026-02-12
+**Zuletzt verifiziert:** 2026-02-12 (initiales DEV-Setup). PROD verwendet eigenen Cluster (`vob-prod`, siehe ADR-004).
 **Ausgeführt von:** Nikolaj Ivanov
 **Dauer:** ca. 30 Minuten (ohne Wartezeit auf Berechtigungen)
+
+---
+
+## Zweck
+
+**Wann dieses Runbook verwenden:**
+- Erstmalige Einrichtung eines StackIT-Projekts (CLI, Service Account, Container Registry)
+- Neuen Entwickler onboarden (Zugang zu StackIT)
+
+**Zielgruppe:** Neuer Entwickler / DevOps
+
+**Voraussetzungen:**
+- StackIT Account mit Zugang zur Organisation
+- StackIT Projekt angelegt (ueber Portal)
+- macOS mit Homebrew, Docker installiert
+
+**Geschaetzte Dauer:** 30-60 Min (inkl. Wartezeit auf Berechtigungen)
+
+> **Hinweis:** Dieses Runbook dokumentiert das initiale Setup (2026-02). PROD verwendet einen eigenen Cluster (`vob-prod`). Fuer PROD-Setup siehe [ADR-004](../adr/adr-004-umgebungstrennung-dev-test-prod.md).
 
 ---
 
@@ -171,3 +190,21 @@ Für CI/CD später einen **Robot Account** in der Registry-Oberfläche erstellen
 ## Nächster Schritt
 
 Sobald der Service Account die `project.admin`-Rolle hat → weiter mit dem [Implementierungsplan Phase 2](../referenz/stackit-implementierungsplan.md#phase-2-terraform-apply-dev) (Terraform Deploy).
+
+---
+
+## Eskalation
+
+| Situation | Aktion | Kontakt |
+|-----------|--------|---------|
+| Runbook-Schritte schlagen fehl | Troubleshooting-Tabelle pruefen, ggf. Rollback | Tech Lead (CCJ) |
+| PROD-Ausfall > 15 Min | Incident-Prozess starten (P1/P2) | Tech Lead (CCJ), VÖB Operations [AUSSTEHEND] |
+| StackIT-Infrastruktur-Problem | StackIT Support kontaktieren | StackIT Support [AUSSTEHEND] |
+
+> Vollstaendiger Eskalationsprozess: Siehe `docs/betriebskonzept.md` Abschnitt "Incident Management" und `docs/runbooks/rollback-verfahren.md`.
+
+---
+
+## Verwandte Runbooks
+
+- [CI/CD Pipeline](./ci-cd-pipeline.md) — Naechster Schritt nach Projekt-Setup (Deployment konfigurieren)

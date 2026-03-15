@@ -9,6 +9,34 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Docs] **Dokumentations-Audit Remediation** (2026-03-15)
+  - 49 Audit-Massnahmen umgesetzt (28 Sofort-Fixes, 8 ADR-Fixes, 8 Quality-Fixes, 6 Runbook-Updates)
+  - 7 neue Dokumente erstellt:
+    - `docs/dsfa-entwurf.md` — Datenschutz-Folgenabschaetzung (Art. 35 DSGVO), 15 Risiken, 18 Massnahmen
+    - `docs/vvt-entwurf.md` — Verzeichnis von Verarbeitungstaetigkeiten (Art. 30 DSGVO), 5 Verarbeitungen
+    - `docs/loeschkonzept-entwurf.md` — Loeschkonzept (DIN EN ISO/IEC 27555), 13 Datenarten, 6 Loeschprozesse
+    - `docs/ki-risikobewertung-entwurf.md` — KI-Risikobewertung (EU AI Act), Limited Risk, Art. 4/50 Pflichten
+    - `docs/adr/adr-006-vpn-zu-https-oidc.md` — ADR: VPN-Beschluss zu HTTPS+OIDC (Kickoff-Abweichung)
+    - `docs/referenz/technische-parameter.md` — Single Source of Truth fuer alle technischen Werte
+    - `docs/referenz/compliance-research.md` — Compliance-Tiefenrecherche (DSGVO, EU AI Act, BSI, BAIT)
+  - Compliance-Validierung: Unabhaengige Gegenpruefung aller 5 Compliance-Anforderungen
+  - Alle Entwuerfe mit Markern fuer VoeB-Abstimmung ([VÖB-DSB], [KLAERUNG], [AVV])
+
+### Changed
+- [Docs] **17 bestehende Dokumente aktualisiert** (Audit-Korrekturen):
+  - `betriebskonzept.md` v0.6.1: DEV 16 Pods, NP 8, AES-256, PG Retention 30d, PROD IngressClass, Health-Pfade, Smoke-Test-Parameter
+  - `sicherheitskonzept.md` v0.6.1: DSFA ENTWURF IN ARBEIT, HSTS max-age, NP 8, AES-256
+  - `testkonzept.md` v0.5.2: NFR 150 User, 4 LLM-Modelle, K6 HTTPS, RTM, Entry/Exit Criteria, Sprachbereinigung, Abnahmekriterien
+  - `monitoring-konzept.md` v0.3.1: NP 8, Kickoff-Referenz, Aenderungshistorie
+  - `adr-002` v1.2: Core-Nummerierung, Merge-Frequenz, Tabellennamen
+  - `adr-003` v1.2: BaFin→Banking-Standards, Sealed Secrets Nachtrag
+  - `adr-004`: Kosten 550→868 EUR
+  - `adr-005` v1.0: Sign-off-Tabelle
+  - `ext-branding.md` v1.0.1: SVG aus Content-Type entfernt
+  - `ext-token.md` v0.3.1: D7 total_tokens, HTTP 409
+  - `ext-entwicklungsplan.md`: API-Pfad, EXT_ANALYTICS kommentiert, ext-retention geplant
+  - 6 Runbooks: Zweck-Abschnitte, PROD-Info, Eskalation, Querverweise
+
 - [Infra] **Monitoring PROD deployed** (2026-03-12)
   - Eigenstaendiger kube-prometheus-stack auf PROD-Cluster (`vob-prod`, ADR-004)
   - 9 Pods: Prometheus, Grafana (3/3 mit Sidecar), AlertManager, kube-state-metrics, 2x node-exporter, prometheus-operator, PG Exporter, Redis Exporter

@@ -104,7 +104,9 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | **Aufwand** | Mittel — Backend-Store + 3 Core-Patches + Frontend-Integration |
 | **Abhaengigkeit** | Keine |
 
-**Technischer Ansatz**: Die FOSS-Frontend-Komponenten (`Logo.tsx`, `SidebarWrapper.tsx`, `layout.tsx`) lesen bereits aus `EnterpriseSettings`. Wir bauen einen Backend-Store der dieselben Felder ueber unseren eigenen Endpoint befuellt (`/api/ext/branding/config`), und injizieren die Werte in den bestehenden `SettingsProvider`. So nutzen wir die vorhandene Rendering-Logik ohne sie zu duplizieren.
+**Technischer Ansatz**: Die FOSS-Frontend-Komponenten (`Logo.tsx`, `SidebarWrapper.tsx`, `layout.tsx`) lesen bereits aus `EnterpriseSettings`. Wir bauen einen Backend-Store der dieselben Felder ueber den FOSS-Endpoint `/enterprise-settings` befuellt (nutzt FOSS-Frontend-Pfad, keine ext/-Route noetig), und injizieren die Werte in den bestehenden `SettingsProvider`. So nutzen wir die vorhandene Rendering-Logik ohne sie zu duplizieren.
+
+> **Implementierungsabweichung:** Nutzt den FOSS-EnterpriseSettings-Endpoint statt eigenem ext/-Pfad (siehe ext-branding.md Abschnitt Architekturentscheidung).
 
 **Alternative**: Komplett eigene Komponenten in `web/src/ext/`. Vorteil: Null Abhaengigkeit von Onyx-Frontend. Nachteil: Doppelte Arbeit, Onyx-Logo-Reste koennten durchscheinen.
 
@@ -173,6 +175,18 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | **Scope** | Document Access Control: Welche Gruppe sieht welche Dokumente/Agenten/Modelle |
 | **Core-Aenderungen** | CORE #3 (access.py): Gruppen-basierte Dokumentfilterung |
 | **Abhaengigkeit** | ext-rbac (Gruppen muessen existieren) |
+
+### Zukuenftig: ext-retention (GEPLANT)
+
+**Herkunft:** Kickoff-Beschluss KICKOFF-012 (Chat-Retention 6 Monate).
+
+| Aspekt | Detail |
+|--------|--------|
+| **Scope** | Automatische Loeschung von Chat-Verlaeufen nach 6 Monaten |
+| **Abhaengigkeit** | Loeschkonzept (DSGVO-konform, DIN EN ISO/IEC 27555:2025-09) |
+| **Implementierung** | Cronjob oder DB-Funktion (periodisches DELETE auf `chat_message` + `chat_session` mit Altersfilter) |
+| **Feature Flag** | `EXT_RETENTION_ENABLED` (noch nicht in config.py) |
+| **Status** | GEPLANT — Implementierung nach Loeschkonzept-Erstellung |
 
 ---
 
@@ -254,15 +268,15 @@ alembic upgrade head
 
 Alle Flags existieren bereits in `backend/ext/config.py`:
 
-| Flag | Modul | Default |
-|------|-------|---------|
-| `EXT_ENABLED` | Master-Switch | `false` |
-| `EXT_BRANDING_ENABLED` | ext-branding | `false` |
-| `EXT_TOKEN_LIMITS_ENABLED` | ext-token | `false` |
-| `EXT_CUSTOM_PROMPTS_ENABLED` | ext-prompts | `false` |
-| `EXT_ANALYTICS_ENABLED` | ext-analytics | `false` |
-| `EXT_RBAC_ENABLED` | ext-rbac | `false` |
-| `EXT_DOC_ACCESS_ENABLED` | ext-access | `false` |
+| Flag | Modul | Default | Hinweis |
+|------|-------|---------|---------|
+| `EXT_ENABLED` | Master-Switch | `false` | |
+| `EXT_BRANDING_ENABLED` | ext-branding | `false` | |
+| `EXT_TOKEN_LIMITS_ENABLED` | ext-token | `false` | |
+| `EXT_CUSTOM_PROMPTS_ENABLED` | ext-prompts | `false` | |
+| `EXT_ANALYTICS_ENABLED` | ext-analytics | `false` | UEBERSPRUNGEN (2026-03-09) — Funktionalitaet bereits in ext-token enthalten. Flag existiert noch in config.py (Default false), wird in Zukunft entfernt. |
+| `EXT_RBAC_ENABLED` | ext-rbac | `false` | |
+| `EXT_DOC_ACCESS_ENABLED` | ext-access | `false` | |
 
 Aktivierung in `deployment/docker_compose/.env` oder `deployment/helm/values/values-{env}.yaml`.
 

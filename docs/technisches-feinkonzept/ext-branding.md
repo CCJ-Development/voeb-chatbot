@@ -294,7 +294,7 @@ export interface NavigationItem {
 **Response (200 OK):** Binaere Bilddaten mit korrektem Content-Type.
 
 ```
-Content-Type: image/png  (oder image/jpeg, image/svg+xml)
+Content-Type: image/png oder image/jpeg
 Content-Disposition: inline; filename="logo.png"
 Body: <binaere Bilddaten>
 ```
@@ -1180,3 +1180,4 @@ Das Audit hat keine architektonischen Fehler oder Security-Blocker identifiziert
 | 0.1 | 2026-03-08 | Claude (Entwurf) | Initialer Entwurf nach Tiefenanalyse |
 | 0.2 | 2026-03-08 | Claude (Entwurf) | OPEN-1/6/7 geklaert, Branding-Audit (alle "Onyx"-Stellen), OPEN-8/9 hinzugefuegt, SVG ausgeschlossen |
 | 1.0 | 2026-03-08 | Claude | Implementiert, DEV/TEST deployed. Deployment-Hinweise (Lessons Learned) ergaenzt. |
+| 1.0.1 | 2026-03-14 | Doku-Audit | FIX-018: image/svg+xml aus Logo-Response Content-Type entfernt (SVG-Upload ist verboten, Response kann kein SVG liefern) |

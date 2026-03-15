@@ -416,6 +416,7 @@ Alle Endpoints unter Prefix `/api/ext/token/` — erfordern Admin-Auth.
 | Ungueltige Parameter | 400 | Pydantic-Validierung (period_hours > 0, token_budget > 0) |
 | Nicht authentifiziert | 401 | Onyx Standard-Auth |
 | Kein Admin | 403 | `current_admin_user` Dependency |
+| Limit existiert bereits | 409 | Conflict — Limit fuer diesen User existiert bereits. Verwende PUT zum Aktualisieren statt POST zum Erstellen. |
 | DB/Server-Fehler | 500 | Generische Fehlermeldung (keine internen Details) |
 
 ---
@@ -760,6 +761,7 @@ Dokumentiert nach Implementierung + Docker-Test am 2026-03-09.
 | D4 | User Limits: UUID-Eingabefeld | User Limits: Email-Dropdown (fetcht `/api/manage/users`) | UX-Verbesserung — Admin kennt keine UUIDs, Email-Auswahl ist praxistauglich |
 | D5 | Frontend nutzt `useSWR` (CLAUDE.md Regel) | Frontend nutzt `fetch` + `useState` | Bewusste v1-Entscheidung — Cleanup in v1.1 geplant |
 | D6 | `recharts` fuer Zeitverlauf-Grafiken | Horizontale Balken mit CSS (`div` + `style.width`) | Reduziert Komplexitaet fuer v1, `recharts`-Integration in v1.1 |
+| D7 | Limit-Check gegen completion_tokens | Limit-Check gegen total_tokens (prompt + completion) | Prompt-Tokens belasten ebenfalls das LLM-Budget und sollten im Limit beruecksichtigt werden. Konservativer als in v0.1 spezifiziert. |
 
 ---
 
@@ -778,3 +780,4 @@ Dokumentiert nach Implementierung + Docker-Test am 2026-03-09.
 | 0.1 | 2026-03-09 | CCJ | Initialer Entwurf basierend auf Tiefenanalyse |
 | 0.2 | 2026-03-09 | CCJ | Validierung: 3 Fehler korrigiert — eigene `ext_token_user_limit` Tabelle statt FOSS `token_rate_limit` (keine user_id Spalte in FOSS), Route `/admin/ext-token` (konsistent mit ext-branding), Icons aus `@opal/icons`, `recharts` als Chart-Library bestaetigt, Streaming-Deduplizierung dokumentiert, Token-Count-Quelle praezisiert |
 | 0.3 | 2026-03-09 | CCJ | Implementierung abgeschlossen, Abweichungen dokumentiert (D1-D3), Status auf Freigegeben |
+| 0.3.1 | 2026-03-14 | Doku-Audit | FIX-022: Abweichung D7 ergaenzt (Limit-Check gegen total_tokens statt completion_tokens). FIX-023: HTTP 409 Conflict in Error-Handling-Tabelle ergaenzt. |
