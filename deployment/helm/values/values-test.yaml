@@ -83,7 +83,7 @@ celery_beat:
   replicaCount: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: Actual 13m, war 100m
       memory: 256Mi
     limits:
       cpu: 250m
@@ -143,7 +143,7 @@ celery_worker_monitoring:
   replicaCount: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: Actual 11m, war 100m
       memory: 128Mi
     limits:
       cpu: 250m
@@ -203,7 +203,7 @@ webserver:
   replicaCount: 1
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: Actual 1m, war 100m
       memory: 256Mi
     limits:
       cpu: 250m
@@ -215,7 +215,7 @@ vespa:
   replicaCount: 1
   resources:
     requests:
-      cpu: 400m  # Optimiert: Actual ~100m, war 500m. Vespa braucht mehr Headroom als Celery.
+      cpu: 300m  # Optimiert: Actual ~100m, war 500m. 3x Headroom reicht.
       memory: 2Gi
     limits:
       cpu: 1500m
@@ -240,6 +240,16 @@ redis:
       limits:
         cpu: 250m
         memory: 256Mi
+
+# --- Redis Operator: Requests senken (Chart Default 500m, Actual 5m) ---
+redisOperator:
+  resources:
+    requests:
+      cpu: 50m   # Optimiert: Actual 5m, Chart Default 500m (100x over)
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
 
 # --- Model Server: 1 Replica ---
 # Recreate-Strategie beibehalten (identisch zu DEV).

@@ -26,7 +26,7 @@ prometheus:
     scrapeInterval: "30s"
     resources:
       requests:
-        cpu: 500m
+        cpu: 250m  # Optimiert: Actual ~42m, war 500m. DEV/TEST braucht weniger als PROD.
         memory: 1Gi
       limits:
         cpu: 1000m
@@ -121,7 +121,7 @@ alertmanager:
   alertmanagerSpec:
     resources:
       requests:
-        cpu: 100m
+        cpu: 50m   # Optimiert: war 100m
         memory: 128Mi
       limits:
         cpu: 200m
@@ -152,7 +152,7 @@ alertmanager:
 kube-state-metrics:
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: war 100m
       memory: 128Mi
     limits:
       cpu: 200m
@@ -162,7 +162,7 @@ kube-state-metrics:
 prometheus-node-exporter:
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: war 100m (×2 DaemonSet = -100m)
       memory: 128Mi
     limits:
       cpu: 200m
@@ -172,7 +172,7 @@ prometheus-node-exporter:
 prometheusOperator:
   resources:
     requests:
-      cpu: 100m
+      cpu: 50m   # Optimiert: war 100m
       memory: 128Mi
     limits:
       cpu: 200m
