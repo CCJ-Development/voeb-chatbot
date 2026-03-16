@@ -171,6 +171,8 @@ nginx:
     ingressClass: "nginx-test"
     service:
       type: LoadBalancer
+      # SEC-09: Client-IP Erhaltung (siehe Kommentar in values-common.yaml).
+      externalTrafficPolicy: Local
 
 # --- TLS ---
 letsencrypt:

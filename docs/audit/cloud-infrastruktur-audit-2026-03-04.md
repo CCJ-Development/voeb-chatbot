@@ -294,10 +294,21 @@ Auf Wartungsfenster verschieben. `createdb` ist ein Least-Privilege-Verstoss, ab
 
 ### H3: Object Storage — keine Verschluesselung/Versionierung
 - **Massnahme:**
-  - [ ] Server-Side Encryption aktivieren (StackIT Object Storage Einstellung)
-  - [ ] Versionierung aktivieren (Schutz gegen versehentliches Loeschen)
-  - [ ] Lifecycle Policy fuer alte Versionen (z.B. 90 Tage)
-- **Status:** [ ] Erledigt
+  - [x] Server-Side Encryption: StackIT Object Storage ist standardmaessig AES-256 verschluesselt (verifiziert SEC-07, 2026-03-08)
+  - [ ] Versionierung aktivieren: **Nicht via Terraform moeglich** (StackIT API-Limitation, GitHub Issue #1048). Muss per S3 API aktiviert werden:
+    ```bash
+    # Pro Bucket einmalig ausfuehren (DEV, TEST, PROD):
+    aws --endpoint-url https://object.storage.eu01.onstackit.cloud \
+      s3api put-bucket-versioning \
+      --bucket <BUCKET_NAME> \
+      --versioning-configuration Status=Enabled
+    # Verifizieren:
+    aws --endpoint-url https://object.storage.eu01.onstackit.cloud \
+      s3api get-bucket-versioning --bucket <BUCKET_NAME>
+    ```
+    Buckets: `vob-dev`, `vob-test`, `vob-prod`. Hinweis: Einmal aktiviert, kann Versioning nur suspended (nicht deaktiviert) werden. Max 1000 Versionen pro Objekt.
+  - [ ] Lifecycle Policy fuer alte Versionen (z.B. 90 Tage) — ebenfalls per S3 API (`put-bucket-lifecycle-configuration`)
+- **Status:** TEILWEISE — Encryption ✅, Versionierung offen (manueller CLI-Befehl, kein Terraform-Support)
 
 ---
 
@@ -618,10 +629,10 @@ gh workflow run stackit-deploy.yml -f environment=dev -f image_tag='"; echo PWNE
 
 ### M7: Backup-Strategie nicht dokumentiert
 - **Massnahme:**
-  - [ ] PG Flex Backup-Einstellungen pruefen (automatisch bei StackIT, taeglich 02:00)
-  - [ ] Object Storage Versionierung (H3)
-  - [ ] Recovery-Test durchfuehren und dokumentieren
-- **Status:** [ ] Erledigt
+  - [x] PG Flex Backup-Einstellungen dokumentiert (DEV 02:00 UTC, TEST 03:00 UTC, PROD 01:00 UTC). Details: `docs/backup-recovery-konzept.md`
+  - [ ] Object Storage Versionierung (H3) — CLI-Befehl vorbereitet, Ausfuehrung offen
+  - [x] Recovery-Test durchgefuehrt und dokumentiert (2026-03-15, DEV, 100% Integritaet)
+- **Status:** TEILWEISE — Backup-Doku ✅, Restore-Test ✅, ObjStore Versioning offen
 
 ### M8: Helm Chart kein Pinning
 - **Massnahme:**

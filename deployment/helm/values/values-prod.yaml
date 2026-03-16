@@ -224,15 +224,25 @@ nginx:
         # HSTS: PROD = 1 Jahr (31536000s). BSI TR-02102: min. 6 Monate. OWASP: 1 Jahr.
         # includeSubDomains: Alle Subdomains erben HSTS (dev./test. sind andere Cluster).
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        # SEC-09: Request-Rate-Limiting (DoS + LLM-Kosten-Schutz).
+        # Identisch mit values-common.yaml — muss hier wiederholt werden weil
+        # Helm Deep Merge nginx.controller.config komplett ersetzt.
+        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
         # Onyx custom config
         include /etc/nginx/custom-snippets/upstreams.conf;
         include /etc/nginx/custom-snippets/server.conf;
+      # SEC-09: Rate-Limiting auf Server-Ebene anwenden.
+      server-snippet: |
+        limit_req zone=ratelimit burst=50 nodelay;
+        limit_req_status 429;
     ingressClassResource:
       name: "nginx"
       controllerValue: "k8s.io/ingress-nginx"
     ingressClass: "nginx"
     service:
       type: LoadBalancer
+      # SEC-09: Client-IP Erhaltung (siehe Kommentar in values-common.yaml).
+      externalTrafficPolicy: Local
 
 # --- TLS ---
 letsencrypt:

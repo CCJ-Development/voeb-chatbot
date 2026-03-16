@@ -101,7 +101,8 @@
 | Bucket | vob-dev | vob-test | vob-prod |
 | Endpoint | object.storage.eu01.onstackit.cloud | (identisch) | (identisch) |
 | Encryption | AES-256 (at rest) | AES-256 | AES-256 |
-| Versionierung | Unterstuetzt | Unterstuetzt | Unterstuetzt |
+| Versionierung | Unterstuetzt, **nicht aktiviert** | Unterstuetzt, **nicht aktiviert** | Unterstuetzt, **nicht aktiviert** |
+| Versionierung Hinweis | Nicht via Terraform konfigurierbar (StackIT API-Limitation, GH Issue #1048). Aktivierung per `aws s3api put-bucket-versioning` (einmalig pro Bucket). Audit H3. | | |
 
 ---
 
@@ -403,7 +404,8 @@
 | Upload-Limit (Ingress Controller) | **20 MB** (`proxy-body-size: "20m"` in values-common.yaml, XREF-007, 2026-03-15) |
 | Upload-Limit (interner NGINX, Chart) | 5 GB (Upstream Helm Chart, READ-ONLY — Port 1024 nicht exponiert) |
 | Upload-Limit (Docker Compose) | 20 MB (`client_max_body_size 20m` in app.conf, XREF-007) |
-| Upload-Limit (Backend App) | 2 GB Default (`MAX_FILE_SIZE_BYTES`, via Env-Var konfigurierbar) |
+| Upload-Limit (Backend App) | **20 MB** (`MAX_FILE_SIZE_BYTES: "20971520"` in values-common.yaml, Defense-in-Depth XREF-007, 2026-03-16) |
+| Request-Rate-Limiting (SEC-09) | **10 r/s per IP**, burst 50, nodelay. NGINX `limit_req_zone` + `limit_req` in values-common.yaml + values-prod.yaml. HTTP 429 bei Ueberschreitung. `externalTrafficPolicy: Local` fuer Client-IP Erhaltung. (2026-03-16) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
 | Vespa PVC | 20 GB pro Umgebung (kein separates Backup) |
 | Gemessene RTO (DEV, 17 MB DB) | Technisch: 3:16 Min, Operativ: 7:15 Min (Test 2026-03-15) |

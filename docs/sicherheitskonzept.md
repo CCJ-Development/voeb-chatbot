@@ -90,7 +90,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 | Kubernetes-Orchestrierung | IMPLEMENTIERT | SKE Cluster mit automatischem Pod-Restart |
 | Datenbank-Backups | IMPLEMENTIERT | PG Flex: taegliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, PROD 01:00 UTC, StackIT Managed). PROD: PG Flex 4.8 HA (3-Node), automatische Backups + PITR sekundengenau. StackIT Service Certificate V1.1: RPO/RTO 4h/4h, 30d Retention. Restore per Self-Service Clone. Details: `docs/backup-recovery-konzept.md` |
 | Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed auf DEV/TEST (2026-03-10) und PROD (2026-03-12): Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter, PG Exporter, Redis Exporter. PROD: 9 Pods, 3 Targets UP, separater Teams PROD-Kanal mit `[PROD]`-Prefix, `send_resolved: true`. Konzept: `docs/referenz/monitoring-konzept.md` |
-| DDoS-Mitigation | TEILWEISE | Upload-Limit 20 MB (XREF-007, 2026-03-15). Kein Rate Limiting und keine WAF implementiert |
+| DDoS-Mitigation | IMPLEMENTIERT | Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 (SEC-09, 2026-03-16) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth). Keine WAF (internes Tool, 150 User). |
 | Hochverfügbarkeit | IMPLEMENTIERT (PROD) | PROD: 2x API HA, 2x Web HA, PG Flex 4.8 HA (3-Node). DEV/TEST: Single-Replica |
 
 ---
@@ -605,7 +605,7 @@ check_router_auth(application)
 
 ### Rate Limiting & Upload-Limits
 
-**Status: TEILWEISE IMPLEMENTIERT**
+**Status: IMPLEMENTIERT**
 
 **Upload-Limit (XREF-007, implementiert 2026-03-15):**
 - **20 MB** maximale Request-Body-Groesse (Kickoff-Beschluss)
@@ -615,14 +615,18 @@ check_router_auth(application)
 - Schuetzt vor DoS durch uebergrosse Uploads (vorher: kein explizites Limit, NGINX Default 1m)
 - Docker Compose (lokal): `client_max_body_size 20m` in `deployment/data/nginx/app.conf`
 - **Bekannte Abweichung:** Onyx Helm Chart Template (`nginx-conf.yaml`) enthaelt `client_max_body_size 5G` fuer den internen NGINX-Proxy (Port 1024). Dieser Port ist NICHT per LoadBalancer exponiert — externer Traffic geht ueber den Ingress Controller (20 MB Limit). Chart-Template ist READ-ONLY (Upstream). Fix bei naechstem Upstream-Sync evaluieren.
+- **Backend Defense-in-Depth (2026-03-16):** `MAX_FILE_SIZE_BYTES: "20971520"` (20 MB) in `values-common.yaml`. Onyx Default war 2 GB — greift bei Document-Indexing (`run_docfetching.py`). Stellt sicher, dass auch Pod-zu-Pod-Traffic (der den Ingress umgeht) das 20 MB Limit einhält.
 
-**Request-Rate-Limiting: NICHT IMPLEMENTIERT**
-
-Aktuell ist kein Rate Limiting auf Anwendungsebene implementiert. Das LLM-Backend (StackIT AI Model Serving) hat eigene Rate Limits:
-- TPM: 200.000 Tokens/Minute (Output-Tokens 5x gewichtet)
-- RPM: 30-600 Requests/Minute (modellabhängig)
-
-Für PROD sollte Request-Rate-Limiting auf Ingress-Ebene (NGINX `limit-req-*` Annotations) oder Anwendungsebene evaluiert werden (SEC-09).
+**Request-Rate-Limiting (SEC-09, implementiert 2026-03-16):**
+- **10 Requests/Sekunde** pro Client-IP (sustained rate), **Burst 50** (nodelay)
+- Konfiguriert via NGINX Ingress Controller ConfigMap: `limit_req_zone` in `http-snippet` + `limit_req` in `server-snippet`
+- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD) und ALLE Ingress-gerouteten Requests
+- HTTP 429 (Too Many Requests) bei Ueberschreitung
+- In `values-common.yaml` UND `values-prod.yaml` (Helm Deep Merge: PROD hat eigenes `nginx.controller.config`)
+- **Client-IP Erhaltung:** `externalTrafficPolicy: Local` auf dem NGINX Service (alle Environments). Ohne dieses Setting wuerde `$binary_remote_addr` die Node-IP statt der Client-IP zeigen — alle User wuerden ein globales Rate-Limit teilen.
+- LLM-Backend (StackIT AI Model Serving) hat zusaetzlich eigene Rate Limits:
+  - TPM: 200.000 Tokens/Minute (Output-Tokens 5x gewichtet)
+  - RPM: 30-600 Requests/Minute (modellabhaengig)
 
 ### CSRF Protection
 
@@ -931,7 +935,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
-| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **TEILWEISE** — Upload-Limit 20 MB via `proxy-body-size` (XREF-007, 2026-03-15). Request-Rate-Limiting noch OFFEN. |
+| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **IMPLEMENTIERT** (2026-03-16) — Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 (NGINX `limit_req_zone` + `limit_req`) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth) |
 | SEC-10 | Cluster-API ACL auf Egress-IP einschränken | P3 | **OFFEN** — `cluster_acl` in Terraform von `0.0.0.0/0` einschränken (empfohlen, nicht kritisch) |
 
 ### SEC-01: PostgreSQL ACL (ERLEDIGT)
@@ -1036,15 +1040,33 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **Status**: Evaluierung vor PROD Go-Live. Core-Datei — kein Hook möglich, direkte Änderung in `main.py`.
 
-### SEC-09: Rate Limiting (OFFEN)
+### SEC-09: Rate Limiting (IMPLEMENTIERT)
 
 **Finding**: Kein Rate Limiting auf Anwendungsebene. LLM-Backend hat eigene Limits (TPM: 200.000, RPM: 30-600), aber kein Schutz vor missbräuchlicher Nutzung auf unserer Ebene.
 
-**Risiko**:
-- DoS: Ohne Rate Limiting können einzelne Nutzer die API überlasten
-- LLM-Kosten: Unkontrollierte LLM-Nutzung (ext-token trackt, limitiert aber nicht auf API-Ebene)
+**Implementierung (2026-03-16)**:
 
-**Empfohlene Umsetzung**: NGINX Ingress Annotations (`nginx.ingress.kubernetes.io/limit-rps`, `limit-connections`). Kein Code-Change nötig — reine Helm Values Konfiguration.
+Request-Rate-Limiting via NGINX Ingress Controller ConfigMap (`http-snippet` + `server-snippet`):
+- **Zone:** `limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s` — 10 Requests/Sekunde pro Client-IP, 10 MB Shared Memory (~160.000 IPs)
+- **Enforcement:** `limit_req zone=ratelimit burst=50 nodelay` — Burst von 50 Requests erlaubt (deckt Page-Load mit ~20 parallelen API-Calls ab), keine Verzoegerung innerhalb des Bursts
+- **Status Code:** `limit_req_status 429` (Too Many Requests)
+- **Scope:** Global fuer ALLE Ingress-gerouteten Requests (API + Webserver)
+- **Konfiguration:** `values-common.yaml` (DEV/TEST) + `values-prod.yaml` (PROD, wegen Helm Deep Merge Duplikation)
+- **Client-IP Erhaltung:** `externalTrafficPolicy: Local` auf dem NGINX Ingress Controller Service (alle Environments). Ohne dieses Setting wuerde Kubernetes SNAT anwenden und `$binary_remote_addr` zeigt die interne Node-IP statt der echten Client-IP — alle User wuerden ein einziges Rate-Limit teilen. `Local` leitet Traffic nur an Nodes mit NGINX-Pod weiter und erhaelt die Quell-IP. Bei 1 NGINX-Controller-Pod aendert sich am Routing nichts.
+
+**Werte-Begruendung:**
+- 150 User, internes Tool (kein oeffentliches API)
+- Normaler Chat-Betrieb: ~0.5 r/s (Nachricht senden + Streaming-Response)
+- Page-Load-Burst: ~20 parallele API-Calls (Settings, Personas, History, etc.)
+- 10 r/s sustained + 50 burst = ein Nutzer muesste >600 Requests/Minute senden um blockiert zu werden
+- Konservativ gewaehlt — kann bei Bedarf verschaerft werden
+
+**Defense-in-Depth Schichten (SEC-09 + XREF-007):**
+1. NGINX Ingress: `proxy-body-size: 20m` (Request-Groesse)
+2. NGINX Ingress: `limit_req 10r/s burst=50` (Request-Rate)
+3. Backend: `MAX_FILE_SIZE_BYTES: 20971520` (Document-Indexing-Limit)
+4. ext-token: Per-User Token-Quotas + Hard Stops (LLM-Kosten)
+5. StackIT AI Model Serving: TPM 200.000 + RPM 30-600 (Provider-Limit)
 
 ### SEC-10: Cluster-API ACL (OFFEN)
 

@@ -119,11 +119,30 @@ nginx:
         # HSTS: Downgrade-Angriffe verhindern (BSI TR-02102). max-age=3600 (1h) für DEV/TEST.
         # Für PROD auf 31536000 (1 Jahr) erhöhen.
         add_header Strict-Transport-Security "max-age=3600; includeSubDomains" always;
+        # SEC-09: Request-Rate-Limiting (DoS + LLM-Kosten-Schutz).
+        # 10 r/s pro IP = 600 r/min. Konservativ fuer 150-User Chatbot.
+        # Normaler Chat: ~2-5 r/s bei Page-Load-Burst, ~0.5 r/s bei Chat.
+        # Zone: 10 MB Shared Memory (~160.000 IPs trackbar).
+        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
         # Onyx custom config
         include /etc/nginx/custom-snippets/upstreams.conf;
         include /etc/nginx/custom-snippets/server.conf;
+      # SEC-09: Rate-Limiting auf Server-Ebene anwenden.
+      # burst=50: Erlaubt Bursts (Page-Load ~20 parallele API-Calls). nodelay: Burst-Requests
+      # werden sofort bedient (kein Queuing). Ueber 10r/s + 50 burst = HTTP 429.
+      server-snippet: |
+        limit_req zone=ratelimit burst=50 nodelay;
+        limit_req_status 429;
     service:
       type: LoadBalancer
+      # SEC-09: Client-IP Erhaltung fuer per-IP Rate-Limiting.
+      # Ohne "Local" setzt Kubernetes SNAT ein und $binary_remote_addr zeigt die
+      # interne Node-IP statt der echten Client-IP. Damit wuerden ALLE User
+      # ein einziges Rate-Limit teilen (10 r/s global statt pro Client).
+      # "Local" leitet Traffic nur an Nodes mit NGINX-Pod weiter und erhalt die Quell-IP.
+      # Bei 1 NGINX-Pod aendert sich am Routing nichts — aller Traffic geht sowieso
+      # zu einem einzigen Pod. Kubernetes Standard-Empfehlung fuer Ingress Controller.
+      externalTrafficPolicy: Local
 
 # --- Bots: DEAKTIVIERT ---
 slackbot:
@@ -179,6 +198,10 @@ configMap:
   # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)
   EXT_ENABLED: "true"
   EXT_BRANDING_ENABLED: "true"
+  # XREF-007 Defense-in-Depth: Backend-Limit auf 20 MB (= Ingress proxy-body-size).
+  # Onyx Default: 2 GB. Bei Pod-zu-Pod-Traffic wuerde das Ingress-Limit umgangen.
+  # 20 MB = 20 * 1024 * 1024 = 20971520 Bytes.
+  MAX_FILE_SIZE_BYTES: "20971520"
 
 # --- Image Pull Secret für StackIT Container Registry ---
 imagePullSecrets:
