@@ -260,11 +260,11 @@ Basierend auf **ADR-001** und **ADR-002** benötigen wir einen Cloud Provider f�
 - Flexibel
 
 **Nachteile**:
-- **Kein Kubernetes**: Nur VMs, müssten selbst Kubernetes deployen
+- **BSI C5**: Seit 2024 zertifiziert — Compliance-Argument entfaellt als Differenzierungsmerkmal
+- **Kein Managed Kubernetes**: Nur VMs, müssten selbst Kubernetes deployen
   - Große Operational Burden (Node Management, Updates, Security Patches)
-- **Weniger Managed Services**: Keine managed PostgreSQL, Object Storage
+- **Weniger Managed Services**: Keine managed PostgreSQL, Object Storage eingeschraenkt
   - Müssen selbst betreiben (mehr Ops-Aufwand)
-- **Skalierbarkeit**: Nicht für große Nutzerbasen ausgelegt
 - **Enterprise-Features**: WAF, DDoS-Protection nicht vorhanden
 
 **Entscheidung**: Abgelehnt wegen fehlender Enterprise-Features und Managed Services

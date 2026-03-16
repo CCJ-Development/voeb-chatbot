@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-14
+> Letzte Aktualisierung: 2026-03-16
 
 ---
 
@@ -13,9 +13,9 @@
 | Namespace | onyx-dev | onyx-test | onyx-prod |
 | K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
 | Flatcar | 4459.2.1 | 4459.2.1 | 4459.2.3 |
-| Node Pool | devtest (2x g1a.8d) | devtest (2x g1a.8d) | prod (2x g1a.8d) |
-| Node Specs | 8 vCPU, 32 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
-| Allocatable (gesamt) | 15.820m CPU, ~56,6 Gi RAM | 15.820m CPU, ~56,6 Gi RAM | 15.820m CPU, ~56,6 Gi RAM |
+| Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
+| Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
+| Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
 | Pods | 16 | 15 | 19 |
 | API Replicas | 1 | 1 | 2 (HA) |
 | Web Replicas | 1 | 1 | 2 (HA) |
@@ -233,11 +233,11 @@
 | Posten | Anzahl | EUR/Mo (je) | EUR/Mo (gesamt) |
 |--------|--------|-------------|-----------------|
 | SKE Cluster Management Fee | 1 | 71,71 | 71,71 |
-| Worker Node g1a.8d | 2 | 283,18 | 566,36 |
+| Worker Node g1a.4d | 2 | 141,59 | 283,18 |
 | PostgreSQL Flex 2.4 Single | 2 | 105,54 | 211,08 |
 | Object Storage Bucket | 2 | 0,27 | 0,54 |
 | Load Balancer Essential-10 | 2 | 9,39 | 18,78 |
-| **Gesamt DEV+TEST** | | | **868,47** |
+| **Gesamt DEV+TEST** | | | **585,29** |
 
 ### 7.2 PROD (Cluster vob-prod, eigener)
 
@@ -254,9 +254,11 @@
 
 | Posten | EUR/Mo |
 |--------|--------|
-| DEV+TEST | 868,47 |
+| DEV+TEST | 585,29 |
 | PROD | 963,96 |
-| **Gesamt alle 3 Environments** | **1.832,43** |
+| **Gesamt alle 3 Environments** | **1.549,25** |
+
+**Kostenoptimierung (2026-03-16):** DEV+TEST von 868,47 auf 585,29 EUR/Mo gesenkt durch Node-Downgrade g1a.8d → g1a.4d nach Resource-Requests-Optimierung. Details: `audit-output/kostenoptimierung-ergebnis.md`.
 
 **Nicht enthalten:** Block Storage (Vespa PVCs, 20 GB/Env), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG Flex Preis enthalten.
 
@@ -398,8 +400,8 @@
 | PROD-Sizing | 2x g1a.8d reicht fuer ~150 gleichzeitige User |
 | CPU bei Vollauslastung (150 User) | ~40% |
 | RAM bei Vollauslastung (150 User) | ~25% |
-| Aktuelle CPU-Auslastung (DEV+TEST, 2026-03-06) | ~5% (813m von 15.820m) |
-| Aktuelle RAM-Auslastung (DEV+TEST, 2026-03-06) | ~28% (16.345 Mi von ~56,6 Gi) |
+| Aktuelle CPU-Auslastung (DEV+TEST, 2026-03-16) | ~5,8% (930m). Nach Downgrade auf g1a.4d: ~13% von ~7.400m |
+| Aktuelle RAM-Auslastung (DEV+TEST, 2026-03-16) | ~32% (18.399 Mi). Nach Downgrade auf g1a.4d: ~66% von ~28 Gi |
 | HPA | Nicht aktiv, nachruestbar |
 | Upload-Limit (Ingress Controller) | **20 MB** (`proxy-body-size: "20m"` in values-common.yaml, XREF-007, 2026-03-15) |
 | Upload-Limit (interner NGINX, Chart) | 5 GB (Upstream Helm Chart, READ-ONLY — Port 1024 nicht exponiert) |

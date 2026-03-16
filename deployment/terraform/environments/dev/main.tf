@@ -2,12 +2,13 @@
 # DEV Environment — VÖB Service Chatbot
 # ===========================================================
 # Provisioniert:
-#   - 1× SKE Cluster (2 Nodes: g1a.8d, je 8 vCPU, 32 GB)
+#   - 1× SKE Cluster (2 Nodes: g1a.4d, je 4 vCPU, 16 GB)
 #   - 1× PostgreSQL Flex 2.4 Single (2 CPU, 4 GB)
 #   - 1× Object Storage Bucket (vob-dev)
 #
 # Node Pool "devtest" bedient DEV + TEST (ADR-004).
-# Geschätzte Kosten DEV-Anteil: ~434 EUR/Monat (ADR-005)
+# Kostenoptimierung (2026-03-16): g1a.8d → g1a.4d nach Resource-Requests-Senkung.
+# Geschätzte Kosten DEV-Anteil: ~293 EUR/Monat
 # ===========================================================
 
 module "stackit" {
@@ -26,10 +27,13 @@ module "stackit" {
   availability_zones = ["eu01-3"]
 
   # Node Pool "devtest" — 2 Nodes für DEV + TEST (ADR-004)
-  # Vorher: min=1, max=1 (nur DEV)
-  # Jetzt:  min=2, max=2 (je 1 Node für DEV und TEST)
+  # Kostenoptimierung (2026-03-16): g1a.8d → g1a.4d (4 vCPU, 16 GB)
+  # Begründung: CPU Actual 5,8% auf g1a.8d. Resource Requests von ~7.760m auf ~5.760m gesenkt.
+  # 2x g1a.4d allocatable: ~7.400m CPU, ~28 Gi RAM → 78% CPU, ~55% RAM. Ausreichend.
+  # Einsparung: 2x (283,18 - 141,59) = 283,18 EUR/Monat.
+  # Rollback: machine_type = "g1a.8d" + terraform apply (~10 Min Rolling Update).
   node_pool = {
-    machine_type = "g1a.8d"
+    machine_type = "g1a.4d"
     minimum      = 2
     maximum      = 2
     volume_size  = 100

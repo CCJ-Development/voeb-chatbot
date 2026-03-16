@@ -1,9 +1,9 @@
 # Kostenoptimierung: DEV/TEST-Environments parken
 
-**Stand:** 2026-03-06 (Preise basieren auf g1a.4d, historisch)
+**Stand:** 2026-03-16 (aktualisiert: Node-Downgrade g1a.8d → g1a.4d, Scale-to-Zero TEST)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 **Zweck:** Optionen zur Kostenreduktion bei Nichtnutzung von DEV- und TEST-Umgebungen
-**Hinweis:** Seit 2026-03-06 laufen die Nodes auf g1a.8d (868 EUR/Mo). Die Tabellen unten zeigen die historischen g1a.4d-Preise.
+**Kostenoptimierung 2026-03-16:** Node-Downgrade auf g1a.4d durchgefuehrt (585,29 EUR/Mo). Zusaetzlich: TEST Scale-to-Zero ausserhalb Arbeitszeiten. Details: `audit-output/kostenoptimierung-ergebnis.md`
 
 ---
 
@@ -28,7 +28,7 @@ automatisierbar und dauert 15-60 Minuten.
 | **Gesamt**                 | **585,29**| **100%**|
 
 > Alle Preise netto zzgl. MwSt. Quelle: StackIT Preisliste v1.0.36 (03.03.2026).
-> Bei g1a.8d Nodes (nach Upstream-Merge): 868,47 EUR/Mo — Einsparungen entsprechend hoeher.
+> Kostenoptimierung 2026-03-16: Node-Downgrade g1a.8d → g1a.4d nach Resource-Requests-Senkung. Vorher: 868,47 EUR/Mo.
 
 ---
 

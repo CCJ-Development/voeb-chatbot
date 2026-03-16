@@ -396,7 +396,7 @@ deployment/terraform/environments/prod/
 |-----------|-----|------|
 | `cluster_name` | `vob-chatbot` | `vob-prod` |
 | `environment` | `dev` | `prod` |
-| `node_pool.machine_type` | `g1a.8d` | `g1a.8d` |
+| `node_pool.machine_type` | `g1a.4d` (Kostenoptimierung 2026-03-16) | `g1a.8d` |
 | `node_pool.minimum/maximum` | 2 (shared DEV+TEST) | 2 (dedicated PROD) |
 | `pg_flavor.cpu` | 2 | **4** |
 | `pg_flavor.ram` | 4 | **8** |
@@ -432,9 +432,9 @@ deployment/terraform/environments/prod/
 
 | | Monatlich | Jaehrlich |
 |--|-----------|-----------|
-| **DEV + TEST** | ~868 EUR | ~10.416 EUR |
+| **DEV + TEST** | ~585 EUR (nach Node-Downgrade g1a.4d, 2026-03-16) | ~7.023 EUR |
 | **PROD** | ~964 EUR | ~11.568 EUR |
-| **Alle Environments** | **~1.832 EUR** | **~21.984 EUR** |
+| **Alle Environments** | **~1.549 EUR** | **~18.591 EUR** |
 
 > **Referenzen:** ADR-005 (Kosten-Impact Tabelle: PROD ~964 EUR/Mo), ADR-004 (DEV+TEST ~868 EUR/Mo).
 > Preise: StackIT Pricing API, Stand Maerz 2026. LLM-Kosten sind nutzungsabhaengig (Schaetzung fuer ~80 aktive Nutzer/Tag).
@@ -584,10 +584,10 @@ Exakte Berechnung basierend auf `values-prod.yaml` (nach allen Korrekturen):
 
 | Komponente | Replicas | CPU Request | CPU Limit | RAM Request | RAM Limit |
 |------------|----------|-------------|-----------|-------------|-----------|
-| API Server | 2 | 1000m | 2000m | 1024 Mi | 4096 Mi |
-| Web Server | 2 | 500m | 1000m | 512 Mi | 2048 Mi |
+| API Server | 2 | 500m | 1000m | 512 Mi | 2048 Mi |
+| Web Server | 2 | 250m | 500m | 256 Mi | 1024 Mi |
 | Celery Beat | 1 | 250m | 500m | 512 Mi | 1024 Mi |
-| Celery Primary | 2 | 1000m | 2000m | 2048 Mi | 4096 Mi |
+| Celery Primary | 2 | 500m | 1000m | 1024 Mi | 2048 Mi |
 | Celery Light | 1 | 500m | 1000m | 1024 Mi | 2048 Mi |
 | Celery Heavy | 1 | 500m | 1000m | 1024 Mi | 2048 Mi |
 | Celery DocFetching | 1 | 500m | 1000m | 1024 Mi | 4096 Mi |
@@ -622,7 +622,7 @@ Exakte Berechnung basierend auf `values-prod.yaml` (nach allen Korrekturen):
 | monitoring (~9 Pods) | 1175m | ~2 Gi | ~2450m | ~4 Gi |
 | System (kube-system) | ~500m | ~1 Gi | ~800m | ~2 Gi |
 | **Gesamt** | **10425m** | **~18.25 Gi** | **22750m** | **~48.5 Gi** |
-| **Allocatable (2× g1a.8d)** | 15820m | 56.6 Gi | 15820m | 56.6 Gi |
+| **Allocatable (2× g1a.8d)** | 15820m | ~55 Gi (56.666 Mi) | 15820m | ~55 Gi (56.666 Mi) |
 | **Auslastung** | **66%** | **32%** | **144%** | **86%** |
 
 **Bewertung:**

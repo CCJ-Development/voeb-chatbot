@@ -93,7 +93,7 @@ celery_worker_primary:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 12m, war 250m (21x over)
       memory: 512Mi
     limits:
       cpu: 500m
@@ -103,7 +103,7 @@ celery_worker_light:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
       memory: 512Mi
     limits:
       cpu: 1000m
@@ -113,7 +113,7 @@ celery_worker_heavy:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
       memory: 512Mi
     limits:
       cpu: 500m
@@ -123,7 +123,7 @@ celery_worker_docfetching:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
       memory: 512Mi
     limits:
       cpu: 500m
@@ -133,7 +133,7 @@ celery_worker_docprocessing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
       memory: 512Mi
     limits:
       cpu: 500m
@@ -153,7 +153,7 @@ celery_worker_user_file_processing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 9m, war 250m (28x over)
       memory: 256Mi
     limits:
       cpu: 500m
@@ -192,7 +192,7 @@ api:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 2m, war 250m (125x over)
       memory: 512Mi
     limits:
       cpu: 500m
@@ -215,7 +215,7 @@ vespa:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
+      cpu: 400m  # Optimiert: Actual ~100m, war 500m. Vespa braucht mehr Headroom als Celery.
       memory: 2Gi
     limits:
       cpu: 1500m
@@ -251,7 +251,7 @@ inferenceCapability:
     type: Recreate
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 1m, war 250m (250x over)
       memory: 768Mi
     limits:
       cpu: 1000m
@@ -263,7 +263,7 @@ indexCapability:
     type: Recreate
   resources:
     requests:
-      cpu: 250m
+      cpu: 150m  # Optimiert: Actual 2m, war 250m (125x over)
       memory: 768Mi
     limits:
       cpu: 1000m

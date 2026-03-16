@@ -1,0 +1,72 @@
+# ===========================================================
+# CronJob: TEST Scale-Down (Mo-Fr 18:00 UTC)
+# ===========================================================
+# Skaliert alle Deployments und StatefulSets in onyx-test auf 0 Replicas.
+# Wochenende: Bleibt bei 0 (kein Scale-Up am Sa/So).
+# Montag 08:00: Scale-Up CronJob faehrt alles wieder hoch.
+#
+# Einsparung: ~65% der TEST-Compute-Stunden (~130-200 EUR/Mo nach Node-Downgrade)
+#
+# Manuell testen:
+#   kubectl create job --from=cronjob/test-scale-down test-scale-down-manual -n onyx-test
+#
+# Apply:
+#   kubectl apply -f deployment/k8s/cost-optimization/test-scale-down.yaml
+# ===========================================================
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: test-scale-down
+  namespace: onyx-test
+  labels:
+    app.kubernetes.io/part-of: voeb-cost-optimization
+spec:
+  schedule: "0 18 * * 1-5"  # Mo-Fr 18:00 UTC (20:00 MESZ / 19:00 MEZ)
+  timeZone: "UTC"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          serviceAccountName: scale-manager
+          restartPolicy: OnFailure
+          containers:
+            - name: scale-down
+              image: bitnami/kubectl:1.33
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  echo "$(date -u) — TEST Scale-Down gestartet"
+                  NAMESPACE="onyx-test"
+                  ERRORS=0
+
+                  # Alle Deployments auf 0 Replicas
+                  for DEPLOY in $(kubectl get deployments -n $NAMESPACE -o name 2>/dev/null); do
+                    echo "  Scale down: $DEPLOY"
+                    kubectl scale $DEPLOY --replicas=0 -n $NAMESPACE || ERRORS=$((ERRORS+1))
+                  done
+
+                  # Alle StatefulSets auf 0 Replicas
+                  for STS in $(kubectl get statefulsets -n $NAMESPACE -o name 2>/dev/null); do
+                    echo "  Scale down: $STS"
+                    kubectl scale $STS --replicas=0 -n $NAMESPACE || ERRORS=$((ERRORS+1))
+                  done
+
+                  REMAINING=$(kubectl get pods -n $NAMESPACE --no-headers 2>/dev/null | wc -l)
+                  echo "$(date -u) — Scale-Down abgeschlossen. Errors: $ERRORS, Remaining Pods: $REMAINING"
+
+                  if [ $ERRORS -gt 0 ]; then
+                    echo "WARNUNG: $ERRORS Fehler beim Scale-Down"
+                    exit 1
+                  fi
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi

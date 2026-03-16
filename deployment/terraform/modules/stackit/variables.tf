@@ -94,7 +94,7 @@ variable "node_pool" {
     volume_type  = string
   })
   default = {
-    machine_type = "g1a.8d"  # 8 vCPU, 32 GB RAM (upgraded 2026-03-06, ADR-005)
+    machine_type = "g1a.4d"  # 4 vCPU, 16 GB RAM (downgraded 2026-03-16, Kostenoptimierung)
     minimum      = 2
     maximum      = 2
     volume_size  = 100
