@@ -406,3 +406,6 @@
 | Upload-Limit (Backend App) | 2 GB Default (`MAX_FILE_SIZE_BYTES`, via Env-Var konfigurierbar) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
 | Vespa PVC | 20 GB pro Umgebung (kein separates Backup) |
+| Gemessene RTO (DEV, 17 MB DB) | Technisch: 3:16 Min, Operativ: 7:15 Min (Test 2026-03-15) |
+| Letzter Restore-Test | 2026-03-15 (DEV, ✅ 100% Integritaet) |
+| Naechster Restore-Test | 2026-06-15 (quartalsmaessig) |

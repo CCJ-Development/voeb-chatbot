@@ -147,57 +147,105 @@ kubectl delete pod pg-client -n <NS>
 
 | Umgebung | Cron | Uhrzeit (UTC) | PG Config | PITR |
 |----------|------|---------------|-----------|------|
-| DEV | `0 2 * * *` | 02:00 | Flex 2.4 Single | Unklar |
-| TEST | `0 3 * * *` | 03:00 | Flex 2.4 Single | Unklar |
+| DEV | `0 2 * * *` | 02:00 | Flex 2.4 Single | **Ja** (verifiziert 2026-03-15, Restore-Test) |
+| TEST | `0 3 * * *` | 03:00 | Flex 2.4 Single | Wahrscheinlich (analog DEV, nicht getestet) |
 | PROD | `0 1 * * *` | 01:00 | Flex 4.8 HA (3-Node) | **Ja** (sekundengenau) |
 
 **Retention:** 30 Tage (StackIT Default)
 **RPO/RTO (vertraglich):** 4h / 4h (fuer DB < 500 GB)
 **Backup-Kosten:** Separat abgerechnet (pro GB/Stunde)
 
-### Restore per Clone (PROD)
+### Restore per Clone
 
 **WICHTIG:** StackIT PG Flex bietet **kein In-Place Restore**. Restore erstellt immer eine neue (geklonte) Instanz. Die Applikation muss auf die Clone-Instanz umgestellt werden.
 
-**Voraussetzung:** Zugriff auf StackIT Portal oder CLI/API
+**Getestet:** 2026-03-15 auf DEV — 100% Datenintegritaet, technische RTO 3:16 Min. Protokoll: `docs/abnahme/restore-test-protokoll-2026-03-15.md`
+
+**Voraussetzung:** `stackit` CLI authentifiziert (`stackit auth login`) + kubectl-Zugriff
 
 **Verfahren:**
 
 ```bash
-# 1. Clone erstellen (StackIT Portal)
-#    PostgreSQL Flex → PROD-Instanz → Clone → Zeitpunkt waehlen
-#    Alternativ per CLI: stackit postgresflex instance clone --help
+# === Variablen setzen (Umgebung anpassen!) ===
+PROJECT_ID="b3d2a04e-46de-48bc-abc6-c4dfab38c2cd"
+INSTANCE_ID="<PG_INSTANCE_ID>"  # aus terraform output oder PG-Host-Prefix
+NS="onyx-dev"                    # onyx-dev | onyx-test | onyx-prod
+RECOVERY_TS="<YYYY-MM-DDTHH:mm:ss+00:00>"  # Zeitpunkt fuer PITR
 
-# 2. Clone-Credentials abfragen
-#    StackIT Portal → Clone-Instanz → Credentials / Connection Info
-#    CLONE_HOST, CLONE_PASSWORD notieren
+# === 1. Clone erstellen ===
+stackit postgresflex instance clone $INSTANCE_ID \
+  --project-id $PROJECT_ID \
+  --recovery-timestamp "$RECOVERY_TS" \
+  --assume-yes
 
-# 3. Clone validieren
-kubectl run pg-verify --restart=Never --namespace onyx-prod \
+# HINWEIS: CLI v0.53.1 kann 404-Fehler beim Tracking zeigen.
+# Clone wird trotzdem erstellt. Status pruefen mit:
+stackit postgresflex instance list --project-id $PROJECT_ID
+# → Clone-Instanz suchen (Name: *-clone, Status: Progressing → Ready)
+
+CLONE_ID="<CLONE_INSTANCE_ID>"  # Aus der instance list ablesen
+
+# === 2. Passwort-Reset (PFLICHT — Clone erbt KEINE Passwoerter!) ===
+# User-ID ermitteln:
+stackit postgresflex user list \
+  --project-id $PROJECT_ID \
+  --instance-id $CLONE_ID
+# → User-ID fuer onyx_app notieren
+
+stackit postgresflex user reset-password <USER_ID> \
+  --instance-id $CLONE_ID \
+  --project-id $PROJECT_ID \
+  --assume-yes
+# → Neues Passwort + Host + URI werden angezeigt. SOFORT NOTIEREN!
+
+CLONE_HOST="$CLONE_ID.postgresql.eu01.onstackit.cloud"
+CLONE_PASS="<NEUES_PASSWORT>"
+
+# === 3. Clone validieren ===
+kubectl run pg-verify --restart=Never --namespace $NS \
   --image=postgres:16-alpine \
-  --env="PGPASSWORD=<CLONE_PASSWORD>" \
-  --command -- psql -h <CLONE_HOST> -p 5432 -U onyx_app -d onyx \
-  -c "SELECT count(*) FROM chat_message; SELECT max(time_sent) FROM chat_message;"
+  --env="PGPASSWORD=$CLONE_PASS" \
+  --command -- psql -h $CLONE_HOST -p 5432 -U onyx_app -d onyx -c "
+SELECT 'users' AS entity, count(*)::text AS cnt FROM \"user\"
+UNION ALL SELECT 'chat_messages', count(*)::text FROM chat_message
+UNION ALL SELECT 'ext_token_usage', count(*)::text FROM ext_token_usage
+UNION ALL SELECT 'alembic_version', version_num FROM alembic_version
+ORDER BY entity;
+"
+sleep 12 && kubectl logs pg-verify -n $NS
+kubectl delete pod pg-verify -n $NS
 
-sleep 10 && kubectl logs pg-verify -n onyx-prod
-kubectl delete pod pg-verify -n onyx-prod
+# === 4. Applikation umstellen (nur wenn Validierung OK) ===
+# Backup der aktuellen Config:
+kubectl get secret onyx-postgresql -n $NS -o yaml > /tmp/pg-secret-backup.yaml
+kubectl get configmap ${NS/onyx-/onyx-$NS-}configmap -n $NS -o yaml > /tmp/configmap-backup.yaml
 
-# 4. Applikation umstellen
-#    Option A: Helm Re-Deploy mit neuem Connection String
-#      values-prod-secrets.yaml → POSTGRES_HOST auf CLONE_HOST aendern
-#      helm upgrade onyx-prod ... -f values-prod-secrets.yaml
-#
-#    Option B: K8s Secret direkt patchen (schneller, fuer Notfaelle)
-#      kubectl edit secret <pg-secret> -n onyx-prod
-#      Pods neustarten: kubectl rollout restart deployment -n onyx-prod
+# Connection-String aendern:
+kubectl create secret generic onyx-postgresql -n $NS \
+  --from-literal=username=onyx_app \
+  --from-literal=password=$CLONE_PASS \
+  --dry-run=client -o yaml | kubectl apply -f -
 
-# 5. Health Check
-curl -s https://prod.chatbot.voeb-service.de/api/health | jq .
+kubectl patch configmap $(kubectl get cm -n $NS -o name | grep configmap) -n $NS \
+  --type merge -p "{\"data\":{\"POSTGRES_HOST\":\"$CLONE_HOST\"}}"
 
-# 6. Alte Instanz erst nach 24h Beobachtung loeschen
+kubectl rollout restart deployment -n $NS
+
+# === 5. Health Check ===
+kubectl rollout status deployment/${NS}-api-server -n $NS --timeout=300s
+
+# === 6. Alte Instanz erst nach 24h Beobachtung loeschen ===
+# DREIFACH PRUEFEN: Original vs. Clone!
+# stackit postgresflex instance delete $CLONE_ID --project-id $PROJECT_ID --assume-yes
 ```
 
-**Geschaetzte Dauer:** Clone ~30 Min + Umstellung ~30 Min = **1-2 Stunden** (DB aktuell < 1 GB)
+**Geschaetzte Dauer:** Clone ~3-5 Min (DB < 100 MB), Passwort-Reset ~1 Min, Validierung ~3 Min, Umstellung ~5 Min. **Gesamt: ~15 Min.**
+
+**Hinweise aus Restore-Test (2026-03-15) und Deployment (2026-03-16):**
+- `stackit` CLI v0.53.1 hat Bug beim Clone-Tracking (404) — Clone wird trotzdem erstellt, Status mit `instance list` pruefen
+- **Passwort-Reset ist PFLICHT** nach Clone — Passwoerter werden NICHT uebernommen
+- ACL wird automatisch vom Original uebernommen (kein manuelles Setup)
+- **Private Key:** StackIT SA Key JSON enthaelt die Private Key embedded in `credentials.privateKey`. Fuer das K8s Secret muss sie als separate PEM-Datei extrahiert werden (Anleitung: `docs/backup-recovery-konzept.md` Abschnitt 8.4)
 
 ### Backup-Verifizierung
 

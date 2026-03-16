@@ -1,6 +1,6 @@
 # Backup & Recovery Konzept
 
-## VÖB Chatbot / Safir
+## VÖB Chatbot
 
 | Version | Datum | Autor | Aenderung |
 |---------|-------|-------|-----------|
@@ -74,24 +74,13 @@ Dieses Konzept deckt alle persistenten Datenbestaende des VÖB Chatbot-Systems a
 - 2x API Server Replicas, 2x Web Server Replicas
 - `prevent_destroy = true` in Terraform (schuetzt vor versehentlicher Instanz-Loeschung)
 
-### 3.2 TEST (Testumgebung)
+### 3.2 TEST und DEV
 
-| Komponente | Backup-Methode | Schedule | Retention |
-|------------|----------------|----------|-----------|
-| PostgreSQL (Flex 2.4 Single) | StackIT Managed Backup | `0 3 * * *` (03:00 UTC taeglich) | 30 Tage |
-| Object Storage (vob-test) | StackIT Managed Replikation | Kontinuierlich | Unbegrenzt |
-| Vespa-Index | Kein Backup | n/a | n/a |
+**DEV und TEST werden abgeschaltet** (Kostenoptimierung). Backups fuer diese Umgebungen sind nicht erforderlich.
 
-**Hinweis:** TEST nutzt Single-Instance PG (kein HA). PITR-Verfuegbarkeit fuer Flex 2.4 Single ist nicht explizit bestaetigt — muss mit StackIT geklaert werden (siehe offene Frage S6).
+Solange die Instanzen existieren, laufen StackIT Managed Backups automatisch (DEV 02:00 UTC, TEST 03:00 UTC, 30 Tage Retention). Nach Abschaltung der PG-Instanzen sind die Backups nicht mehr verfuegbar (instanzgebunden).
 
-### 3.3 DEV (Entwicklungsumgebung)
-
-| Komponente | Backup-Methode | Schedule | Retention |
-|------------|----------------|----------|-----------|
-| PostgreSQL (Flex 2.4 Single) | StackIT Managed Backup | `0 2 * * *` (02:00 UTC taeglich) | 30 Tage |
-| Object Storage (vob-dev) | StackIT Managed Replikation | Kontinuierlich | Unbegrenzt |
-
-**Minimale Anforderungen:** DEV-Daten sind nicht geschaeftskritisch. Git + StackIT Managed Backups reichen aus. Kein DR-Test fuer DEV.
+**PITR auf Flex 2.4 Single:** Funktioniert (verifiziert im Restore-Test 2026-03-15 auf DEV).
 
 ---
 
@@ -321,21 +310,31 @@ StackIT exponiert **keine Prometheus-Metriken fuer Backup-Status**. Die 15 verfu
 
 ### 8.4 Setup-Anleitung
 
-```bash
-# 1. StackIT Service Account Key erstellen (einmalig)
-#    StackIT Portal → IAM → Service Accounts → Create Key
-#    → sa-key.json + private-key.pem herunterladen
+**Status:** LIVE auf PROD seit 2026-03-16. Erster manueller Test erfolgreich (PROD Backup von 01:00 UTC, 3.2 MB, kein Fehler).
 
-# 2. PG Instance ID ermitteln
-cd deployment/terraform/environments/prod
-terraform output pg_instance_id
+```bash
+# 1. SA Key vorbereiten
+#    Die SA Key JSON-Datei (z.B. voeb-terraform-credentials.json) enthaelt
+#    die Private Key EMBEDDED im Feld "credentials.privateKey".
+#    Diese muss als separate PEM-Datei extrahiert werden:
+python3 -c "
+import json
+with open('sa-key.json') as f:
+    data = json.load(f)
+with open('private-key.pem', 'w') as f:
+    f.write(data['credentials']['privateKey'])
+"
+
+# 2. PG Instance ID ermitteln (aus PG-Host-Prefix oder Terraform)
+#    PROD: fdc7610c-91dc-4d0a-9652-adafe1a509cd
+#    DEV:  be7fe911-4eac-4c9d-a7a8-6dfff674c41f
 
 # 3. K8s Secret erstellen
-kubectl create secret generic stackit-backup-check -n monitoring \
+KUBECONFIG=~/.kube/config-prod kubectl create secret generic stackit-backup-check -n monitoring \
   --from-file=sa-key.json=<pfad/zu/sa-key.json> \
-  --from-file=private-key.pem=<pfad/zu/private-key.pem> \
-  --from-literal=PROJECT_ID=<stackit-project-id> \
-  --from-literal=PG_INSTANCE_ID=<aus terraform output>
+  --from-file=private-key.pem=<pfad/zu/extrahierte-private-key.pem> \
+  --from-literal=PROJECT_ID=b3d2a04e-46de-48bc-abc6-c4dfab38c2cd \
+  --from-literal=PG_INSTANCE_ID=fdc7610c-91dc-4d0a-9652-adafe1a509cd
 
 # 4. NetworkPolicy deployen
 kubectl apply -f deployment/k8s/network-policies/monitoring/09-allow-backup-check-egress.yaml
@@ -384,11 +383,20 @@ kubectl logs -n monitoring job/pg-backup-check-manual -f
 5. Clone-Instanz loeschen
 6. **DSGVO-Hinweis:** Bei Restore muessen zwischenzeitlich geloeschte Daten erneut geloescht werden (EDSA Feb 2026 Richtlinie)
 
-### 9.3 Erster Test-Restore
+### 9.3 Durchgefuehrte Restore-Tests
 
-**Status:** NICHT durchgefuehrt (Audit-Finding M7 offen)
+| Datum | Umgebung | Ergebnis | Technische RTO | Operative RTO | Protokoll |
+|-------|----------|----------|----------------|---------------|-----------|
+| 2026-03-15 | DEV | ✅ ERFOLGREICH (100% Datenintegritaet) | 3 Min 16 Sek | 7 Min 15 Sek | `docs/abnahme/restore-test-protokoll-2026-03-15.md` |
 
-**Geplant:** Nach DNS/TLS-Aktivierung PROD als Teil der M1-Abnahme.
+**Naechster geplanter Test:** 2026-06-15 (quartalsmaessig)
+
+**Erkenntnisse aus erstem Test (2026-03-15):**
+- Clone-Erstellung dauerte 3:16 (17 MB DB) — weit unter StackIT RTO von 4h
+- Passwort-Reset nach Clone noetig (Passwoerter werden NICHT uebernommen)
+- ACL wird automatisch vom Original uebernommen
+- `stackit` CLI v0.53.1 hat Bug beim Clone-Tracking (404), Clone wird trotzdem erstellt
+- Audit-Finding M7: **GESCHLOSSEN**
 
 ---
 

@@ -609,8 +609,9 @@ check_router_auth(application)
 
 **Upload-Limit (XREF-007, implementiert 2026-03-15):**
 - **20 MB** maximale Request-Body-Groesse (Kickoff-Beschluss)
-- Konfiguriert via NGINX Ingress Controller ConfigMap: `proxy-body-size: "20m"` in `values-common.yaml`
-- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD) und ALLE Ingress-gerouteten Requests
+- Konfiguriert via NGINX Ingress Controller ConfigMap: `proxy-body-size: "20m"` in `values-common.yaml` UND `values-prod.yaml`
+- **WICHTIG:** `proxy-body-size` muss in JEDEM values-File stehen das `nginx.controller.config` ueberschreibt. Helm Deep Merge ersetzt die gesamte `config`-Map, nicht einzelne Keys. `values-prod.yaml` hat eigenes `nginx.controller.config` (HSTS), daher dort separat gesetzt.
+- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD) und ALLE Ingress-gerouteten Requests. PROD verifiziert (2026-03-16).
 - Schuetzt vor DoS durch uebergrosse Uploads (vorher: kein explizites Limit, NGINX Default 1m)
 - Docker Compose (lokal): `client_max_body_size 20m` in `deployment/data/nginx/app.conf`
 - **Bekannte Abweichung:** Onyx Helm Chart Template (`nginx-conf.yaml`) enthaelt `client_max_body_size 5G` fuer den internen NGINX-Proxy (Port 1024). Dieser Port ist NICHT per LoadBalancer exponiert — externer Traffic geht ueber den Ingress Controller (20 MB Limit). Chart-Template ist READ-ONLY (Upstream). Fix bei naechstem Upstream-Sync evaluieren.
@@ -1014,7 +1015,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **Umsetzung (Stufenplan):**
 1. **Phase 1 (ERLEDIGT, 2026-03-08):** `privileged: false` für Celery, Model Server, Vespa via `values-common.yaml`. Eliminiert das schlimmste Finding mit minimalem Risiko.
-2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Vespa als dokumentierte Ausnahme (Upstream-Limitation: benötigt Root für `vm.max_map_count`). Kein `privileged` Mode auf keinem Container.
+2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Dokumentierte Ausnahmen: (a) Vespa (Upstream-Limitation: benötigt Root für `vm.max_map_count`), (b) pg-backup-check CronJob (benötigt Root für `apk add` in Alpine-Container, transient alle 4h, nur API-Calls). Kein `privileged` Mode auf keinem Container.
 3. **Phase 3 (optional, vor Abnahme):** `readOnlyRootFilesystem: true` mit vollständigem emptyDir-Mapping. Diminishing Returns für den Aufwand.
 
 **Technischer Hinweis**: Alle Onyx Chart Templates unterstützen `securityContext`-Overrides via Values (`{{- toYaml .Values.<component>.securityContext | nindent 12 }}`). Kein Chart-Umbau nötig — Änderungen ausschließlich in `values-common.yaml`.

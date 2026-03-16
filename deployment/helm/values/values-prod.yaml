@@ -211,6 +211,10 @@ nginx:
   enabled: true
   controller:
     config:
+      # XREF-007: Upload-Limit 20 MB (Kickoff-Beschluss, DoS-Schutz).
+      # Muss hier wiederholt werden weil values-prod.yaml nginx.controller.config
+      # aus values-common.yaml beim Helm Deep Merge komplett ersetzt.
+      proxy-body-size: "20m"
       http-snippet: |
         # Security Headers (BSI TR-02102 / VÖB Enterprise)
         add_header X-Content-Type-Options "nosniff" always;

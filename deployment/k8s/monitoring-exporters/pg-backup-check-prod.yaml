@@ -74,9 +74,9 @@ spec:
           restartPolicy: Never
           automountServiceAccountToken: false
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 65534
-            fsGroup: 65534
+            # apk add braucht Root fuer /var/cache/apk/ und /etc/apk/.
+            # Transient CronJob (alle 4h, nur API-Calls) — Risiko minimal.
+            runAsUser: 0
           containers:
             - name: backup-check
               image: alpine:3.20
