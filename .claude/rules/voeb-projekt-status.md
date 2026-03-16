@@ -21,7 +21,7 @@
 - **Phase 0-1.5:** ✅ Grundlagen, Dev Environment, Dokumentation
 - **Phase 2 (Cloud / M1 Infrastruktur):** ✅ **DEV LIVE** (2026-02-27)
   - ✅ StackIT-Zugang, CLI, Service Account, Container Registry
-  - ✅ Terraform apply: SKE (g1a.8d, upgraded 2026-03-06 ADR-005), PG Flex, Object Storage
+  - ✅ Terraform apply: SKE (g1a.4d, downgraded 2026-03-16 Kostenoptimierung), PG Flex, Object Storage
   - ✅ K8s Namespace `onyx-dev` + Image Pull Secret + Redis Operator
   - ✅ PostgreSQL: DB `onyx` angelegt, `db_readonly_user` per Terraform
   - ✅ Object Storage: Credentials erstellt, in Helm Secrets konfiguriert
@@ -78,7 +78,7 @@
   - ✅ Cloud-Infrastruktur-Audit durchgeführt (2026-03-04): 10 CRITICAL, 18 HIGH, ~20 MEDIUM, ~12 LOW
   - ✅ 3 Security Quick Wins deployed (2026-03-05): C6 (DB_READONLY→Secret), H8 (Security-Header), H11 (Script Injection Fix)
   - ✅ C5/SEC-03: NetworkPolicies auf DEV + TEST applied (2026-03-05) — 5 Policies, Cross-NS-Isolation verifiziert
-  - ✅ Node-Upgrade g1a.4d → g1a.8d (ADR-005, 2026-03-06): 8 vCPU, 32 GB RAM, 100 GB Disk pro Node
+  - ✅ Node-Upgrade g1a.4d → g1a.8d (ADR-005, 2026-03-06), dann Downgrade g1a.8d → g1a.4d (Kostenoptimierung, 2026-03-16): 4 vCPU, 16 GB RAM, 100 GB Disk pro Node
   - ✅ Upstream-Merge: 100 Commits (PR #3), 1 Konflikt (AGENTS.md), Core-Patch intakt (2026-03-06)
   - ✅ Celery: 8 separate Worker-Deployments (Lightweight Mode entfernt, Upstream PR #9014)
   - ✅ DEV: 16 Pods Running | TEST: 15 Pods Running (redeployed 2026-03-06)
@@ -90,6 +90,7 @@
   - ✅ Monitoring NetworkPolicies (2026-03-10): 7 Policies in `monitoring` NS + 3 Policies in `onyx-dev`/`onyx-test`
   - ✅ **Monitoring Exporter deployed** (2026-03-10): postgres_exporter v0.19.1 + redis_exporter v1.82.0. 4 Exporter-Pods, 4 Scrape-Targets UP, 11 neue Alert-Rules. PG + Redis Metriken fließen. Grafana Dashboards importiert (ID 14114 + 763).
   - ✅ Alerting: Microsoft Teams Webhook konfiguriert (2026-03-11). 20 Alert-Rules → Teams-Kanal. `send_resolved: true` für Entwarnung.
+  - ✅ **Kostenoptimierung DEV/TEST** (2026-03-16): Resource Requests um 40-80% gesenkt, Node-Downgrade g1a.8d → g1a.4d (4 vCPU, 16 GB), TEST Scale-to-Zero CronJobs (Mo-Fr 08-18 UTC). Kosten: 868 → 585 EUR/Mo (-283 EUR). Details: `audit-output/kostenoptimierung-ergebnis.md`
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
@@ -103,7 +104,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** Monitoring PROD deployed (2026-03-12): 9 Pods, 3 Targets UP, Teams-Alerting. PROD App: 19 Pods, Health OK, LB `188.34.92.162`. Entra ID weiterhin blockiert.
+**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** Kostenoptimierung DEV/TEST abgeschlossen (2026-03-16): g1a.4d, 585 EUR/Mo. PROD App: 19 Pods, Health OK, LB `188.34.92.162`. Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
