@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/prompt_utils.py.original	2026-03-09 16:49:49
-+++ backend/onyx/chat/prompt_utils.py	2026-03-09 16:49:55
+--- backend/ext/_core_originals/prompt_utils.py.original	2026-03-17 18:43:48
++++ backend/onyx/chat/prompt_utils.py	2026-03-09 18:09:59
 @@ -222,6 +222,23 @@
      )
      system_prompt += user_info_section

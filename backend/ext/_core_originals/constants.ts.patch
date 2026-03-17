@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/constants.ts.original	2026-03-08 15:08:20
-+++ web/src/lib/constants.ts	2026-03-08 15:08:27
-@@ -48,7 +48,8 @@
+--- backend/ext/_core_originals/constants.ts.original	2026-03-17 18:43:48
++++ web/src/lib/constants.ts	2026-03-17 18:36:41
+@@ -50,7 +50,8 @@
  export const SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED =
    process.env.ENABLE_PAID_ENTERPRISE_EDITION_FEATURES?.toLowerCase() ===
      "true" ||

@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/AuthFlowContainer.tsx.original	2026-03-08 15:09:02
-+++ web/src/components/auth/AuthFlowContainer.tsx	2026-03-08 15:09:14
+--- backend/ext/_core_originals/AuthFlowContainer.tsx.original	2026-03-17 18:43:48
++++ web/src/components/auth/AuthFlowContainer.tsx	2026-03-08 18:38:54
 @@ -1,5 +1,10 @@
 +"use client";
 +

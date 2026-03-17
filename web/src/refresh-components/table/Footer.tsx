@@ -1,12 +1,16 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@opal/components";
+import { Button, Pagination } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
-import Pagination from "@/refresh-components/table/Pagination";
 import { useTableSize } from "@/refresh-components/table/TableSizeContext";
 import type { TableSize } from "@/refresh-components/table/TableSizeContext";
 import { SvgEye, SvgXCircle } from "@opal/icons";
+import type { ReactNode } from "react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type SelectionState = "none" | "partial" | "all";
 
@@ -61,8 +65,8 @@ interface FooterSummaryModeProps {
   totalPages: number;
   /** Called when the user navigates to a different page. */
   onPageChange: (page: number) => void;
-  /** Controls overall footer sizing. `"regular"` (default) or `"small"`. */
-  size?: TableSize;
+  /** Optional extra element rendered after the summary text (e.g. a download icon). */
+  leftExtra?: ReactNode;
   className?: string;
 }
 
@@ -72,6 +76,10 @@ interface FooterSummaryModeProps {
  * `mode: "summary"` for read-only tables.
  */
 export type FooterProps = FooterSelectionModeProps | FooterSummaryModeProps;
+
+// ---------------------------------------------------------------------------
+// Footer
+// ---------------------------------------------------------------------------
 
 function getSelectionMessage(
   state: SelectionState,
@@ -91,8 +99,7 @@ function getSelectionMessage(
  * `mode: "summary"` for read-only tables.
  */
 export default function Footer(props: FooterProps) {
-  const contextSize = useTableSize();
-  const resolvedSize = props.size ?? contextSize;
+  const resolvedSize = useTableSize();
   const isSmall = resolvedSize === "small";
   return (
     <div
@@ -115,12 +122,15 @@ export default function Footer(props: FooterProps) {
             isSmall={isSmall}
           />
         ) : (
-          <SummaryLeft
-            rangeStart={props.rangeStart}
-            rangeEnd={props.rangeEnd}
-            totalItems={props.totalItems}
-            isSmall={isSmall}
-          />
+          <>
+            <SummaryLeft
+              rangeStart={props.rangeStart}
+              rangeEnd={props.rangeEnd}
+              totalItems={props.totalItems}
+              isSmall={isSmall}
+            />
+            {props.leftExtra}
+          </>
         )}
       </div>
 
@@ -128,21 +138,20 @@ export default function Footer(props: FooterProps) {
       <div className="flex items-center gap-2 px-1 py-2">
         {props.mode === "selection" ? (
           <Pagination
-            type="count"
+            variant="count"
             pageSize={props.pageSize}
             totalItems={props.totalItems}
             currentPage={props.currentPage}
             totalPages={props.totalPages}
-            onPageChange={props.onPageChange}
-            showUnits
+            onChange={props.onPageChange}
+            units="items"
             size={isSmall ? "sm" : "md"}
           />
         ) : (
           <Pagination
-            type="list"
             currentPage={props.currentPage}
             totalPages={props.totalPages}
-            onPageChange={props.onPageChange}
+            onChange={props.onPageChange}
             size={isSmall ? "md" : "lg"}
           />
         )}
@@ -150,6 +159,10 @@ export default function Footer(props: FooterProps) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Footer — left-side content
+// ---------------------------------------------------------------------------
 
 interface SelectionLeftProps {
   selectionState: SelectionState;

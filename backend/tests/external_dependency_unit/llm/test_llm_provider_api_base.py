@@ -111,7 +111,7 @@ class TestLLMProviderChanges:
 
                 assert exc_info.value.error_code == OnyxErrorCode.VALIDATION_ERROR
                 assert "cannot be changed without changing the API key" in str(
-                    exc_info.value.message
+                    exc_info.value.detail
                 )
         finally:
             _cleanup_provider(db_session, provider_name)
@@ -247,7 +247,7 @@ class TestLLMProviderChanges:
 
                 assert exc_info.value.error_code == OnyxErrorCode.VALIDATION_ERROR
                 assert "cannot be changed without changing the API key" in str(
-                    exc_info.value.message
+                    exc_info.value.detail
                 )
         finally:
             _cleanup_provider(db_session, provider_name)
@@ -350,7 +350,7 @@ class TestLLMProviderChanges:
 
                 assert exc_info.value.error_code == OnyxErrorCode.VALIDATION_ERROR
                 assert "cannot be changed without changing the API key" in str(
-                    exc_info.value.message
+                    exc_info.value.detail
                 )
         finally:
             _cleanup_provider(db_session, provider_name)
@@ -386,7 +386,7 @@ class TestLLMProviderChanges:
 
                 assert exc_info.value.error_code == OnyxErrorCode.VALIDATION_ERROR
                 assert "cannot be changed without changing the API key" in str(
-                    exc_info.value.message
+                    exc_info.value.detail
                 )
         finally:
             _cleanup_provider(db_session, provider_name)
@@ -601,20 +601,18 @@ def test_upload_with_custom_config_then_change(
             assert len(captured_llms) == 2, "test_llm should have been called 2 times"
 
             for llm in captured_llms:
-                assert llm.config.custom_config == custom_config, (
-                    f"Expected custom_config {custom_config}, "
-                    f"but got {llm.config.custom_config}"
-                )
+                assert (
+                    llm.config.custom_config == custom_config
+                ), f"Expected custom_config {custom_config}, but got {llm.config.custom_config}"
 
             # Check inside the database and check that custom_config is the same as the original
             db_provider = fetch_existing_llm_provider(name=name, db_session=db_session)
             if not db_provider:
                 assert False, "Provider not found in the database"
 
-            assert db_provider.custom_config == custom_config, (
-                f"Expected custom_config {custom_config}, "
-                f"but got {db_provider.custom_config}"
-            )
+            assert (
+                db_provider.custom_config == custom_config
+            ), f"Expected custom_config {custom_config}, but got {db_provider.custom_config}"
     finally:
         db_session.rollback()
         _cleanup_provider(db_session, name)

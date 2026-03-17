@@ -32,6 +32,8 @@ auth:
     values:
       s3_aws_access_key_id: ""       # → values-dev-secrets.yaml
       s3_aws_secret_access_key: ""   # → values-dev-secrets.yaml
+  opensearch:
+    enabled: false
   dbreadonly:
     enabled: true
     secretName: "onyx-dbreadonly"
