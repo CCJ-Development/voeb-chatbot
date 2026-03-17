@@ -36,7 +36,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ SKE Kubernetes Cluster "vob-chatbot" (DEV+TEST)             │ │
-│  │ Node Pool "devtest": 2× g1a.8d (8 vCPU, 32 GB RAM)        │ │
+│  │ Node Pool "devtest": 2× g1a.4d (4 vCPU, 16 GB RAM)        │ │
 │  │ Kubernetes 1.33.8, Flatcar 4459.2.1                          │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
@@ -821,7 +821,7 @@ Für dringende Fixes auf einer bereits released Version:
 
 ### Vertikale Skalierung
 
-- **Kubernetes Nodes DEV+TEST**: g1a.8d (8 vCPU, 32 GB) seit 2026-03-06 (ADR-005)
+- **Kubernetes Nodes DEV+TEST**: g1a.4d (4 vCPU, 16 GB) seit 2026-03-16 (Kostenoptimierung, vorher g1a.8d ADR-005)
 - **Kubernetes Nodes PROD**: g1a.8d (8 vCPU, 32 GB, 100 GB Disk), 2 Nodes
 - **PostgreSQL DEV+TEST**: Flex 2.4 (2 CPU, 4 GB). Upgrade auf groesseres Flavor per Terraform.
 - **PostgreSQL PROD**: Flex 4.8 HA (3-Node Cluster). Vertikales Upgrade per Terraform moeglich.
@@ -983,7 +983,7 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 | ID | Maßnahme | Priorität | Status |
 |----|----------|-----------|--------|
 | OPS-01 | Cluster API ACL einschränken | P1 | OFFEN (PROD deployed, Umsetzung ausstehend) |
-| OPS-02 | TLS/HTTPS aktivieren | P1 | ✅ DEV + TEST ERLEDIGT (2026-03-09). PROD: wartet auf DNS-Eintraege (Leif/GlobVill) |
+| OPS-02 | TLS/HTTPS aktivieren | P1 | ✅ **ALLE 3 ENVIRONMENTS ERLEDIGT.** DEV + TEST (2026-03-09), PROD (2026-03-17). ECDSA P-384, TLSv1.3, HSTS 1 Jahr |
 | OPS-03 | Image Scanning (Trivy/Snyk in CI/CD) | P2 | Vor Abnahme |
 | OPS-04 | Audit Logging (zentralisiert) | P2 | Vor Abnahme |
 

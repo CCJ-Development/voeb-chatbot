@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-16
+> Letzte Aktualisierung: 2026-03-17
 
 ---
 
@@ -21,11 +21,11 @@
 | Web Replicas | 1 | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
 | IngressClass | nginx | nginx-test | nginx |
-| URL | https://dev.chatbot.voeb-service.de | https://test.chatbot.voeb-service.de | https://chatbot.voeb-service.de [DNS ausstehend] |
-| HTTPS | LIVE (2026-03-09) | LIVE (2026-03-09) | Wartet auf DNS-Eintraege |
+| URL | https://dev.chatbot.voeb-service.de | https://test.chatbot.voeb-service.de | https://chatbot.voeb-service.de |
+| HTTPS | LIVE (2026-03-09) | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
 | Auth | basic | basic | basic (Entra ID geplant, Phase 3) |
 | Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell) | workflow_dispatch (manuell, Required Reviewer) |
-| Status | LIVE seit 2026-02-27 | LIVE seit 2026-03-03 | DEPLOYED seit 2026-03-11 |
+| Status | LIVE seit 2026-02-27 | LIVE seit 2026-03-03 | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
 | Deployment-Strategie | Recreate | Recreate | Recreate |
 
 ---

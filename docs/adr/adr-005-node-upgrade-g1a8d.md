@@ -67,6 +67,19 @@ Mit dem bisherigen g1a.4d Node-Typ (4 vCPU, 16 GB RAM, 50 GB Disk) reichen die R
 
 ---
 
+## Addendum: Downgrade auf g1a.4d (2026-03-16)
+
+**Die Annahme, dass g1a.4d nicht ausreicht (Alternative A), wurde revidiert.** Nach Analyse der tatsaechlichen Ressourcennutzung (CPU Actual: 5,8% bei g1a.8d) wurden die Resource Requests fuer DEV/TEST um 40-80% gesenkt. Damit passen alle Workloads wieder auf 2x g1a.4d.
+
+- **Terraform:** `machine_type = "g1a.4d"` in `environments/dev/main.tf` (2026-03-16)
+- **Einsparung:** 283,18 EUR/Mo (DEV+TEST: 868 → 585 EUR/Mo)
+- **Auslastung:** Node 1: 94% CPU Requests, Node 2: 92% (eng aber stabil)
+- **PROD bleibt g1a.8d** (eigener Cluster, unveraendert)
+- **Rollback:** `machine_type = "g1a.8d"` + `terraform apply` (~10 Min)
+- **Details:** `audit-output/kostenoptimierung-ergebnis.md`, `docs/infrastruktur-review.md`
+
+---
+
 ## Approval & Sign-off
 
 | Role | Name | Date | Signature |
