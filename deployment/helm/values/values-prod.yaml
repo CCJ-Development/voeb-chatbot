@@ -43,6 +43,8 @@ auth:
     values:
       db_readonly_user: "db_readonly_user"
       db_readonly_password: ""  # → GitHub Secret DB_READONLY_PASSWORD
+  opensearch:
+    enabled: false
 
 configMap:
   # PostgreSQL (StackIT Managed Flex 4.8 Replica — PROD, HA 3-Node)

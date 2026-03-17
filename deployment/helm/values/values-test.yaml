@@ -40,6 +40,8 @@ auth:
     values:
       db_readonly_user: "db_readonly_user"
       db_readonly_password: ""  # → GitHub Secret per --set im Workflow
+  opensearch:
+    enabled: false
 
 configMap:
   # PostgreSQL (StackIT Managed Flex 2.4 — TEST-Instanz)
