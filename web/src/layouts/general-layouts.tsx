@@ -9,7 +9,7 @@ import React from "react";
 export type FlexDirection = "row" | "column";
 export type JustifyContent = "start" | "center" | "end" | "between";
 export type AlignItems = "start" | "center" | "end" | "stretch";
-export type Length = "auto" | "fit" | "full";
+export type Length = "auto" | "fit" | "full" | number;
 
 const flexDirectionClassMap: Record<FlexDirection, string> = {
   row: "flex-row",
@@ -90,11 +90,12 @@ export const heightClassmap: Record<Length, string> = {
  * @remarks
  * - The component defaults to column layout when no direction is specified
  * - Full width and height by default
- * - Prevents style overrides (className and style props are not available)
+ * - Accepts className for additional styling; style prop is not available
  * - Import using namespace import for consistent usage: `import * as GeneralLayouts from "@/layouts/general-layouts"`
  */
 export interface SectionProps
   extends WithoutStyles<React.HtmlHTMLAttributes<HTMLDivElement>> {
+  className?: string;
   flexDirection?: FlexDirection;
   justifyContent?: JustifyContent;
   alignItems?: AlignItems;
@@ -112,22 +113,11 @@ export interface SectionProps
 }
 
 /**
- * WARNING: Do NOT wrap Section with the `<Disabled>` component.
- *
- * The `<Disabled>` component uses Radix Slot which injects a `className` prop.
- * Since `Section` spreads `...rest` after setting its own `className`, the injected
- * className will overwrite all layout classes (flex, flex-col, etc.), breaking the layout.
- *
- * To disable content within a Section, wrap the individual children instead:
- * ```tsx
- * <Section>
- *   <Disabled disabled={!isEnabled}>
- *     <Button>...</Button>
- *   </Disabled>
- * </Section>
- * ```
+ * `<Disabled>` from `@opal/core` uses `display: contents` — it can safely
+ * wrap a `Section` without affecting layout.
  */
 function Section({
+  className,
   flexDirection = "column",
   justifyContent = "center",
   alignItems = "center",
@@ -149,13 +139,20 @@ function Section({
         flexDirectionClassMap[flexDirection],
         justifyClassMap[justifyContent],
         alignClassMap[alignItems],
-        widthClassmap[width],
-        heightClassmap[height],
+        typeof width === "string" && widthClassmap[width],
+        typeof height === "string" && heightClassmap[height],
+        typeof height === "number" && "overflow-hidden",
 
         wrap && "flex-wrap",
-        dbg && "dbg-red"
+        dbg && "dbg-red",
+        className
       )}
-      style={{ gap: `${gap}rem`, padding: `${padding}rem` }}
+      style={{
+        gap: `${gap}rem`,
+        padding: `${padding}rem`,
+        ...(typeof width === "number" && { width: `${width}rem` }),
+        ...(typeof height === "number" && { height: `${height}rem` }),
+      }}
       {...rest}
     />
   );
@@ -179,7 +176,10 @@ function AttachmentItemLayout({
     <Section flexDirection="row" gap={0.25} padding={0.25}>
       <div className={cn("h-[2.25rem] aspect-square rounded-08")}>
         <Section>
-          <div className="attachment-button__icon-wrapper">
+          <div
+            className="attachment-button__icon-wrapper"
+            data-testid="attachment-item-icon-wrapper"
+          >
             <Icon className="attachment-button__icon" />
           </div>
         </Section>
@@ -190,7 +190,7 @@ function AttachmentItemLayout({
         alignItems="center"
         gap={1.5}
       >
-        <div className="flex-1 min-w-0">
+        <div data-testid="attachment-item-title" className="flex-1 min-w-0">
           <Content
             title={title}
             description={description}

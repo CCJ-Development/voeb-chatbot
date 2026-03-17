@@ -1,12 +1,9 @@
 "use client";
 
 import { redirect, useRouter, useSearchParams } from "next/navigation";
-import {
-  personaIncludesRetrieval,
-  getAvailableContextTokens,
-} from "@/app/app/services/lib";
+import { personaIncludesRetrieval } from "@/app/app/services/lib";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "@/hooks/useToast";
+import { toast, useToastFromQuery } from "@/hooks/useToast";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useFederatedConnectors, useFilters, useLlmManager } from "@/lib/hooks";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
@@ -56,10 +53,7 @@ import ChatScrollContainer, {
 } from "@/sections/chat/ChatScrollContainer";
 import ProjectContextPanel from "@/app/app/components/projects/ProjectContextPanel";
 import { useProjectsContext } from "@/providers/ProjectsContext";
-import {
-  getProjectTokenCount,
-  getMaxSelectedDocumentTokens,
-} from "@/app/app/projects/projectsService";
+import { getProjectTokenCount } from "@/app/app/projects/projectsService";
 import ProjectChatSessionList from "@/app/app/components/projects/ProjectChatSessionList";
 import { cn } from "@/lib/utils";
 import Suggestions from "@/sections/Suggestions";
@@ -70,7 +64,6 @@ import * as AppLayouts from "@/layouts/app-layouts";
 import { SvgChevronDown, SvgFileText } from "@opal/icons";
 import { Button } from "@opal/components";
 import Spacer from "@/refresh-components/Spacer";
-import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
 import useAppFocus from "@/hooks/useAppFocus";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import WelcomeMessage from "@/app/app/components/WelcomeMessage";
@@ -79,7 +72,6 @@ import { eeGated } from "@/ce";
 import EESearchUI from "@/ee/sections/SearchUI";
 const SearchUI = eeGated(EESearchUI);
 import { motion, AnimatePresence } from "motion/react";
-import { useAppMode } from "@/providers/AppModeProvider";
 
 interface FadeProps {
   show: boolean;
@@ -129,7 +121,13 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const router = useRouter();
   const appFocus = useAppFocus();
-  const { setAppMode } = useAppMode();
+
+  useToastFromQuery({
+    oauth_connected: {
+      message: "Authentication successful",
+      type: "success",
+    },
+  });
   const searchParams = useSearchParams();
 
   // Use SWR hooks for data fetching
@@ -193,7 +191,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       onSubmit({
         message,
         currentMessageFiles,
-        deepResearch: deepResearchEnabled,
+        deepResearch: deepResearchEnabledForCurrentWorkflow,
       });
     }
   }
@@ -218,6 +216,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     chatSessionId: currentChatSessionId,
     agentId: selectedAgent?.id,
   });
+  const deepResearchEnabledForCurrentWorkflow =
+    currentProjectId === null && deepResearchEnabled;
 
   const [presentingDocument, setPresentingDocument] =
     useState<MinimalOnyxDocument | null>(null);
@@ -365,18 +365,22 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const autoScrollEnabled = user?.preferences?.auto_scroll !== false;
   const isStreaming = currentChatState === "streaming";
 
-  const { onSubmit, stopGenerating, handleMessageSpecificFileUpload } =
-    useChatController({
-      filterManager,
-      llmManager,
-      availableAgents: agents,
-      liveAgent,
-      existingChatSessionId: currentChatSessionId,
-      selectedDocuments,
-      searchParams,
-      resetInputBar,
-      setSelectedAgentFromId,
-    });
+  const {
+    onSubmit,
+    stopGenerating,
+    handleMessageSpecificFileUpload,
+    availableContextTokens,
+  } = useChatController({
+    filterManager,
+    llmManager,
+    availableAgents: agents,
+    liveAgent,
+    existingChatSessionId: currentChatSessionId,
+    selectedDocuments,
+    searchParams,
+    resetInputBar,
+    setSelectedAgentFromId,
+  });
 
   const { onMessageSelection, currentSessionFileTokenCount } =
     useChatSessionController({
@@ -435,10 +439,15 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     onSubmit({
       message: lastUserMsg.message,
       currentMessageFiles: currentMessageFiles,
-      deepResearch: deepResearchEnabled,
+      deepResearch: deepResearchEnabledForCurrentWorkflow,
       messageIdToResend: lastUserMsg.messageId,
     });
-  }, [messageHistory, onSubmit, currentMessageFiles, deepResearchEnabled]);
+  }, [
+    messageHistory,
+    onSubmit,
+    currentMessageFiles,
+    deepResearchEnabledForCurrentWorkflow,
+  ]);
 
   const toggleDocumentSidebar = useCallback(() => {
     if (!documentSidebarVisible) {
@@ -458,7 +467,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       onSubmit({
         message,
         currentMessageFiles,
-        deepResearch: deepResearchEnabled,
+        deepResearch: deepResearchEnabledForCurrentWorkflow,
       });
       if (showOnboarding || !onboardingDismissed) {
         finishOnboarding();
@@ -468,13 +477,13 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       resetInputBar,
       onSubmit,
       currentMessageFiles,
-      deepResearchEnabled,
+      deepResearchEnabledForCurrentWorkflow,
       showOnboarding,
       onboardingDismissed,
       finishOnboarding,
     ]
   );
-  const { submit: submitQuery, classification } = useQueryController();
+  const { submit: submitQuery, state, setAppMode } = useQueryController();
 
   const defaultAppMode =
     (user?.preferences?.default_app_mode?.toLowerCase() as "chat" | "search") ??
@@ -482,12 +491,15 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const isNewSession = appFocus.isNewSession();
 
+  const isSearch =
+    state.phase === "searching" || state.phase === "search-results";
+
   // 1. Reset the app-mode back to the user's default when navigating back to the "New Sessions" tab.
   // 2. If we're navigating away from the "New Session" tab after performing a search, we reset the app-input-bar.
   useEffect(() => {
     if (isNewSession) setAppMode(defaultAppMode);
-    if (!isNewSession && classification === "search") resetInputBar();
-  }, [isNewSession, defaultAppMode, classification, resetInputBar, setAppMode]);
+    if (!isNewSession && isSearch) resetInputBar();
+  }, [isNewSession, defaultAppMode, isSearch, resetInputBar, setAppMode]);
 
   const handleSearchDocumentClick = useCallback(
     (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
@@ -503,7 +515,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
         onSubmit({
           message,
           currentMessageFiles,
-          deepResearch: deepResearchEnabled,
+          deepResearch: deepResearchEnabledForCurrentWorkflow,
         });
         if (showOnboarding || !onboardingDismissed) {
           finishOnboarding();
@@ -524,7 +536,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       resetInputBar,
       onSubmit,
       currentMessageFiles,
-      deepResearchEnabled,
+      deepResearchEnabledForCurrentWorkflow,
       showOnboarding,
       onboardingDismissed,
       finishOnboarding,
@@ -588,43 +600,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     };
   }, [currentChatSessionId, currentProjectId, currentProjectDetails?.files]);
 
-  // Available context tokens source of truth:
-  // - If a chat session exists, fetch from session API (dynamic per session/model)
-  // - If no session, derive from the default/current persona's max document tokens
-  const [availableContextTokens, setAvailableContextTokens] = useState<number>(
-    DEFAULT_CONTEXT_TOKENS * 0.5
-  );
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      try {
-        if (currentChatSessionId) {
-          const available =
-            await getAvailableContextTokens(currentChatSessionId);
-          const capped_context_tokens =
-            (available ?? DEFAULT_CONTEXT_TOKENS) * 0.5;
-          if (!cancelled) setAvailableContextTokens(capped_context_tokens);
-        } else {
-          const personaId = (selectedAgent || liveAgent)?.id;
-          if (personaId !== undefined && personaId !== null) {
-            const maxTokens = await getMaxSelectedDocumentTokens(personaId);
-            const capped_context_tokens =
-              (maxTokens ?? DEFAULT_CONTEXT_TOKENS) * 0.5;
-            if (!cancelled) setAvailableContextTokens(capped_context_tokens);
-          } else if (!cancelled) {
-            setAvailableContextTokens(DEFAULT_CONTEXT_TOKENS * 0.5);
-          }
-        }
-      } catch (e) {
-        if (!cancelled) setAvailableContextTokens(DEFAULT_CONTEXT_TOKENS * 0.5);
-      }
-    }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentChatSessionId, selectedAgent?.id, liveAgent?.id]);
-
   // handle error case where no assistants are available
   // Only show this after agents have loaded to prevent flash during initial load
   if (noAgents && !isLoadingAgents) {
@@ -633,7 +608,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const hasStarterMessages = (liveAgent?.starter_messages?.length ?? 0) > 0;
 
-  const isSearch = classification === "search";
   const gridStyle = {
     gridTemplateColumns: "1fr",
     gridTemplateRows: isSearch
@@ -732,7 +706,9 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <ChatUI
                         liveAgent={liveAgent!}
                         llmManager={llmManager}
-                        deepResearchEnabled={deepResearchEnabled}
+                        deepResearchEnabled={
+                          deepResearchEnabledForCurrentWorkflow
+                        }
                         currentMessageFiles={currentMessageFiles}
                         setPresentingDocument={setPresentingDocument}
                         onSubmit={onSubmit}
@@ -759,7 +735,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                   <Fade
                     show={
                       (appFocus.isNewSession() || appFocus.isAgent()) &&
-                      !classification
+                      (state.phase === "idle" || state.phase === "classifying")
                     }
                     className="w-full flex-1 flex flex-col items-center justify-end"
                   >
@@ -772,7 +748,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 </div>
 
                 {/* ── Middle-center: AppInputBar ── */}
-                <div className="row-start-2 flex flex-col items-center">
+                <div className="row-start-2 flex flex-col items-center px-4">
                   <div className="relative w-full max-w-[var(--app-page-main-content-width)] flex flex-col">
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
                     {appFocus.isChat() && showScrollButton && (
@@ -788,7 +764,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
                     {/* OnboardingUI */}
                     {(appFocus.isNewSession() || appFocus.isAgent()) &&
-                      !classification &&
+                      (state.phase === "idle" ||
+                        state.phase === "classifying") &&
                       (showOnboarding || !user?.personalization?.name) &&
                       !onboardingDismissed && (
                         <OnboardingFlow
@@ -823,12 +800,14 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       <div
                         className={cn(
                           "transition-all duration-150 ease-in-out overflow-hidden",
-                          classification === "search" ? "h-[14px]" : "h-0"
+                          isSearch ? "h-[14px]" : "h-0"
                         )}
                       />
                       <AppInputBar
                         ref={chatInputBarRef}
-                        deepResearchEnabled={deepResearchEnabled}
+                        deepResearchEnabled={
+                          deepResearchEnabledForCurrentWorkflow
+                        }
                         toggleDeepResearch={toggleDeepResearch}
                         filterManager={filterManager}
                         llmManager={llmManager}
@@ -870,7 +849,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 </div>
 
                 {/* ── Bottom: SearchResults + SourceFilter / Suggestions / ProjectChatList ── */}
-                <div className="row-start-3 min-h-0 overflow-hidden flex flex-col items-center w-full">
+                <div className="row-start-3 min-h-0 overflow-hidden flex flex-col items-center w-full px-4">
                   {/* Agent description below input */}
                   {(appFocus.isNewSession() || appFocus.isAgent()) &&
                     !isDefaultAgent && (

@@ -11,9 +11,10 @@ import {
   SvgUnplug,
   SvgXOctagon,
 } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { Section } from "@/layouts/general-layouts";
 import { Button } from "@opal/components";
+import { Disabled } from "@opal/core";
 import Text from "@/refresh-components/texts/Text";
 import SimpleLoader from "@/refresh-components/loaders/SimpleLoader";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
@@ -22,7 +23,7 @@ import { updateCodeInterpreter } from "@/lib/admin/code-interpreter/svc";
 import { ContentAction } from "@opal/layouts";
 import { toast } from "@/hooks/useToast";
 
-const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.CODE_INTERPRETER]!;
+const route = ADMIN_ROUTES.CODE_INTERPRETER;
 
 interface CodeInterpreterCardProps {
   variant?: CardProps["variant"];
@@ -120,22 +121,24 @@ function ActionButtons({
       gap={0.25}
       padding={0.25}
     >
-      <Button
-        prominence="tertiary"
-        size="sm"
-        icon={SvgUnplug}
-        onClick={onDisconnect}
-        tooltip="Disconnect"
-        disabled={disabled}
-      />
-      <Button
-        prominence="tertiary"
-        size="sm"
-        icon={SvgRefreshCw}
-        onClick={onRefresh}
-        tooltip="Refresh"
-        disabled={disabled}
-      />
+      <Disabled disabled={disabled}>
+        <Button
+          prominence="tertiary"
+          size="sm"
+          icon={SvgUnplug}
+          onClick={onDisconnect}
+          tooltip="Disconnect"
+        />
+      </Disabled>
+      <Disabled disabled={disabled}>
+        <Button
+          prominence="tertiary"
+          size="sm"
+          icon={SvgRefreshCw}
+          onClick={onRefresh}
+          tooltip="Refresh"
+        />
+      </Disabled>
     </Section>
   );
 }

@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/multi_llm.py.original	2026-03-09 10:14:32
-+++ backend/onyx/llm/multi_llm.py	2026-03-09 10:15:14
+--- backend/ext/_core_originals/multi_llm.py.original	2026-03-17 18:43:48
++++ backend/onyx/llm/multi_llm.py	2026-03-09 16:18:13
 @@ -368,6 +368,21 @@
          user_identity: LLMUserIdentity | None = None,
          client: "HTTPHandler | None" = None,

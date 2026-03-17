@@ -10,6 +10,7 @@ import {
 import * as SettingsLayouts from "@/layouts/settings-layouts";
 import Modal from "@/refresh-components/Modal";
 import { Button } from "@opal/components";
+import { Disabled } from "@opal/core";
 import SwitchField from "@/refresh-components/form/SwitchField";
 import { Form, Formik, FormikState, useFormikContext } from "formik";
 import { useState } from "react";
@@ -30,9 +31,9 @@ import KGEntityTypes from "@/app/admin/kg/KGEntityTypes";
 import Text from "@/refresh-components/texts/Text";
 import { cn } from "@/lib/utils";
 import { SvgSettings } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
 
-const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.KNOWLEDGE_GRAPH]!;
+const route = ADMIN_ROUTES.KNOWLEDGE_GRAPH;
 
 function createDomainField(
   name: string,
@@ -199,9 +200,9 @@ function KGConfiguration({
                 disabled={!props.values.enabled}
               />
             </div>
-            <Button type="submit" disabled={!props.dirty}>
-              Submit
-            </Button>
+            <Disabled disabled={!props.dirty}>
+              <Button type="submit">Submit</Button>
+            </Disabled>
           </div>
         </Form>
       )}

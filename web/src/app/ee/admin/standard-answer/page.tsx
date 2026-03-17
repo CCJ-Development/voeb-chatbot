@@ -30,10 +30,10 @@ import { TableHeader } from "@/components/ui/table";
 import CreateButton from "@/refresh-components/buttons/CreateButton";
 import { SvgEdit, SvgTrash } from "@opal/icons";
 import { Button } from "@opal/components";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
 const NUM_RESULTS_PER_PAGE = 10;
 
-const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.STANDARD_ANSWERS]!;
+const route = ADMIN_ROUTES.STANDARD_ANSWERS;
 
 type Displayable = JSX.Element | string;
 
@@ -368,8 +368,8 @@ function Main() {
       <ErrorCallout
         errorTitle="Error loading standard answers"
         errorMsg={
-          standardAnswersError.info?.message ||
-          standardAnswersError.message.info?.detail
+          standardAnswersError.info?.detail ||
+          standardAnswersError.info?.message
         }
       />
     );
@@ -380,8 +380,8 @@ function Main() {
       <ErrorCallout
         errorTitle="Error loading standard answer categories"
         errorMsg={
-          standardAnswerCategoriesError.info?.message ||
-          standardAnswerCategoriesError.message.info?.detail
+          standardAnswerCategoriesError.info?.detail ||
+          standardAnswerCategoriesError.info?.message
         }
       />
     );

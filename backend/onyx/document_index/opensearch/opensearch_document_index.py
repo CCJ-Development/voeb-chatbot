@@ -433,12 +433,16 @@ class OpenSearchOldDocumentIndex(OldDocumentIndex):
             hidden=fields.hidden if fields else None,
             project_ids=(
                 set(user_fields.user_projects)
-                if user_fields and user_fields.user_projects
+                # NOTE: Empty user_projects is semantically different from None
+                # user_projects.
+                if user_fields and user_fields.user_projects is not None
                 else None
             ),
             persona_ids=(
                 set(user_fields.personas)
-                if user_fields and user_fields.personas
+                # NOTE: Empty personas is semantically different from None
+                # personas.
+                if user_fields and user_fields.personas is not None
                 else None
             ),
         )
@@ -715,7 +719,9 @@ class OpenSearchDocumentIndex(DocumentIndex):
         return document_indexing_results
 
     def delete(
-        self, document_id: str, chunk_count: int | None = None  # noqa: ARG002
+        self,
+        document_id: str,
+        chunk_count: int | None = None,  # noqa: ARG002
     ) -> int:
         """Deletes all chunks for a given document.
 
@@ -739,8 +745,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
             The number of chunks successfully deleted.
         """
         logger.debug(
-            f"[OpenSearchDocumentIndex] Deleting document {document_id} from index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Deleting document {document_id} from index {self._index_name}."
         )
         query_body = DocumentQuery.delete_from_document_id_query(
             document_id=document_id,
@@ -776,8 +781,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
                 specified documents.
         """
         logger.debug(
-            f"[OpenSearchDocumentIndex] Updating {len(update_requests)} chunks for index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Updating {len(update_requests)} chunks for index {self._index_name}."
         )
         for update_request in update_requests:
             properties_to_update: dict[str, Any] = dict()
@@ -869,8 +873,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
         chunk IDs vs querying for matching document chunks.
         """
         logger.debug(
-            f"[OpenSearchDocumentIndex] Retrieving {len(chunk_requests)} chunks for index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Retrieving {len(chunk_requests)} chunks for index {self._index_name}."
         )
         results: list[InferenceChunk] = []
         for chunk_request in chunk_requests:
@@ -917,8 +920,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
         num_to_retrieve: int,
     ) -> list[InferenceChunk]:
         logger.debug(
-            f"[OpenSearchDocumentIndex] Hybrid retrieving {num_to_retrieve} chunks for index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Hybrid retrieving {num_to_retrieve} chunks for index {self._index_name}."
         )
         # TODO(andrei): This could be better, the caller should just make this
         # decision when passing in the query param. See the above comment in the
@@ -968,8 +970,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
         dirty: bool | None = None,  # noqa: ARG002
     ) -> list[InferenceChunk]:
         logger.debug(
-            f"[OpenSearchDocumentIndex] Randomly retrieving {num_to_retrieve} chunks for index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Randomly retrieving {num_to_retrieve} chunks for index {self._index_name}."
         )
         query_body = DocumentQuery.get_random_search_query(
             tenant_state=self._tenant_state,
@@ -999,8 +1000,7 @@ class OpenSearchDocumentIndex(DocumentIndex):
         complete.
         """
         logger.debug(
-            f"[OpenSearchDocumentIndex] Indexing {len(chunks)} raw chunks for index "
-            f"{self._index_name}."
+            f"[OpenSearchDocumentIndex] Indexing {len(chunks)} raw chunks for index {self._index_name}."
         )
         # Do not raise if the document already exists, just update. This is
         # because the document may already have been indexed during the

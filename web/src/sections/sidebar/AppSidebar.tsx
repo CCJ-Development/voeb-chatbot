@@ -72,12 +72,12 @@ import BuildModeIntroBackground from "@/app/craft/components/IntroBackground";
 import BuildModeIntroContent from "@/app/craft/components/IntroContent";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
 import { usePostHog } from "posthog-js/react";
+import { track, AnalyticsEvent } from "@/lib/analytics";
 import { motion, AnimatePresence } from "motion/react";
 import { Notification, NotificationType } from "@/interfaces/settings";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
 import ChatSearchCommandMenu from "@/sections/sidebar/ChatSearchCommandMenu";
-import { useAppMode } from "@/providers/AppModeProvider";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 
 // Visible-agents = pinned-agents + current-agent (if current-agent not in pinned-agents)
@@ -206,8 +206,7 @@ const MemoizedAppSidebarInner = memo(
     const combinedSettings = useSettingsContext();
     const posthog = usePostHog();
     const { newTenantInfo, invitationInfo } = useModalContext();
-    const { setAppMode } = useAppMode();
-    const { reset } = useQueryController();
+    const { setAppMode, reset } = useQueryController();
 
     // Use SWR hooks for data fetching
     const {
@@ -529,7 +528,7 @@ const MemoizedAppSidebarInner = memo(
             icon={SvgDevKit}
             folded={folded}
             href={CRAFT_PATH}
-            onClick={() => posthog?.capture("clicked_craft_in_sidebar")}
+            onClick={() => track(AnalyticsEvent.CLICKED_CRAFT_IN_SIDEBAR)}
           >
             Craft
           </SidebarTab>
@@ -599,18 +598,12 @@ const MemoizedAppSidebarInner = memo(
       setShowIntroAnimation(true);
     }, []);
 
-    const vectorDbEnabled =
-      combinedSettings?.settings?.vector_db_enabled !== false;
-    const adminDefaultHref = vectorDbEnabled
-      ? "/admin/indexing/status"
-      : "/admin/agents";
-
     const settingsButton = useMemo(
       () => (
         <div>
           {(isAdmin || isCurator) && (
             <SidebarTab
-              href={adminDefaultHref}
+              href={isCurator ? "/admin/agents" : "/admin/configuration/llm"}
               icon={SvgSettings}
               folded={folded}
             >
@@ -625,14 +618,7 @@ const MemoizedAppSidebarInner = memo(
           />
         </div>
       ),
-      [
-        folded,
-        isAdmin,
-        isCurator,
-        handleShowBuildIntro,
-        isOnyxCraftEnabled,
-        adminDefaultHref,
-      ]
+      [folded, isAdmin, isCurator, handleShowBuildIntro, isOnyxCraftEnabled]
     );
 
     return (
