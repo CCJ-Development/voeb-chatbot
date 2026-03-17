@@ -1,4 +1,4 @@
-# Infrastruktur-Review — VÖB Chatbot / Safir
+# Infrastruktur-Review — VÖB Chatbot
 
 **Datum:** 2026-03-16
 **Version:** 1.0
@@ -406,17 +406,17 @@ Für PROD: Flex 4.8 HA (3-Node) ist für Banking-PROD korrekt. Ein Downgrade auf
 
 | # | Maßnahme | Einsparung/Mo | Risiko | Aufwand |
 |---|----------|--------------|--------|---------|
-| Q1 | DEV/TEST Resource Requests um 30% senken (Celery, Model Server, Redis Operator) | 0 EUR direkt, aber Prerequisite für Q3 | Niedrig (5% actual CPU) | 2h |
-| Q2 | Vespa PROD PVC von 50 Gi auf 20 Gi reduzieren | ~2 EUR (Block Storage) | Niedrig (884 Mi genutzt) | 30 Min (Recreate) |
-| Q3 | `prod-bereitstellung.md` Section 11 korrigieren (dokumentierte vs. deployed Werte) | 0 EUR | Keine | 1h |
+| Q1 | ~~DEV/TEST Resource Requests um 30% senken~~ | ✅ **ERLEDIGT (2026-03-16)** — 40-80% Reduktion, inkl. redis-operator + Monitoring | — | — |
+| Q2 | ~~Vespa PROD PVC von 50 Gi auf 20 Gi reduzieren~~ | **UEBERSPRUNGEN** — ~2 EUR/Mo Einsparung, Aufwand >> Nutzen | — | — |
+| Q3 | `prod-bereitstellung.md` Section 11 korrigieren | 0 EUR | Keine | 1h |
 | Q4 | Excel + Word Kostenaufstellung archivieren oder als "veraltet" markieren | 0 EUR | Keine | 30 Min |
 
 ### Mittelfristig (1-3 Monate)
 
 | # | Maßnahme | Einsparung/Mo | Risiko | Aufwand |
 |---|----------|--------------|--------|---------|
-| M1 | DEV/TEST Nodes: g1a.8d → g1a.4d (nach Q1 erfolgreich) | **~283 EUR** | Mittel (kein Headroom bei Spike) | 4h (Terraform + Test) |
-| M2 | TEST Scale-to-Zero (nachts + Wochenende, ~65% der Zeit) | **~200 EUR** | Niedrig (Skript existiert konzeptionell) | 4h (Skript + CronJob) |
+| M1 | ~~DEV/TEST Nodes: g1a.8d → g1a.4d~~ | ✅ **ERLEDIGT (2026-03-16)** — Terraform apply, 2x g1a.4d, **-283 EUR/Mo** | — | — |
+| M2 | ~~TEST Scale-to-Zero~~ | ✅ **ERLEDIGT (2026-03-16)** — CronJobs Mo-Fr 08-18 UTC, **~130-200 EUR/Mo** | — | — |
 | M3 | PROD PG: Flex 4.8 → Flex 2.4 HA nach 6 Mo Betriebserfahrung | **~174 EUR** | Mittel (weniger CPU/RAM) | 2h (Terraform, Downtime 30 Min) |
 
 ### Strategisch (3-6 Monate)

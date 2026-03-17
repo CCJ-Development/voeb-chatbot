@@ -38,7 +38,7 @@
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
-  - 📋 Scope: DEV live, TEST live, PROD deployed (DNS/TLS offen).
+  - 📋 Scope: DEV live, TEST live, PROD **HTTPS LIVE** (2026-03-17).
 - **Phase 2 PROD:** ✅ **PROD DEPLOYED** (2026-03-11)
   - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
   - ✅ K8s v1.33.9, Flatcar 4459.2.3, 2x g1a.8d (8 vCPU, 32 GB RAM)
@@ -51,10 +51,10 @@
   - ✅ PG ACL: Egress `188.34.73.72/32` + Admin
   - ✅ Maintenance-Window: 03:00-05:00 UTC (O8, eigenes Fenster)
   - ✅ Kubeconfig gueltig bis 2026-06-09 (90 Tage)
-  - ⏳ DNS: A-Record + ACME-CNAME bei Leif/GlobVill angefragt (2026-03-11)
-  - ⏳ TLS/HTTPS: Wartet auf DNS-Eintraege
+  - ✅ DNS: A-Record + ACME-CNAME gesetzt durch Leif/GlobVill (2026-03-17)
+  - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
   - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
-  - ⏳ NetworkPolicies onyx-prod: Kommt mit DNS/TLS-Hardening (Lesson: Monitoring-Policies nicht ohne Basis-Set anwenden)
+  - ⏳ NetworkPolicies onyx-prod: DNS/TLS erledigt, NetworkPolicies als naechstes (vollstaendiges Set inkl. Basis-Policies)
 - **Phase 2 TEST:** ✅ **TEST LIVE** (2026-03-03)
   - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
   - ✅ Node Pool auf 2 Nodes skaliert (DEV + TEST)
@@ -104,17 +104,17 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. DNS-Eintraege (Leif/GlobVill) abwarten → 2. TLS/HTTPS PROD aktivieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** Kostenoptimierung DEV/TEST abgeschlossen (2026-03-16): g1a.4d, 585 EUR/Mo. PROD App: 19 Pods, Health OK, LB `188.34.92.162`. Entra ID weiterhin blockiert.
+**1. ~~DNS-Eintraege~~ ✅ → 2. ~~TLS/HTTPS PROD~~ ✅ → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17): `https://chatbot.voeb-service.de`, ECDSA P-384. Kostenoptimierung DEV/TEST: g1a.4d, 585 EUR/Mo. Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
 | Entra ID Zugangsdaten | VÖB IT | Phase 3 |
-| DNS PROD (A-Record + ACME-CNAME) | Leif (GlobVill), angefragt 2026-03-11 | HTTPS PROD |
 
 ## Erledigte Blocker
 | Blocker | Gelöst | Datum |
 |---------|--------|-------|
+| DNS PROD (A-Record + ACME-CNAME) | ✅ Leif hat DNS-Eintraege gesetzt, PROD HTTPS LIVE | 2026-03-17 |
 | TLS/HTTPS: ACME-Challenge CNAMEs bei GlobVill | ✅ Leif hat CNAMEs gesetzt, DEV HTTPS LIVE | 2026-03-09 |
 | Cloudflare API Token Auth Error (10000) | ✅ Leif hat Permissions erweitert, ClusterIssuers READY | 2026-03-07 |
 | Embedding-Wechsel blockiert (PR #7541) | ✅ Upstream PR #9005 — Search Settings Swap re-enabled | 2026-03-06 |

@@ -1,8 +1,8 @@
 # PROD-Bereitstellung — Planungsdokument
 
-**Status:** Phase A-D abgeschlossen, PROD deployed (19 Pods, Health OK). DNS/TLS offen (wartet auf Leif/GlobVill).
+**Status:** Phase A-F abgeschlossen, **PROD HTTPS LIVE** (19 Pods, Health OK, TLS ECDSA P-384). NetworkPolicies + Auth offen.
 **Erstellt:** 2026-03-11
-**Letzte Aktualisierung:** 2026-03-11 — Terraform apply, K8s-Basis, GitHub Environment, erster Deploy, LB IP ermittelt
+**Letzte Aktualisierung:** 2026-03-17 — DNS/TLS PROD aktiviert (Leif/GlobVill), ECDSA P-384
 **Autor:** CCJ / Coffee Studios (Nikolaj Ivanov)
 **Ziel-URL:** `https://chatbot.voeb-service.de`
 
@@ -22,8 +22,8 @@ Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem get
 | Namespace | `onyx-dev` (16 Pods) | `onyx-test` (15 Pods) | `onyx-prod` (19 Pods) |
 | PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 2.4 Single `vob-test` | Flex 4.8 Replica HA `vob-prod` (3 Nodes) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
-| Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`, DNS offen) |
-| TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | Wartet auf DNS (Leif/GlobVill) |
+| Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`) |
+| TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | **HTTPS LIVE** (2026-03-17, Let's Encrypt ECDSA P-384) |
 | Auth | Basic (kein OIDC) | Basic (kein OIDC) | Basic (temporaer, Entra ID blockiert) |
 | Monitoring | kube-prometheus-stack | (shared mit DEV) | ✅ Deployed (2026-03-12, 9 Pods, 3 Targets UP) |
 | CI/CD Job | `deploy-dev` (auto) | `deploy-test` (manuell) | `deploy-prod` (manuell, Review) |

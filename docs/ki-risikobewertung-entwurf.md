@@ -21,7 +21,7 @@
 
 | Feld | Wert |
 |------|------|
-| Systemname | VÖB Chatbot (Safir) |
+| Systemname | VÖB Chatbot |
 | Systembeschreibung | RAG-basierter KI-Chatbot für internes Wissensmanagement |
 | KI-Komponenten | 4 LLM-Modelle (Chat), 1 Embedding-Modell (RAG-Retrieval) |
 | Deployer (Art. 3 Nr. 4) | VÖB Service GmbH / Bundesverband Öffentlicher Banken Deutschlands e.V. |
@@ -159,7 +159,7 @@ Art. 50 Abs. 2 betrifft primär Deepfakes und synthetische Medien. Für rein tex
 
 ### 3.3 Ausnahmen nach Art. 50 Abs. 4
 
-Art. 50 Abs. 4 sieht Erleichterungen vor, wenn die KI-Nutzung "aus dem Zusammenhang offensichtlich" ist. Da der VÖB-Chatbot als dediziertes KI-Tool erkennbar ist (eigene URL, eigenes Branding "Safir", Chat-Interface), greift diese Erleichterung teilweise. Trotzdem empfohlen: explizite Kennzeichnung als Best Practice im Banking-Umfeld.
+Art. 50 Abs. 4 sieht Erleichterungen vor, wenn die KI-Nutzung "aus dem Zusammenhang offensichtlich" ist. Da der VÖB-Chatbot als dediziertes KI-Tool erkennbar ist (eigene URL, eigenes Branding, Chat-Interface), greift diese Erleichterung teilweise. Trotzdem empfohlen: explizite Kennzeichnung als Best Practice im Banking-Umfeld.
 
 ---
 
