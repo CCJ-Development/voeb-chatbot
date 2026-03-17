@@ -1,7 +1,7 @@
 # Offene Fragen an StackIT
 
 **Stand:** 2026-03-16
-**Kontext:** VÖB Chatbot (Safir) — Backup-Analyse + Cloud-Infrastruktur-Audit
+**Kontext:** VÖB Chatbot — Backup-Analyse + Cloud-Infrastruktur-Audit
 **Projekt-ID:** StackIT Projekt (SKE + PG Flex + Object Storage, Region eu01)
 
 ---

@@ -1,7 +1,7 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** DEV + TEST LIVE (2026-03-09) — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3.
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-09 (DEV + TEST TLS aktiviert)
+**Status:** DEV + TEST + PROD LIVE — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3.
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-17 (PROD TLS aktiviert)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 
 ---
@@ -14,7 +14,7 @@
 |-------------|---------|--------|
 | DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
 | TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
-| PROD | Deployed (LB `188.34.92.162`), DNS/TLS pending | — |
+| PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, E7 Intermediate |
 
 ### Zielzustand
 

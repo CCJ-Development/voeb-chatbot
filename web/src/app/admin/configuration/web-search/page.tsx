@@ -12,6 +12,7 @@ import { ThreeDotsLoader } from "@/components/Loading";
 import { Callout } from "@/components/ui/callout";
 import Button from "@/refresh-components/buttons/Button";
 import { Button as OpalButton } from "@opal/components";
+import { Disabled } from "@opal/core";
 import { cn } from "@/lib/utils";
 import {
   SvgArrowExchange,
@@ -22,10 +23,10 @@ import {
   SvgOnyxLogo,
   SvgX,
 } from "@opal/icons";
-import { ADMIN_ROUTE_CONFIG, ADMIN_PATHS } from "@/lib/admin-routes";
+import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { WebProviderSetupModal } from "@/app/admin/configuration/web-search/WebProviderSetupModal";
 
-const route = ADMIN_ROUTE_CONFIG[ADMIN_PATHS.WEB_SEARCH]!;
+const route = ADMIN_ROUTES.WEB_SEARCH;
 import {
   SEARCH_PROVIDERS_URL,
   SEARCH_PROVIDER_DETAILS,
@@ -1011,25 +1012,28 @@ export default function Page() {
                             {buttonState.label}
                           </HoverIconButton>
                         ) : (
-                          <OpalButton
-                            prominence="tertiary"
+                          <Disabled
                             disabled={
                               buttonState.disabled || !buttonState.onClick
                             }
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              buttonState.onClick?.();
-                            }}
-                            rightIcon={
-                              buttonState.icon === "arrow"
-                                ? SvgArrowExchange
-                                : buttonState.icon === "arrow-circle"
-                                  ? SvgArrowRightCircle
-                                  : undefined
-                            }
                           >
-                            {buttonState.label}
-                          </OpalButton>
+                            <OpalButton
+                              prominence="tertiary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                buttonState.onClick?.();
+                              }}
+                              rightIcon={
+                                buttonState.icon === "arrow"
+                                  ? SvgArrowExchange
+                                  : buttonState.icon === "arrow-circle"
+                                    ? SvgArrowRightCircle
+                                    : undefined
+                              }
+                            >
+                              {buttonState.label}
+                            </OpalButton>
+                          </Disabled>
                         )}
                       </div>
                     </div>
@@ -1202,25 +1206,28 @@ export default function Page() {
                           {buttonState.label}
                         </HoverIconButton>
                       ) : (
-                        <OpalButton
-                          prominence="tertiary"
+                        <Disabled
                           disabled={
                             buttonState.disabled || !buttonState.onClick
                           }
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            buttonState.onClick?.();
-                          }}
-                          rightIcon={
-                            buttonState.icon === "arrow"
-                              ? SvgArrowExchange
-                              : buttonState.icon === "arrow-circle"
-                                ? SvgArrowRightCircle
-                                : undefined
-                          }
                         >
-                          {buttonState.label}
-                        </OpalButton>
+                          <OpalButton
+                            prominence="tertiary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              buttonState.onClick?.();
+                            }}
+                            rightIcon={
+                              buttonState.icon === "arrow"
+                                ? SvgArrowExchange
+                                : buttonState.icon === "arrow-circle"
+                                  ? SvgArrowRightCircle
+                                  : undefined
+                            }
+                          >
+                            {buttonState.label}
+                          </OpalButton>
+                        </Disabled>
                       )}
                     </div>
                   </div>

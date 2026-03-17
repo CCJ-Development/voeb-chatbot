@@ -10,6 +10,7 @@ import {
   widthVariants,
   type WidthVariant,
 } from "@opal/shared";
+import { useDisabled } from "@opal/core/disabled/components";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,7 +78,7 @@ interface InteractiveContainerProps
   /**
    * Width preset controlling the container's horizontal size.
    *
-   * @default "auto"
+   * @default "fit"
    */
   widthVariant?: WidthVariant;
 }
@@ -100,9 +101,10 @@ function InteractiveContainer({
   border,
   roundingVariant = "default",
   heightVariant = "lg",
-  widthVariant = "auto",
+  widthVariant = "fit",
   ...props
 }: InteractiveContainerProps) {
+  const { allowClick } = useDisabled();
   const {
     className: slotClassName,
     style: slotStyle,
@@ -148,7 +150,8 @@ function InteractiveContainer({
   if (type) {
     const ariaDisabled = (rest as Record<string, unknown>)["aria-disabled"];
     const nativeDisabled =
-      ariaDisabled === true || ariaDisabled === "true" || undefined;
+      (type === "submit" || !allowClick) &&
+      (ariaDisabled === true || ariaDisabled === "true" || undefined);
     return (
       <button
         ref={ref as React.Ref<HTMLButtonElement>}

@@ -2,9 +2,12 @@
 
 import {
   buildChatUrl,
+  getAvailableContextTokens,
   nameChatSession,
   updateLlmOverrideForChatSession,
 } from "@/app/app/services/lib";
+import { getMaxSelectedDocumentTokens } from "@/app/app/projects/projectsService";
+import { DEFAULT_CONTEXT_TOKENS } from "@/lib/constants";
 import { StreamStopInfo } from "@/lib/search/interfaces";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Route } from "next";
@@ -55,7 +58,7 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
+import { track, AnalyticsEvent } from "@/lib/analytics";
 import { getExtensionContext } from "@/lib/extension/utils";
 import useChatSessions from "@/hooks/useChatSessions";
 import { usePinnedAgents } from "@/hooks/useAgents";
@@ -144,7 +147,6 @@ export default function useChatController({
   const { forcedToolIds } = useForcedTools();
   const { fetchProjects, setCurrentMessageFiles, beginUpload } =
     useProjectsContext();
-  const posthog = usePostHog();
 
   // Use selectors to access only the specific fields we need
   const currentSessionId = useChatSessionStore(
@@ -193,9 +195,6 @@ export default function useChatController({
   const currentChatState = useCurrentChatState();
 
   const navigatingAway = useRef(false);
-
-  // Local state that doesn't need to be in the store
-  const [_maxTokens, setMaxTokens] = useState<number>(4096);
 
   // Sync store state changes
   useEffect(() => {
@@ -764,8 +763,8 @@ export default function useChatController({
                 .user_message_id;
 
               // Track extension queries in PostHog (reuses isExtension/extensionContext from above)
-              if (isExtension && posthog) {
-                posthog.capture("extension_chat_query", {
+              if (isExtension) {
+                track(AnalyticsEvent.EXTENSION_CHAT_QUERY, {
                   extension_context: extensionContext,
                   assistant_id: liveAgent?.id,
                   has_files: effectiveFileDescriptors.length > 0,
@@ -1067,21 +1066,59 @@ export default function useChatController({
     handleSlackChatRedirect();
   }, [searchParams, router]);
 
-  // fetch # of allowed document tokens for the selected Persona
-  useEffect(() => {
-    if (!liveAgent?.id) return; // avoid calling with undefined persona id
+  // Available context tokens: if a chat session exists, fetch from the session
+  // API (dynamic per session/model). Otherwise derive from the persona's max
+  // document tokens. The backend already accounts for system prompt, tools,
+  // and user-message reservations.
+  const [availableContextTokens, setAvailableContextTokens] = useState<number>(
+    DEFAULT_CONTEXT_TOKENS
+  );
 
-    async function fetchMaxTokens() {
-      const response = await fetch(
-        `/api/chat/max-selected-document-tokens?persona_id=${liveAgent?.id}`
-      );
-      if (response.ok) {
-        const maxTokens = (await response.json()).max_tokens as number;
-        setMaxTokens(maxTokens);
+  useEffect(() => {
+    if (!llmManager.hasAnyProvider) return;
+
+    let cancelled = false;
+
+    const setIfActive = (tokens: number) => {
+      if (!cancelled) setAvailableContextTokens(tokens);
+    };
+
+    // Prefer the Zustand session ID, but fall back to the URL-derived prop
+    // so we don't incorrectly take the persona path while the store is
+    // still initialising on navigation to an existing chat.
+    const sessionId = currentSessionId || existingChatSessionId;
+
+    (async () => {
+      try {
+        if (sessionId) {
+          const available = await getAvailableContextTokens(sessionId);
+          setIfActive(available ?? DEFAULT_CONTEXT_TOKENS);
+          return;
+        }
+
+        const personaId = liveAgent?.id;
+        if (personaId == null) {
+          setIfActive(DEFAULT_CONTEXT_TOKENS);
+          return;
+        }
+
+        const maxTokens = await getMaxSelectedDocumentTokens(personaId);
+        setIfActive(maxTokens ?? DEFAULT_CONTEXT_TOKENS);
+      } catch (e) {
+        console.error("Failed to fetch available context tokens:", e);
+        setIfActive(DEFAULT_CONTEXT_TOKENS);
       }
-    }
-    fetchMaxTokens();
-  }, [liveAgent]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentSessionId,
+    existingChatSessionId,
+    liveAgent?.id,
+    llmManager.hasAnyProvider,
+  ]);
 
   // check if there's an image file in the message history so that we know
   // which LLMs are available to use
@@ -1110,5 +1147,7 @@ export default function useChatController({
     onSubmit,
     stopGenerating,
     handleMessageSpecificFileUpload,
+    // data
+    availableContextTokens,
   };
 }

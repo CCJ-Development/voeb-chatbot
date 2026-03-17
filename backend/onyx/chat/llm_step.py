@@ -15,6 +15,7 @@ from onyx.chat.citation_processor import DynamicCitationProcessor
 from onyx.chat.emitter import Emitter
 from onyx.chat.models import ChatMessageSimple
 from onyx.chat.models import LlmStepResult
+from onyx.chat.tool_call_args_streaming import maybe_emit_argument_delta
 from onyx.configs.app_configs import LOG_ONYX_MODEL_INTERACTIONS
 from onyx.configs.app_configs import PROMPT_CACHE_CHAT_HISTORY
 from onyx.configs.constants import MessageType
@@ -54,6 +55,7 @@ from onyx.server.query_and_chat.streaming_models import ReasoningStart
 from onyx.tools.models import ToolCallKickoff
 from onyx.tracing.framework.create import generation_span
 from onyx.utils.b64 import get_image_type_from_bytes
+from onyx.utils.jsonriver import Parser
 from onyx.utils.logger import setup_logger
 from onyx.utils.postgres_sanitization import sanitize_string
 from onyx.utils.text_processing import find_all_json_objects
@@ -693,8 +695,7 @@ def _build_structured_assistant_message(msg: ChatMessageSimple) -> AssistantMess
 def _build_structured_tool_response_message(msg: ChatMessageSimple) -> ToolMessage:
     if not msg.tool_call_id:
         raise ValueError(
-            "Tool call response message encountered but tool_call_id is not available. "
-            f"Message: {msg}"
+            f"Tool call response message encountered but tool_call_id is not available. Message: {msg}"
         )
 
     return ToolMessage(
@@ -729,8 +730,7 @@ class _OllamaHistoryMessageFormatter(_HistoryMessageFormatter):
 
         tool_call_lines = [
             (
-                f"[Tool Call] name={tc.tool_name} "
-                f"id={tc.tool_call_id} args={json.dumps(tc.tool_arguments)}"
+                f"[Tool Call] name={tc.tool_name} id={tc.tool_call_id} args={json.dumps(tc.tool_arguments)}"
             )
             for tc in msg.tool_calls
         ]
@@ -748,8 +748,7 @@ class _OllamaHistoryMessageFormatter(_HistoryMessageFormatter):
     def format_tool_response_message(self, msg: ChatMessageSimple) -> UserMessage:
         if not msg.tool_call_id:
             raise ValueError(
-                "Tool call response message encountered but tool_call_id is not available. "
-                f"Message: {msg}"
+                f"Tool call response message encountered but tool_call_id is not available. Message: {msg}"
             )
 
         return UserMessage(
@@ -837,8 +836,7 @@ def translate_history_to_llm_format(
                             content_parts.append(image_part)
                         except Exception as e:
                             logger.warning(
-                                f"Failed to process image file {img_file.file_id}: {e}. "
-                                "Skipping image."
+                                f"Failed to process image file {img_file.file_id}: {e}. Skipping image."
                             )
                 user_msg = UserMessage(
                     role="user",
@@ -1009,6 +1007,7 @@ def run_llm_step_pkt_generator(
         )
 
     id_to_tool_call_map: dict[int, dict[str, Any]] = {}
+    arg_parsers: dict[int, Parser] = {}
     reasoning_start = False
     answer_start = False
     accumulated_reasoning = ""
@@ -1215,7 +1214,14 @@ def run_llm_step_pkt_generator(
                 yield from _close_reasoning_if_active()
 
                 for tool_call_delta in delta.tool_calls:
+                    # maybe_emit depends and update being called first and attaching the delta
                     _update_tool_call_with_delta(id_to_tool_call_map, tool_call_delta)
+                    yield from maybe_emit_argument_delta(
+                        tool_calls_in_progress=id_to_tool_call_map,
+                        tool_call_delta=tool_call_delta,
+                        placement=_current_placement(),
+                        parsers=arg_parsers,
+                    )
 
         # Flush any tail text buffered while checking for split "<function_calls" markers.
         filtered_content_tail = xml_tool_call_content_filter.flush()

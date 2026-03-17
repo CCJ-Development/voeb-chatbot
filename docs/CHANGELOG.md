@@ -9,6 +9,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [Infra] **PROD HTTPS aktiviert** (2026-03-17)
+  - Domain: `https://chatbot.voeb-service.de` LIVE
+  - Certificate: Let's Encrypt ECDSA P-384 (secp384r1), Issuer E7
+  - TLS: TLSv1.3, HTTP/2, HSTS max-age=31536000 (1 Jahr, BSI TR-02102 + OWASP)
+  - DNS: A-Record + ACME-Challenge CNAME durch Leif/GlobVill gesetzt
+  - cert-manager DNS-01 via Cloudflare, ClusterIssuer `onyx-prod-letsencrypt`
+
+- [Infra] **Kostenoptimierung DEV/TEST** (2026-03-16)
+  - Node-Downgrade g1a.8d → g1a.4d (4 vCPU, 16 GB RAM)
+  - Resource Requests um 40-80% gesenkt (CPU Actual war 5% der Requests)
+  - Redis-Operator: 500m → 50m, Prometheus: 500m → 250m, Celery: 250m → 150m
+  - TEST Scale-to-Zero CronJobs (Mo-Fr 08:00-18:00 UTC)
+  - Kosten DEV+TEST: 868,47 → 585,29 EUR/Mo (-283,18 EUR, -32,6%)
+  - Kosten Gesamt: 1.832,43 → 1.549,25 EUR/Mo (-15,4%)
+  - Details: `audit-output/kostenoptimierung-ergebnis.md`, `docs/infrastruktur-review.md`
+
 - [Docs] **Dokumentations-Audit Remediation** (2026-03-15)
   - 49 Audit-Massnahmen umgesetzt (28 Sofort-Fixes, 8 ADR-Fixes, 8 Quality-Fixes, 6 Runbook-Updates)
   - 7 neue Dokumente erstellt:

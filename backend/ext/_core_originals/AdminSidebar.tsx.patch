@@ -1,46 +1,25 @@
---- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-08 18:38:54
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-09 16:50:16
-@@ -19,7 +19,7 @@
- import { CombinedSettings } from "@/interfaces/settings";
- import SidebarTab from "@/refresh-components/buttons/SidebarTab";
+--- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-17 11:34:50
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-17 11:33:18
+@@ -15,7 +15,7 @@
  import SidebarBody from "@/sections/sidebar/SidebarBody";
--import { SvgArrowUpCircle } from "@opal/icons";
-+import { SvgActivity, SvgArrowUpCircle, SvgFileText, SvgPaintBrush } from "@opal/icons";
- import { ADMIN_PATHS, sidebarItem } from "@/lib/admin-routes";
- import UserAvatarPopover from "@/sections/sidebar/UserAvatarPopover";
+ import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
+ import { Disabled } from "@opal/core";
+-import { SvgArrowUpCircle, SvgUserManage, SvgX } from "@opal/icons";
++import { SvgActivity, SvgArrowUpCircle, SvgFileText, SvgPaintBrush, SvgUserManage, SvgX } from "@opal/icons";
+ import {
+   useBillingInformation,
+   useLicense,
+@@ -135,7 +135,12 @@
  
-@@ -155,13 +155,27 @@
-             name: "Settings",
-             items: [
-               ...(enableEnterprise ? [sidebarItem(ADMIN_PATHS.THEME)] : []),
--              // Always show billing/upgrade - community users need access to upgrade
--              {
--                ...sidebarItem(ADMIN_PATHS.BILLING),
--                ...(hasSubscription
--                  ? {}
--                  : { name: "Upgrade Plan", icon: SvgArrowUpCircle }),
--              },
-+              // ext-branding: Show branding config when VÖB extension is active
-+              ...(settings?.enterpriseSettings && !hasSubscription
-+                ? [{ name: "Branding", icon: SvgPaintBrush, link: "/admin/ext-branding" }]
-+                : []),
-+              // ext-token: Token usage dashboard when VÖB extension is active
-+              ...(settings?.enterpriseSettings && !hasSubscription
-+                ? [{ name: "Token Usage", icon: SvgActivity, link: "/admin/ext-token" }]
-+                : []),
-+              // ext-prompts: System Prompts management when VÖB extension is active
-+              ...(settings?.enterpriseSettings && !hasSubscription
-+                ? [{ name: "System Prompts", icon: SvgFileText, link: "/admin/ext-prompts" }]
-+                : []),
-+              // ext-branding: Hide billing/upgrade when using VÖB branding (no Onyx license)
-+              ...(hasSubscription || !settings?.enterpriseSettings
-+                ? [{
-+                    ...sidebarItem(ADMIN_PATHS.BILLING),
-+                    ...(hasSubscription
-+                      ? {}
-+                      : { name: "Upgrade Plan", icon: SvgArrowUpCircle }),
-+                  }]
-+                : []),
-               ...(settings?.settings.opensearch_indexing_enabled
-                 ? [sidebarItem(ADMIN_PATHS.INDEX_MIGRATION)]
-                 : []),
+   // 6. Organization (admin only)
+   if (!isCurator) {
+-    if (hasSubscription) {
++    // ext-branding: Show ext links + hide billing when VÖB extension is active (no Onyx license)
++    if (settings?.enterpriseSettings && !hasSubscription) {
++      items.push({ section: SECTIONS.ORGANIZATION, name: "Branding", icon: SvgPaintBrush, link: "/admin/ext-branding" });
++      items.push({ section: SECTIONS.ORGANIZATION, name: "Token Usage", icon: SvgActivity, link: "/admin/ext-token" });
++      items.push({ section: SECTIONS.ORGANIZATION, name: "System Prompts", icon: SvgFileText, link: "/admin/ext-prompts" });
++    } else if (hasSubscription) {
+       add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.BILLING);
+     } else {
+       items.push({
