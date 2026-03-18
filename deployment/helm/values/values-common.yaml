@@ -210,6 +210,9 @@ configMap:
   # Wir nutzen Vespa, kein OpenSearch. Ohne dieses Override crashed der API-Server
   # mit "ConnectionError localhost:9200" beim Startup.
   OPENSEARCH_FOR_ONYX_ENABLED: "false"
+  # OpenSearch Indexing: DEAKTIVIERT — Upstream hat Default auf "true" geaendert.
+  # Ohne dieses Override crashen Celery-Worker mit OpenSearch Readiness Probe Timeout.
+  ENABLE_OPENSEARCH_INDEXING_FOR_ONYX: "false"
   # XREF-007 Defense-in-Depth: Backend-Limit auf 20 MB (= Ingress proxy-body-size).
   # Onyx Default: 2 GB. Bei Pod-zu-Pod-Traffic wuerde das Ingress-Limit umgangen.
   # 20 MB = 20 * 1024 * 1024 = 20971520 Bytes.
