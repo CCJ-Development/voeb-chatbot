@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-17
+> Letzte Aktualisierung: 2026-03-19
 
 ---
 
@@ -16,13 +16,13 @@
 | Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
 | Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
 | Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 16 | 15 | 19 |
+| Pods | 17 | 16 | 20 |
 | API Replicas | 1 | 1 | 2 (HA) |
 | Web Replicas | 1 | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
 | IngressClass | nginx | nginx-test | nginx |
 | URL | https://dev.chatbot.voeb-service.de | https://test.chatbot.voeb-service.de | https://chatbot.voeb-service.de |
-| HTTPS | LIVE (2026-03-09) | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
+| HTTPS | **TEMPORAER DEAKTIVIERT** (2026-03-18) — DNS zeigt auf alte LB-IP, wartet auf Update | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
 | Auth | basic | basic | basic (Entra ID geplant, Phase 3) |
 | Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell) | workflow_dispatch (manuell, Required Reviewer) |
 | Status | LIVE seit 2026-02-27 | LIVE seit 2026-03-03 | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
@@ -39,7 +39,7 @@
 | Authoritative NS | GlobVill (dns.voerde.globvill.de, dns.globvill.de, dns.globvill.ruhr) |
 | DNS Provider | Cloudflare (DNS-only, kein Proxy, Pro-Plan) |
 | DNS-Aufloesungskette | GlobVill CNAME -> *.voeb-service.de.cdn.cloudflare.net -> Cloudflare A-Record -> StackIT LB IP |
-| LB DEV | 188.34.74.187 |
+| LB DEV | ~~188.34.74.187~~ **188.34.118.222** (neue IP seit 2026-03-18, DNS-Update pending) |
 | LB TEST | 188.34.118.201 |
 | LB PROD | 188.34.92.162 |
 | Egress DEV+TEST | 188.34.93.194 (NAT Gateway, fest fuer Cluster-Lifecycle) |
@@ -55,7 +55,8 @@
 | ClusterIssuers | onyx-dev-letsencrypt, onyx-test-letsencrypt, onyx-prod-letsencrypt (alle READY) |
 | ACME Server | https://acme-v02.api.letsencrypt.org/directory (Production) |
 | ACME Email | nikolaj.ivanov@coffee-studios.de |
-| HSTS DEV/TEST | max-age=3600; includeSubDomains |
+| HSTS DEV | **Deaktiviert** (temporaer, seit 2026-03-18 — HTTPS deaktiviert, http-snippet Override in values-dev.yaml) |
+| HSTS TEST | max-age=3600; includeSubDomains |
 | HSTS PROD | max-age=31536000; includeSubDomains |
 | HTTP-zu-HTTPS Redirect | 308 Permanent Redirect |
 | NetworkPolicies DEV/TEST | 5 Policies in onyx-dev/onyx-test (SEC-03, seit 2026-03-05) |
@@ -130,6 +131,49 @@
 |--------|-------|
 | google/gemma-3-27b-it | tool_choice: "auto" wird abgelehnt |
 | neuralmagic/Mistral-Nemo-Instruct-2407-FP8 | tool_choice: "auto" wird abgelehnt |
+
+---
+
+## 5b. Document Index
+
+> **Hintergrund:** Onyx migriert von Vespa zu OpenSearch (seit v3.0.0). Vollstaendige Analyse: `docs/analyse-opensearch-vs-vespa.md`.
+
+### Architektur (Stand v3.x)
+
+| Komponente | Rolle | Version | Status |
+|------------|-------|---------|--------|
+| **OpenSearch** | Primaeres Document Index Backend (Indexing + Retrieval) | 3.4.0 | Aktiv (Upstream-Default seit v3.0.0) |
+| **Vespa** | Zombie-Mode (nur fuer Readiness Check, kein aktiver Index-Traffic) | 8.609.39 | Aktiv (MUSS bis v4.0.0 laufen) |
+
+### OpenSearch
+
+| Parameter | DEV | TEST | PROD |
+|-----------|-----|------|------|
+| Cluster-Name | onyx-opensearch | onyx-opensearch | onyx-opensearch |
+| Modus | Single-Node (discovery.type: single-node) | Single-Node | Single-Node |
+| CPU Request / Limit | 300m / 1000m | 300m / 1000m | 1000m / 2000m |
+| RAM Request / Limit | 1.5Gi / 4Gi | 1.5Gi / 4Gi | 2Gi / 4Gi |
+| JVM Heap | 512m (Docker Compose) | [Helm Default] | [Helm Default] |
+| PVC | 30Gi | 30Gi | 30Gi |
+| Port (REST API) | 9200 | 9200 | 9200 |
+| Auth | admin / [Secret] | admin / [Secret] | admin / [Secret] |
+
+### Vespa (Zombie-Mode)
+
+| Parameter | DEV | TEST | PROD |
+|-----------|-----|------|------|
+| CPU Request / Limit | 50m / 200m | 50m / 200m | 100m / 500m |
+| RAM Request / Limit | 512Mi / 4Gi | 512Mi / 4Gi | 512Mi / 4Gi |
+| PVC | 20Gi | 20Gi | 50Gi |
+| Port (Application) | 8081 | 8081 | 8081 |
+| Port (Config) | 19071 | 19071 | 19071 |
+| privileged | false (Override, Upstream Default true) | false | false |
+| runAsUser | 0 (Upstream-Limitation: benoetigt Root fuer vm.max_map_count) | 0 | 0 |
+
+**Vespa Einschraenkungen (KRITISCH):**
+- **Memory LIMIT >= 4 Gi Pflicht:** Vespa-Container prueft beim Start ob memory LIMIT >= 4 Gi (Hard-Check). Pod startet nicht bei niedrigerem Limit. `requests` koennen niedriger sein.
+- **StatefulSet PVC immutable:** `volumeClaimTemplates` koennen in Kubernetes NICHT per Helm geaendert werden. Bei PVC-Groessenaenderung: StatefulSet + PVC manuell loeschen, neu erstellen. Daten gehen verloren.
+- **`vespa.enabled: true` Pflicht (bis v4.0.0):** v3.x Code prueft Vespa-Erreichbarkeit (`wait_for_vespa_or_shutdown` in `app_base.py:517`). Ohne Vespa-Pod crashen alle Celery-Worker.
 
 ---
 
@@ -260,7 +304,7 @@
 
 **Kostenoptimierung (2026-03-16):** DEV+TEST von 868,47 auf 585,29 EUR/Mo gesenkt durch Node-Downgrade g1a.8d → g1a.4d nach Resource-Requests-Optimierung. Details: `audit-output/kostenoptimierung-ergebnis.md`.
 
-**Nicht enthalten:** Block Storage (Vespa PVCs, 20 GB/Env), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG Flex Preis enthalten.
+**Nicht enthalten:** Block Storage (Vespa PVCs 20-50 GB/Env + OpenSearch PVCs 30 GB/Env), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG Flex Preis enthalten.
 
 **Preisquelle:** StackIT Preisliste v1.0.36 (03.03.2026), verifiziert gegen StackIT Calculator (2026-03-05). Alle Preise netto.
 
@@ -274,7 +318,8 @@
 | Kubernetes PROD | v1.33.9 | Flatcar 4459.2.3 |
 | PostgreSQL | 16 | StackIT Managed Flex |
 | Redis | 7.0.15 | In-Cluster, OT Operator |
-| Vespa | 8.609.39 | In-Cluster |
+| OpenSearch | 3.4.0 | In-Cluster, primaeres Document Index Backend |
+| Vespa | 8.609.39 | In-Cluster, Zombie-Mode (nur Readiness Check, wird in v4.0.0 entfernt) |
 | Python | 3.11 | Backend |
 | FastAPI | 0.133.1 | |
 | SQLAlchemy | 2.0.15 | |
@@ -370,7 +415,7 @@
 | SEC-03 | NetworkPolicies | Umgesetzt (DEV+TEST, 5 Policies). PROD offen. |
 | SEC-04 | Sealed Secrets | Zurueckgestellt (P3, Solo-Dev, chmod 600) |
 | SEC-05 | Kubeconfig-Trennung | Zurueckgestellt (P3, PROD = eigener Cluster) |
-| SEC-06 | runAsNonRoot | Phase 2 ERLEDIGT (PROD, Vespa = Ausnahme) |
+| SEC-06 | runAsNonRoot | Phase 2 ERLEDIGT (PROD, Vespa = Ausnahme — braucht Root fuer vm.max_map_count) |
 | SEC-07 | Encryption at Rest | Verifiziert (StackIT Default, AES-256) |
 
 ---
@@ -409,7 +454,8 @@
 | Upload-Limit (Backend App) | **20 MB** (`MAX_FILE_SIZE_BYTES: "20971520"` in values-common.yaml, Defense-in-Depth XREF-007, 2026-03-16) |
 | Request-Rate-Limiting (SEC-09) | **10 r/s per IP**, burst 50, nodelay. NGINX `limit_req_zone` + `limit_req` in values-common.yaml + values-prod.yaml. HTTP 429 bei Ueberschreitung. `externalTrafficPolicy: Local` fuer Client-IP Erhaltung. (2026-03-16) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
-| Vespa PVC | 20 GB pro Umgebung (kein separates Backup) |
+| Vespa PVC | 20 GB DEV/TEST, 50 GB PROD (kein separates Backup, Zombie-Mode — kein aktiver Index-Traffic) |
+| OpenSearch PVC | 30 GB pro Umgebung (primaerer Document Index) |
 | Gemessene RTO (DEV, 17 MB DB) | Technisch: 3:16 Min, Operativ: 7:15 Min (Test 2026-03-15) |
 | Letzter Restore-Test | 2026-03-15 (DEV, ✅ 100% Integritaet) |
 | Naechster Restore-Test | 2026-06-15 (quartalsmaessig) |

@@ -1,6 +1,6 @@
 # Runbook: Helm Deploy — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-03-12
+**Zuletzt verifiziert:** 2026-03-19
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -46,9 +46,13 @@
 
 | Environment | Pods | Hinweis |
 |-------------|------|---------|
-| DEV | 16 | 1x API, 1x Web, 8 Celery-Worker, Vespa, Redis, 2x Model, NGINX |
-| TEST | 15 | 1x API, 1x Web, 8 Celery-Worker, Vespa, Redis, Model, NGINX |
-| PROD | 19 | 2x API HA, 2x Web HA, 8 Celery-Worker, Vespa, Redis, 2x Model, NGINX |
+| DEV | 17 | 1x API, 1x Web, 8 Celery-Worker, Vespa (Zombie), OpenSearch, Redis, 2x Model, NGINX |
+| TEST | 16 | 1x API, 1x Web, 8 Celery-Worker, Vespa (Zombie), OpenSearch, Redis, Model, NGINX |
+| PROD | 20 | 2x API HA, 2x Web HA, 8 Celery-Worker, Vespa (Zombie), OpenSearch, Redis, 2x Model, NGINX |
+
+> **Vespa (Zombie-Mode):** Vespa laeuft mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi PROD). Der Pod wird NUR fuer den v3.x Readiness Check benoetigt (`wait_for_vespa_or_shutdown`). Kein aktiver Index-Traffic. Wird in v4.0.0 entfernt.
+>
+> **OpenSearch:** Primaeres Document Index Backend seit v3.0.0 (Upstream-Default). Ersetzt Vespa fuer Indexing und Retrieval.
 
 ### DEV
 
@@ -207,8 +211,9 @@ Onyx-Pods haben interne Readiness-Probes die auf andere Services warten:
 
 1. **PostgreSQL** (extern) — muss erreichbar sein
 2. **Redis** — celery-beat und celery-worker warten darauf
-3. **Vespa** — celery-worker wartet auf Port 8081 (Vespa braucht ~2-3 Min zum Starten)
-4. **api-server** — führt `alembic upgrade head` aus, dann startet Uvicorn. Deployed das Vespa Application Package.
+3. **Vespa** — celery-worker wartet auf Port 8081 (Vespa braucht ~2-5 Min zum Starten, laenger bei reduzierten Ressourcen im Zombie-Mode)
+4. **OpenSearch** — wenn `ENABLE_OPENSEARCH_INDEXING_FOR_ONYX=true`: celery-worker wartet zusaetzlich auf Port 9200
+5. **api-server** — führt `alembic upgrade head` aus, dann startet Uvicorn. Deployed das Vespa Application Package.
 
 Bei erstmaligem Deploy dauert der api-server-Start länger (viele Alembic-Migrationen). Kann 1-2 Restarts verursachen wenn die Startup-Probe zu kurz ist.
 
@@ -223,13 +228,13 @@ kubectl get pods -n onyx-{env}
 # API Health
 # DEV:  curl -s https://dev.chatbot.voeb-service.de/api/health
 # TEST: curl -s https://test.chatbot.voeb-service.de/api/health
-# PROD: curl -s http://188.34.92.162/api/health  (bis TLS aktiv)
+# PROD: curl -s https://chatbot.voeb-service.de/api/health
 # Erwartete Ausgabe: {"success":true,"message":"ok","data":null}
 
 # Login-Seite
 # DEV:  curl -s -o /dev/null -w "%{http_code}" https://dev.chatbot.voeb-service.de/auth/login
 # TEST: curl -s -o /dev/null -w "%{http_code}" https://test.chatbot.voeb-service.de/auth/login
-# PROD: curl -s -o /dev/null -w "%{http_code}" http://188.34.92.162/auth/login  (bis TLS aktiv)
+# PROD: curl -s -o /dev/null -w "%{http_code}" https://chatbot.voeb-service.de/auth/login
 # Erwartete Ausgabe: 200 (oder 307 redirect zu login)
 ```
 
@@ -262,6 +267,20 @@ WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 
 ---
 
+## Known Issues: Vespa + OpenSearch
+
+| Issue | Beschreibung | Workaround |
+|-------|-------------|------------|
+| Vespa 4 Gi Memory Minimum | Vespa-Container prueft beim Start ob memory LIMIT >= 4 Gi. Pod startet nicht bei niedrigerem Limit. | `resources.limits.memory` auf mindestens `4Gi` setzen. `requests` koennen niedriger sein (z.B. `512Mi` im Zombie-Mode). |
+| StatefulSet PVC immutable | Kubernetes erlaubt keine Aenderung von `volumeClaimTemplates` in bestehenden StatefulSets. Betrifft Vespa UND OpenSearch. | StatefulSet loeschen (`kubectl delete sts da-vespa`), PVC manuell loeschen, dann `helm upgrade`. Daten gehen verloren — Re-Indexierung noetig. |
+| Vespa Startup ~3-5 Min (Zombie-Mode) | Mit reduzierten Ressourcen (50m CPU) startet Vespa deutlich langsamer als mit Standard-Ressourcen. | `initialDelaySeconds` auf Readiness Probe erhoehen, oder `--timeout 15m` bei Helm verwenden. |
+| Vespa MUSS aktiv bleiben (v3.x) | `wait_for_vespa_or_shutdown` in `app_base.py:517` prueft Vespa-Erreichbarkeit. Ohne Vespa-Pod crashen alle Celery-Worker. | `vespa.enabled: true` MUSS in values-common.yaml stehen. Erst ab v4.0.0 entfernbar. |
+| OpenSearch JVM Heap | OpenSearch benoetigt JVM Heap-Konfiguration. Zu niedrig → OOM, zu hoch → Node-Ressourcen gesprengt. | DEV/TEST: `-Xms512m -Xmx512m` (Docker Compose) / 1.5 Gi Request (Helm). PROD: 2 Gi Request. |
+
+> **Hintergrund:** Onyx migriert von Vespa zu OpenSearch (seit v3.0.0). Vespa laeuft im "Zombie-Mode" mit minimalen Ressourcen, nur fuer den Readiness Check. OpenSearch ist das primaere Document Index Backend. Vollstaendige Analyse: `docs/analyse-opensearch-vs-vespa.md`.
+
+---
+
 ## Troubleshooting
 
 | Problem | Ursache | Lösung |
@@ -271,7 +290,10 @@ WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 | api-server CrashLoop: `permission denied to create role` | Managed PG kein CREATEROLE | `db_readonly_user` per Terraform |
 | api-server CrashLoop: `NoCredentialsError` | S3 Credentials fehlen | Object Storage Credentials anlegen |
 | celery-beat: Redis probe timeout | REDIS_HOST falsch | `REDIS_HOST: "onyx-dev"` setzen |
-| celery-worker: Vespa probe failed | Vespa startet langsam | 2-3 Min warten, Vespa-Logs prüfen |
+| celery-worker: Vespa probe failed | Vespa startet langsam (besonders im Zombie-Mode mit reduzierten Ressourcen) | 3-5 Min warten, Vespa-Logs pruefen |
+| celery-worker: OpenSearch probe failed | OpenSearch noch nicht bereit | OpenSearch-Logs pruefen, JVM Heap pruefen |
+| Vespa Pod OOMKilled | memory LIMIT < 4 Gi | Vespa benoetigt mindestens 4 Gi memory LIMIT (Hard-Check im Container). `requests` koennen niedriger sein. |
+| Helm upgrade abgelehnt: Vespa StatefulSet PVC | `volumeClaimTemplates` immutable | StatefulSet + PVC manuell loeschen, dann neu deployen. **Daten gehen verloren!** |
 | 502 Bad Gateway | api-server noch nicht bereit | Warten bis Alembic + Uvicorn gestartet |
 | Login-Loop: 403 auf `/me` | `WEB_DOMAIN` ist HTTPS, Zugriff per HTTP | `WEB_DOMAIN: "http://<IP>"` setzen |
 | Login klappt, Verifizierung hängt | `REQUIRE_EMAIL_VERIFICATION` ohne SMTP | `REQUIRE_EMAIL_VERIFICATION: "false"` |

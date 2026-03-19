@@ -1,8 +1,8 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.6.1
+**Letzte Aktualisierung**: 2026-03-19
+**Version**: 0.7
 
 ---
 
@@ -42,9 +42,11 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
 │  │  │ Namespace: onyx-dev (DEV)                             │  │ │
 │  │  │ IngressClass: nginx                                   │  │ │
-│  │  │ LoadBalancer IP: 188.34.74.187                        │  │ │
+│  │  │ LoadBalancer IP: 188.34.118.222                       │  │ │
+│  │  │ HTTPS: Temporaer HTTP (DNS-Update auf neue LB-IP     │  │ │
+│  │  │        ausstehend bei GlobVill)                       │  │ │
 │  │  │                                                       │  │ │
-│  │  │  Pods (16):                                            │  │ │
+│  │  │  Pods (17):                                            │  │ │
 │  │  │  ├── onyx-dev-web-server       (Frontend, 1 Replica)  │  │ │
 │  │  │  ├── onyx-dev-api-server       (Backend, 1 Replica)   │  │ │
 │  │  │  ├── onyx-dev-celery-beat      (Scheduler, 1 Replica) │  │ │
@@ -57,7 +59,8 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-dev-celery-worker-user-file    (Worker, 1 Rep.) │  │ │
 │  │  │  ├── onyx-dev-inference-model  (Model Server, 1 Rep.) │  │ │
 │  │  │  ├── onyx-dev-indexing-model   (Model Server, 1 Rep.) │  │ │
-│  │  │  ├── vespa                     (Vector Store, 1 Rep.) │  │ │
+│  │  │  ├── opensearch                (Document Index, 1 Rep.)│  │ │
+│  │  │  ├── vespa                     (Zombie-Mode, 1 Rep.)  │  │ │
 │  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
@@ -66,8 +69,9 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ Namespace: onyx-test (TEST)                           │  │ │
 │  │  │ IngressClass: nginx-test                              │  │ │
 │  │  │ LoadBalancer IP: 188.34.118.201                       │  │ │
+│  │  │ Status: Scale-to-Zero (heruntergefahren)              │  │ │
 │  │  │                                                       │  │ │
-│  │  │  (Identische Pod-Struktur wie DEV, 15 Pods)                    │  │ │
+│  │  │  (Heruntergefahren / Scale-to-Zero, kein aktiver Betrieb)      │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -95,9 +99,10 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-prod-celery-worker-user-file    (1 Rep.)    │  │ │
 │  │  │  ├── onyx-prod-inference-model  (Model Server, 1 Rep.)│  │ │
 │  │  │  ├── onyx-prod-indexing-model   (Model Server, 1 Rep.)│  │ │
-│  │  │  ├── vespa                     (Vector Store, 1 Rep.) │  │ │
+│  │  │  ├── vespa                     (Zombie-Mode, 1 Rep.)  │  │ │
 │  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
+│  │  │  Hinweis: OpenSearch noch nicht auf PROD deployed      │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
@@ -160,7 +165,17 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 └───────────────────────────────────────────────────────────────────┘
 ```
 
-### Komponenten-Übersicht
+### Document Index Backend: OpenSearch (seit 2026-03-19)
+
+**Architektur-Aenderung**: Das primaere Document Index Backend wurde von Vespa auf **OpenSearch 3.4.0** umgestellt. Vespa laeuft weiterhin im **Zombie-Mode** (minimale Ressourcen, nur fuer Celery Readiness Check benoetigt). Dual-Write ist aktiv (Dokumente werden in beide Backends geschrieben), aber Retrieval erfolgt ausschliesslich ueber OpenSearch.
+
+- **DEV**: OpenSearch Single-Node deployed (300m/1.5Gi), 17 Pods gesamt
+- **TEST**: Heruntergefahren (Scale-to-Zero)
+- **PROD**: OpenSearch noch nicht deployed, Vespa weiterhin im Zombie-Mode
+
+**Hintergrund**: Vespa erfordert als Celery-Dependency einen laufenden Pod (Readiness Check). Ein vollstaendiges Entfernen ist ohne Upstream-Code-Aenderung nicht moeglich. Daher bleibt Vespa mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi PROD) bestehen, waehrend OpenSearch das aktive Retrieval uebernimmt.
+
+### Komponenten-Uebersicht
 
 | Komponente | Technologie | Zweck | Replicas DEV/TEST | Replicas PROD |
 |-----------|------------|-------|-------------------|---------------|
@@ -168,7 +183,8 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 | Backend (API Server) | Python 3.11, FastAPI 0.133.1, SQLAlchemy 2.0, Pydantic 2.11 | REST API | 1 | 2 (HA) |
 | Background Worker | Celery 5.5 (Standard Mode, 8 separate Worker) | Async Tasks, Indexing | 7 Worker + 1 Beat | 7 Worker + 1 Beat |
 | Model Server | Onyx Model Server v2.9.8 (Docker Hub Upstream) | Embedding, Inference | 2 (Index + Inference) | 2 (Index + Inference) |
-| Vespa | Vespa 8.609.39 (In-Cluster) | RAG + Vector Store | 1 | 1 |
+| OpenSearch | OpenSearch 3.4.0 (In-Cluster, Single-Node) | Document Index Backend (Dual-Write, primaeres Retrieval) | 1 (DEV) | Noch nicht deployed |
+| Vespa | Vespa 8.609.39 (In-Cluster, **Zombie-Mode**) | Nur Celery Readiness Check, minimale Ressourcen. Kein aktives Retrieval. Dual-Write aktiv. | 1 | 1 |
 | Redis | Redis 7.0.15 (In-Cluster, OT Operator) | Cache, Celery Broker | 1 | 1 |
 | PostgreSQL | StackIT Managed Flex (Extern) | Relationale Daten | Flex 2.4 Single | Flex 4.8 HA (3-Node) |
 | Object Storage | StackIT S3-kompatibel (Extern) | File Store | Managed | Managed |
@@ -179,11 +195,11 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 
 | Umgebung | Cluster | Namespace | LB IP | Egress IP | Status |
 |----------|---------|-----------|-------|-----------|--------|
-| DEV | `vob-chatbot` | `onyx-dev` | `188.34.74.187` | `188.34.93.194` | LIVE seit 2026-02-27 |
-| TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | LIVE seit 2026-03-03 |
-| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11 |
+| DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). Temporaer HTTP (DNS-Update ausstehend bei GlobVill) |
+| TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | Scale-to-Zero (heruntergefahren) |
+| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 19 Pods. OpenSearch noch nicht deployed |
 
-**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2 Nodes). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2 Nodes). DNS und TLS fuer PROD stehen noch aus.
+**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS temporaer nicht verfuegbar (DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden, wartet auf GlobVill). PROD HTTPS LIVE seit 2026-03-17.
 
 ---
 
@@ -390,7 +406,7 @@ deployment/helm/
 │   ├── values.yaml
 │   └── templates/
 └── values/
-    ├── values-common.yaml         ← Gemeinsam: PG aus, MinIO aus, Vespa+Redis an, Health Probes
+    ├── values-common.yaml         ← Gemeinsam: PG aus, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an, Health Probes
     ├── values-dev.yaml            ← DEV: 1 Replica, 8 Celery-Worker (Standard Mode), eigene PG+S3
     ├── values-test.yaml           ← TEST: Analog DEV, eigene PG+S3+IngressClass
     ├── values-prod.yaml           ← PROD: 2×API HA, 2×Web HA, 8 Celery-Worker, eigene PG+S3
@@ -430,7 +446,7 @@ helm upgrade --install onyx-prod deployment/helm/charts/onyx \
 **Szenarien**:
 
 1. **Fehlerhaftes Deployment (alle Environments)**
-   - Alle Environments (DEV, TEST, PROD) nutzen `--wait --timeout 15m`: Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 16+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
+   - Alle Environments (DEV, TEST, PROD) nutzen `--wait --timeout 15m`: Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
    - Manueller Rollback: `helm rollback onyx-{env} -n onyx-{env}`
    - Helm History: Maximal 5 Revisionen (`--history-max 5`)
 
@@ -496,7 +512,7 @@ Entwicklung (Feature-Branch)
 | **TEST** | Manuell (`workflow_dispatch`) | Tech Lead triggert Deploy | `helm rollback` (manuell) | 15 Min |
 | **PROD** | Manuell (`workflow_dispatch`) | Tech Lead + Required Reviewer (GitHub Environment Protection) | `helm rollback` (manuell) | 15 Min |
 
-**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 16+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
+**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
 
 ### Dokumentation von Änderungen
 
@@ -700,7 +716,8 @@ Für dringende Fixes auf einer bereits released Version:
 - **Code**: Git Repository (GitHub)
 - **Konfiguration**: Helm Values in Git, Secrets in GitHub Environments
 - **Infrastruktur**: Terraform State (lokal, Remote-Backend vorbereitet)
-- **Vespa-Daten**: Persistent Volumes (PROD: 50 GB), kein separates Backup — Re-Indexierung aus Quelldaten moeglich
+- **OpenSearch-Daten**: Persistent Volumes, kein separates Backup — Re-Indexierung aus Quelldaten moeglich. Primaeres Document Index Backend (Dual-Write mit Vespa aktiv).
+- **Vespa-Daten (Zombie-Mode)**: Persistent Volumes (PROD: 50 GB), kein separates Backup — Re-Indexierung aus Quelldaten moeglich. Vespa laeuft nur noch fuer Celery Readiness Check, kein aktives Retrieval.
 
 #### Redis
 - **Kein Backup**: Redis dient als Cache und Celery Broker. Datenverlust hat keine Auswirkung auf persistente Daten.
@@ -803,7 +820,8 @@ Für dringende Fixes auf einer bereits released Version:
 | Celery Primary | 250m CPU, 512Mi RAM | 500m CPU, 1Gi RAM |
 | Celery Beat | 100m CPU, 256Mi RAM | 250m CPU, 512Mi RAM |
 | Model Server (je) | 250m CPU, 768Mi RAM | 1000m CPU, 2Gi RAM |
-| Vespa | 500m CPU, 2Gi RAM | 1500m CPU, 4Gi RAM |
+| OpenSearch | 300m CPU, 1.5Gi RAM (DEV) | 1000m CPU, 2Gi RAM (PROD) |
+| Vespa (Zombie-Mode) | 50m CPU, 512Mi RAM (DEV) | 100m CPU, 512Mi RAM (PROD) |
 | Redis | 100m CPU, 128Mi RAM | 250m CPU, 256Mi RAM |
 
 ### Skalierungsstrategie
@@ -825,6 +843,14 @@ Für dringende Fixes auf einer bereits released Version:
 - **Kubernetes Nodes PROD**: g1a.8d (8 vCPU, 32 GB, 100 GB Disk), 2 Nodes
 - **PostgreSQL DEV+TEST**: Flex 2.4 (2 CPU, 4 GB). Upgrade auf groesseres Flavor per Terraform.
 - **PostgreSQL PROD**: Flex 4.8 HA (3-Node Cluster). Vertikales Upgrade per Terraform moeglich.
+
+### Kostenuebersicht (Stand 2026-03-19)
+
+| Umgebung | Monatliche Kosten (ca.) | Nodes | Anmerkung |
+|----------|------------------------|-------|-----------|
+| DEV + TEST | ~585 EUR/Mo | 2x g1a.4d (geteilt) | TEST Scale-to-Zero (Mo-Fr 08-18 UTC) |
+| PROD | ~964 EUR/Mo | 2x g1a.8d (eigener Cluster) | Inkl. PG Flex 4.8 HA + Monitoring |
+| **Gesamt** | **~1.549 EUR/Mo** | | |
 
 ---
 
@@ -973,7 +999,7 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 | SEC-03 | Kubernetes NetworkPolicies (Namespace-Isolation) | P1 | **Umgesetzt** (2026-03-05) |
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **Zurückgestellt** (2026-03-08) — Solo-Dev, FileVault, Quick Win `chmod 600` umgesetzt |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **Zurückgestellt** (2026-03-08) — PROD = eigener Cluster, opportunistisch bei Renewal |
-| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` aktiv auf PROD (Vespa = dokumentierte Ausnahme) |
+| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` aktiv auf PROD (Vespa Zombie-Mode = dokumentierte Ausnahme) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **Umgesetzt** (2026-03-08) — AES-256 (StackIT Default, verifiziert) |
 
 ### Betriebsmaßnahmen (OPS)
@@ -1030,13 +1056,14 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.6.1
+**Letzte Aktualisierung**: 2026-03-19
+**Version**: 0.7
 
 ### Versionshistorie
 
 | Version | Datum | Autor | Aenderungen |
 |---------|-------|-------|-------------|
+| 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch aktiviert, Vespa Zombie-Mode, DEV HTTP-Workaround |
 | 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 8 Cross-Ref-Fixes (XREF-002/010/013/014/015/016/019/034) |
 | 0.6 | 2026-03-12 | COFFEESTUDIOS | PROD-Cluster (vob-prod) durchgaengig eingearbeitet: Architektur, Infrastruktur, Monitoring (9 Pods, Teams PROD-Kanal, Sidecar-Dashboards), PG Flex 4.8 HA, Backup/PITR, Wartungsfenster 03:00-05:00 UTC, Skalierung/Kapazitaet (150 User), SEC-06 Phase 2, Environment Protection |
 | 0.5 | 2026-03-08 | COFFEESTUDIOS | Monitoring-Stack, Health Probes, Security-Audit, Change Management |

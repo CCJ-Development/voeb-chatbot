@@ -8,6 +8,45 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- [UI] **EE-Platzhalter aus Admin-Sidebar entfernt** (2026-03-19)
+  - 5 ausgegraute EE-Items (Groups, SCIM, Appearance & Theming, Usage Statistics, Query History) werden ohne Enterprise-Lizenz nicht mehr angezeigt
+  - CORE #10 (`AdminSidebar.tsx`): `addDisabled()` durch `if (enableEnterprise)` Guards ersetzt
+  - Patch aktualisiert (`_core_originals/AdminSidebar.tsx.patch`)
+
+- [Infra] **OpenSearch aktiviert (Upstream-Default seit v3.0.0)** (2026-03-19)
+  - OpenSearch als Document Index Backend aktiviert (Dual-Write mit Vespa)
+  - 6 OpenSearch-Overrides entfernt (waren Workarounds seit Upstream-Sync #3)
+  - Vespa auf Zombie-Mode reduziert (minimale Ressourcen, nur fuer Readiness Check)
+    - v3.x Code erfordert Vespa-Pod (`wait_for_vespa_or_shutdown` in `app_base.py:517`)
+    - DEV/TEST: 50m CPU / 256Mi RAM (vorher 300m / 2Gi)
+    - PROD: 100m CPU / 512Mi RAM (vorher 2000m / 4Gi)
+  - OpenSearch Ressourcen: DEV/TEST 300m/1.5Gi, PROD 1000m/2Gi
+  - Netto-Resource-Delta: DEV +50m CPU, PROD -900m CPU
+  - Monitoring: OpenSearch PVC Alert hinzugefuegt (DEV/TEST + PROD)
+  - Docker Compose: OpenSearch JVM Heap auf 512m fuer lokale Entwicklung
+  - Nach Deploy: Retrieval per Admin UI auf OpenSearch umschalten (einmalig pro Env)
+  - Analyse: `docs/analyse-opensearch-vs-vespa.md`
+- [Docs] **Runbooks + SSOT aktualisiert fuer OpenSearch/Vespa-Wechsel** (2026-03-19)
+  - `docs/runbooks/upstream-sync.md`: OpenSearch ist Default, Vespa Zombie-Mode Checkliste, StatefulSet PVC + 4Gi Memory Warnungen
+  - `docs/runbooks/helm-deploy.md`: OpenSearch Pod in Pod-Listing, Known Issues (Vespa 4Gi, PVC immutable, Startup-Dauer), Pod-Counts aktualisiert
+  - `docs/runbooks/dns-tls-setup.md`: DEV HTTPS temporaer deaktiviert (neue LB-IP), HSTS Override, Wiederherstellungsschritte
+  - `docs/referenz/technische-parameter.md`: Document Index Sektion (OpenSearch 3.4.0 + Vespa Zombie-Mode), Pod-Counts, HTTPS DEV Status, Versionen
+
+### Fixed
+- [Infra] **Upstream-Sync #3: DB-Migrationen + Helm-Neuinstallation DEV** (2026-03-18)
+  - Upstream-Merge erforderte Helm-Release-Neuinstallation auf DEV (Chart-Inkompatibilität)
+  - NGINX Controller neu erstellt → neue LB-IP: `188.34.74.187` → `188.34.118.222`
+  - DNS A-Record Update bei GlobVill/Leif angefragt (bis dahin kein HTTPS auf DEV)
+  - 4 Alembic-Migrationen fehlten — in Chain eingefügt aber nie ausgeführt (DB war bereits auf Head gestempelt):
+    - `b5c4d7e8f9a1`: `hierarchy_node_by_connector_credential_pair` Tabelle
+    - `27fb147a843f`: `user.created_at` + `user.updated_at` Spalten
+    - `93a2e195e25c`: `voice_provider` Tabelle + User Voice-Preferences
+    - `689433b0d8de`: `hook` + `hook_execution_log` Tabellen
+  - Fix: SQL manuell auf DEV-DB ausgeführt (Alembic konnte übersprungene Migrationen nicht nachholen)
+  - Login-Problem: HTTP-Zugriff über IP funktioniert nicht (Cookie hat `Secure`-Flag wegen `WEB_DOMAIN=https://...`)
+  - API-Server + Web-Server neugestartet, Health OK auf neuer IP verifiziert
+
 ### Added
 - [Infra] **PROD HTTPS aktiviert** (2026-03-17)
   - Domain: `https://chatbot.voeb-service.de` LIVE

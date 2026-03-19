@@ -1,9 +1,9 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-03-12
-**Version**: 0.6
-**Nächste Überprüfung**: 2026-04-12
+**Letzte Aktualisierung**: 2026-03-19
+**Version**: 0.7
+**Nächste Überprüfung**: 2026-04-19
 
 ---
 
@@ -18,6 +18,7 @@
 | 0.5 | 2026-03-09 | Nikolaj Ivanov | TLS/HTTPS als IMPLEMENTIERT aktualisiert (Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 auf DEV+TEST seit 2026-03-09), SEC-06 Phase 1 erledigt (privileged: false), SEC-07 als verifiziert (StackIT AES-256), BAIT-Compliance-Tabelle korrigiert, URLs auf HTTPS-FQDNs aktualisiert |
 | 0.6 | 2026-03-12 | Nikolaj Ivanov | PROD-Umgebung eingearbeitet (19 Pods, SKE `vob-prod`, PG Flex 4.8 HA 3-Node), SEC-06 Phase 2 ERLEDIGT (`runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme), NetworkPolicies monitoring-NS PROD (8 Policies inkl. AlertManager-Webhook-Egress), Monitoring PROD (Teams PROD-Kanal), Extensions als Sicherheitsmaßnahmen dokumentiert (ext-token Kostenkontrolle, ext-prompts LLM-Steuerung), GitHub Environment `prod` (Required Reviewer + 6 Secrets), StackIT BSI C5 Type 2 referenziert |
 | 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: DSFA-Status GEPLANT→ENTWURF IN ARBEIT, NP 7→8 (AlertManager-Webhook-Egress), HSTS-Details ergänzt, AES-256 explizit bei SEC-07 |
+| 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch Security (SSL/TLS intern, Admin-Credentials im K8s Secret), Document Index Vespa→OpenSearch Migration dokumentiert, DEV HTTP-Workaround (DNS-Eintraege ausstehend, HSTS deaktiviert), PROD HTTPS LIVE aktualisiert |
 
 ---
 
@@ -43,11 +44,11 @@ Dieses Konzept gilt für:
 
 | Umgebung | Status | URL | Auth |
 |----------|--------|-----|------|
-| DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
+| DEV | LIVE seit 2026-02-27 | `http://dev.chatbot.voeb-service.de` (temporaer HTTP — DNS A-Record auf neue LB-IP `188.34.118.222` ausstehend bei GlobVill, HSTS deaktiviert) | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
 | TEST | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
-| PROD | DEPLOYED seit 2026-03-11 | DNS/TLS ausstehend (LB: `188.34.92.162`) | Temporär `AUTH_TYPE: basic` (Entra ID wartet auf VÖB) |
+| PROD | HTTPS LIVE seit 2026-03-17 | `https://chatbot.voeb-service.de` | Temporär `AUTH_TYPE: basic` (Entra ID wartet auf VÖB) |
 
-> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-11 deployed (19 Pods, Health OK), DNS/TLS und Entra ID stehen noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
+> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (19 Pods, `https://chatbot.voeb-service.de`). DEV ist temporaer nur ueber HTTP erreichbar (DNS A-Record auf neue LB-IP `188.34.118.222` ausstehend bei GlobVill seit 2026-03-18). Entra ID steht noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
 
 ---
 
@@ -62,7 +63,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 
 | Anforderung | Status | Details |
 |-------------|--------|---------|
-| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV+TEST), AUSSTEHEND (PROD) | TLSv1.3 / ECDSA P-384 auf DEV + TEST (seit 2026-03-09). PROD wartet auf DNS-Einträge (cert-manager + ClusterIssuer READY) |
+| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (TEST+PROD), TEMPORÄR HTTP (DEV) | TLSv1.3 / ECDSA P-384 auf TEST + PROD. DEV temporaer HTTP (DNS A-Record auf neue LB-IP ausstehend bei GlobVill, HSTS deaktiviert) |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
 | Zugriffskontrollen (Authentifizierung) | TEILWEISE | Basic Auth aktiv (DEV/TEST). Entra ID (OIDC) geplant (Phase 3) |
 | Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01). PROD: Egress `188.34.73.72/32` + Admin-IP |
@@ -248,7 +249,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 |----------|----------|-----------|--------|
 | SEC-05: Namespace-scoped ServiceAccounts | Kubernetes RBAC | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — PROD = eigener Cluster |
 | SEC-04: Remote State Backend | Terraform | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — Solo-Dev, FileVault |
-| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = dokumentierte Ausnahme) |
+| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
 | Branch Protection auf `main` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-07): PR required, 3 Status Checks, kein Review (Solo-Dev) |
 | Environment Protection auf `prod` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-11): Required Reviewer + 6 environment-getrennte Secrets |
 | VÖB als Required Reviewer | GitHub Environment `prod` | Langfristig | Offen |
@@ -301,37 +302,38 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 #### TLS/HTTPS
 
-**Status: IMPLEMENTIERT (DEV + TEST, seit 2026-03-09) | AUSSTEHEND (PROD — wartet auf DNS)**
+**Status: IMPLEMENTIERT (TEST + PROD) | TEMPORÄR HTTP (DEV — DNS ausstehend)**
 
-- DEV: `https://dev.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
+- DEV: **Temporaer HTTP** — `http://dev.chatbot.voeb-service.de`. DNS A-Record zeigt auf alte LB-IP `188.34.74.187`, neue IP ist `188.34.118.222` (Helm-Neuinstallation 2026-03-18). Update bei GlobVill angefragt. HSTS deaktiviert fuer DEV, damit HTTP-Zugriff nicht vom Browser blockiert wird. HTTPS wird reaktiviert sobald DNS aktualisiert ist.
 - TEST: `https://test.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
-- PROD: DNS-Einträge (A-Record + ACME-CNAME) bei GlobVill angefragt (2026-03-11). cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY auf PROD-Cluster
+- PROD: `https://chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2, HSTS 1 Jahr (LIVE seit 2026-03-17)
 
 **Technische Details:**
 - TLS-Terminierung am NGINX Ingress Controller (in-cluster)
 - Let's Encrypt Zertifikate via cert-manager (v1.19.4), DNS-01 Challenge über Cloudflare API
 - ACME-Challenge CNAME-Delegation über GlobVill (voeb-service.de NS bei GlobVill)
-- ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` (READY), `onyx-prod-letsencrypt` (READY, wartet auf DNS)
+- ClusterIssuers: `onyx-dev-letsencrypt` + `onyx-test-letsencrypt` + `onyx-prod-letsencrypt` (alle READY)
 - Auto-Renewal aktiv
 - BSI TR-02102-2 konform: ECDSA P-384 (stärker als BSI-Mindestanforderung)
 
 ```yaml
-# Aktuelle Konfiguration (DEV + TEST)
+# Aktuelle Konfiguration (TEST + PROD)
 letsencrypt:
   enabled: true
 ```
 
-**DNS-Status (2026-03-12)**: A-Records gesetzt für DEV (`dev.chatbot.voeb-service.de` → `188.34.74.187`) und TEST (`test.chatbot.voeb-service.de` → `188.34.118.201`). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt (2026-03-09). **PROD**: A-Record + ACME-CNAME bei Leif/GlobVill angefragt (2026-03-11), LB-IP: `188.34.92.162`. Details: `docs/runbooks/dns-tls-setup.md`
+**DNS-Status (2026-03-19)**: TEST A-Record gesetzt (`test.chatbot.voeb-service.de` → `188.34.118.201`). PROD A-Record gesetzt (`chatbot.voeb-service.de` → `188.34.92.162`). **DEV A-Record veraltet** — zeigt auf `188.34.74.187` (alte LB-IP), muss auf `188.34.118.222` aktualisiert werden (Leif/GlobVill angefragt 2026-03-18). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt. Details: `docs/runbooks/dns-tls-setup.md`
 
 #### Interne Kommunikation (Cluster-intern)
 
-**Status: NICHT VERSCHLÜSSELT**
+**Status: TEILWEISE VERSCHLÜSSELT**
 
-Die Kommunikation zwischen Pods innerhalb des Kubernetes-Clusters (z.B. API → Vespa, API → Redis, API → PostgreSQL) erfolgt unverschlüsselt über das Cluster-interne Netzwerk. Dies ist in Kubernetes-Deployments Standard, da das Cluster-Netzwerk als vertrauenswürdig gilt.
+Die Kommunikation zwischen Pods innerhalb des Kubernetes-Clusters (z.B. API → OpenSearch, API → Redis, API → PostgreSQL) ist teilweise verschluesselt. Das Cluster-interne Netzwerk gilt in Kubernetes-Deployments als vertrauenswuerdig.
 
 - PostgreSQL-Verbindung: TLS wird von StackIT Managed PG Flex unterstützt, ist aber aktuell nicht erzwungen
 - Redis: Passwort-geschützt, aber kein TLS
-- Vespa: Cluster-intern, kein TLS
+- **OpenSearch: SSL/TLS aktiviert** (inter-node + client-to-node, selbstsignierte Zertifikate via `plugins.security.ssl`). Admin-Credentials im K8s Secret `onyx-opensearch`. DEV/TEST-Passwort: `OnyxDev1!` (Standard aus Onyx Helm Chart). **PROD bekommt sicheres Passwort per GitHub Secret** (analog PG/Redis-Handling).
+- Vespa: Laeuft als Zombie-Pod (Legacy, keine produktiven Daten). Cluster-intern, kein TLS. Wird perspektivisch entfernt.
 
 #### StackIT AI Model Serving (LLM-API)
 
@@ -349,10 +351,22 @@ API Base: https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1
 - **PROD HA**: PG Flex 4.8 HA (3-Node Cluster) — automatische Backups + PITR sekundengenau, 30d Retention, Restore per Self-Service Clone (StackIT Service Certificate V1.1: RPO/RTO 4h/4h)
 - **Column-Level Encryption**: Nicht implementiert. API Keys werden von Onyx im Klartext in der DB gespeichert (Onyx-Standardverhalten)
 
-#### Vespa Index (Vektorspeicher)
+#### OpenSearch (Document Index — Dokumenten-Chunks + Embeddings)
 
-- Läuft in-cluster als StatefulSet mit PersistentVolume (20 Gi)
-- Verschlüsselung über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08, StackIT Default — nicht deaktivierbar)
+- Laeuft in-cluster als StatefulSet mit PersistentVolume
+- Ersetzt Vespa als Document Index fuer Dokumenten-Chunks und Embeddings (Migration 2026-03-19)
+- **SSL/TLS aktiviert** (inter-node + client-to-node Verschluesselung via `plugins.security.ssl`)
+- Admin-Credentials im K8s Secret `onyx-opensearch` (automatisch erstellt durch Helm Chart)
+- **DEV/TEST:** Passwort `OnyxDev1!` (Standard aus Onyx Helm Chart)
+- **PROD:** Sicheres Passwort wird per GitHub Secret injiziert (analog PostgreSQL/Redis-Handling)
+- Verschlüsselung des PersistentVolume über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08, StackIT Default — nicht deaktivierbar)
+
+#### Vespa (Legacy — Zombie, keine produktiven Daten)
+
+- Laeuft noch als StatefulSet mit PersistentVolume (20 Gi), enthaelt aber **keine produktiven Daten** mehr
+- Dokumenten-Chunks und Embeddings liegen jetzt in OpenSearch
+- Verschlüsselung über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest
+- Wird perspektivisch aus dem Helm Release entfernt
 
 #### Object Storage (StackIT S3-kompatibel)
 
@@ -377,6 +391,7 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
    - `onyx-redis` (Redis-Passwort)
    - `onyx-dbreadonly` (DB Readonly-Passwort, seit C6-Fix 2026-03-05)
    - `onyx-objectstorage` (S3-Credentials)
+   - `onyx-opensearch` (OpenSearch Admin-Credentials — DEV/TEST: `OnyxDev1!`, PROD: sicheres Passwort per GitHub Secret)
    - `stackit-registry` (Image Pull Secret)
    - Secrets werden per Helm `--set` aus GitHub Actions injiziert (nicht in Git)
 
@@ -392,6 +407,7 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 | PostgreSQL-Passwort (Readonly) | GitHub Secret → K8s Secret | Manuell |
 | Redis-Passwort | GitHub Secret → K8s Secret | Manuell |
 | S3 Access Key + Secret | GitHub Secret → K8s Secret | Manuell |
+| OpenSearch Admin-Passwort | K8s Secret `onyx-opensearch` (DEV/TEST: `OnyxDev1!`, PROD: GitHub Secret) | Manuell |
 | Container Registry Token | GitHub Secret | Manuell |
 | Kubeconfig (DEV/TEST) | GitHub Secret (base64) | Ablauf: 2026-05-28 |
 | Kubeconfig (PROD) | GitHub Secret (base64) | Ablauf: 2026-06-09 |
@@ -413,22 +429,22 @@ Internet
   │
   ├─→ [SKE Cluster vob-chatbot (DEV/TEST)]
   │     NGINX Ingress (LoadBalancer)
-  │       DEV: 188.34.74.187 (IngressClass: nginx)
+  │       DEV: 188.34.118.222 (IngressClass: nginx, DNS-Update ausstehend)
   │       TEST: 188.34.118.201 (IngressClass: nginx-test)
   │     [onyx-dev Namespace] — 16 Pods
-  │       API Server → Vespa, Redis, Celery (8 Worker)
-  │       Web Server (Frontend), Model Server
+  │       API Server → OpenSearch, Redis, Celery (8 Worker)
+  │       Web Server (Frontend), Model Server, Vespa (Zombie)
   │     [onyx-test Namespace] — 15 Pods
-  │       API Server → Vespa, Redis, Celery (8 Worker)
-  │       Web Server (Frontend), Model Server
+  │       API Server → OpenSearch, Redis, Celery (8 Worker)
+  │       Web Server (Frontend), Model Server, Vespa (Zombie)
   │     [monitoring Namespace] — DEV/TEST Monitoring
   │
   └─→ [SKE Cluster vob-prod (PROD, eigener Cluster)]
         NGINX Ingress (LoadBalancer)
-          PROD: 188.34.92.162 (DNS/TLS ausstehend)
+          PROD: 188.34.92.162 (HTTPS LIVE seit 2026-03-17)
         [onyx-prod Namespace] — 19 Pods
           2x API Server HA, 2x Web Server HA
-          Vespa, Redis, Celery (8 Worker), 2x Model Server, NGINX
+          OpenSearch, Redis, Celery (8 Worker), 2x Model Server, NGINX, Vespa (Zombie)
         [monitoring Namespace] — 9 Pods
           Prometheus, Grafana, AlertManager, kube-state-metrics
           2x node-exporter, PG Exporter, Redis Exporter, Operator
@@ -508,10 +524,10 @@ pg_acl = [
 **IMPLEMENTIERT (mit TLS, seit 2026-03-09)**:
 
 - NGINX Ingress Controller läuft in-cluster (Helm Subchart)
-- DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.74.187`, TLS aktiv
+- DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.118.222` (neue IP seit Helm-Neuinstallation 2026-03-18), **temporaer HTTP** (DNS A-Record zeigt noch auf alte IP `188.34.74.187`, Update bei GlobVill angefragt). HSTS deaktiviert fuer DEV.
 - TEST: Eigene IngressClass `nginx-test`, LoadBalancer-IP `188.34.118.201`, TLS aktiv (Konflikt-Vermeidung im Shared Cluster)
-- PROD: LoadBalancer-IP `188.34.92.162`, TLS ausstehend (wartet auf DNS-Einträge)
-- TLS: **Aktiv** (DEV+TEST) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
+- PROD: LoadBalancer-IP `188.34.92.162`, **HTTPS LIVE** seit 2026-03-17
+- TLS: **Aktiv** (TEST+PROD) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
 
 **Implementierte Security-Header** (H8, 2026-03-05):
 - `X-Content-Type-Options: nosniff` — verhindert MIME-Type-Sniffing
@@ -527,7 +543,7 @@ pg_acl = [
 - Details: `docs/runbooks/dns-tls-setup.md`
 - SSL-Redirect
 
-**HSTS (HTTP Strict Transport Security):** Konfiguriert via NGINX Ingress Annotation. DEV/TEST: `max-age=3600`, PROD: `max-age=31536000` (1 Jahr). Verhindert HTTP-Downgrade-Angriffe.
+**HSTS (HTTP Strict Transport Security):** Konfiguriert via NGINX Ingress Annotation. **DEV: deaktiviert** (temporaer HTTP wegen DNS-Problem, HSTS wuerde Browser-Cache HTTP-Zugriff blockieren). TEST: `max-age=3600`. PROD: `max-age=31536000` (1 Jahr). Verhindert HTTP-Downgrade-Angriffe auf TEST/PROD.
 
 ### WAF (Web Application Firewall)
 
@@ -795,10 +811,10 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | DSGVO | Direkt anwendbar | AVV mit StackIT (Art. 28) | [AUSSTEHEND -- Klärung mit VÖB] |
 | EU AI Act | Direkt anwendbar | KI-Kompetenz (Art. 4) — seit 02.02.2025 in Kraft | OFFEN (mit VÖB klären) |
 | EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
-| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST seit 2026-03-09, PROD wartet auf DNS) |
+| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf TEST+PROD, DEV temporaer HTTP — DNS ausstehend) |
 | BAIT | Freiwillig | Zugangskontrolle | TEILWEISE (Basic Auth auf DEV/TEST/PROD, Entra ID geplant) |
 | BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 8 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress, App-NS PROD ausstehend) |
-| BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme) |
+| BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
 | BSI-Grundschutz | Freiwillig | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
 
 **Hinweis BAIT**: BAIT (Rundschreiben 10/2017, Fassung 16.12.2024) wird am **31.12.2026 vollständig aufgehoben** (DORA-Übergang). Seit 17.01.2025 gilt DORA für CRR-Institute; BAIT gilt noch für Restgruppe bis 01.01.2027. VÖB fällt in keine dieser Kategorien — die BAIT-Orientierung ist rein freiwillig.
@@ -808,8 +824,8 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | Datenkategorie | Beispiele | Sensibilität | Speicherort |
 |---|---|---|---|
 | Identitätsdaten | Name, Email | Hoch | PostgreSQL (StackIT Managed) |
-| Konversationsdaten | Chat Messages, Prompts | Mittel | PostgreSQL + Vespa (in-cluster) |
-| Dokumente / Embeddings | Hochgeladene Dateien, Vektoren | Mittel | Object Storage + Vespa |
+| Konversationsdaten | Chat Messages, Prompts | Mittel | PostgreSQL + OpenSearch (in-cluster) |
+| Dokumente / Embeddings | Hochgeladene Dateien, Vektoren | Mittel | Object Storage + OpenSearch |
 | API Keys / Tokens | LLM-Token, Session-Cookies | Kritisch | PostgreSQL (Onyx-DB) |
 | Nutzungsmetriken | Login-Zeit, Features genutzt | Niedrig | PostgreSQL |
 
@@ -932,7 +948,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-03 | Kubernetes NetworkPolicies (Namespace-Isolation) | P1 | **ERLEDIGT** (2026-03-05) |
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — Quick Win `chmod 600` umgesetzt, Remote State optional |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — PROD = eigener Cluster (ADR-004), löst sich automatisch |
-| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa = Ausnahme) |
+| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = Ausnahme, keine produktiven Daten) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
 | SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **IMPLEMENTIERT** (2026-03-16) — Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 (NGINX `limit_req_zone` + `limit_req`) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth) |
@@ -1010,7 +1026,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 |------------|-------------------|--------|
 | Celery (alle 8 Worker) | `privileged: true`, `runAsUser: 0` | **HOCH** — Host-Kernel-Zugriff |
 | Model Server (inference + index) | `privileged: true`, `runAsUser: 0` | **HOCH** — Host-Kernel-Zugriff |
-| Vespa | `privileged: true`, `runAsUser: 0` (Chart überschreibt Subchart-Default) | **HOCH** — Host-Kernel-Zugriff |
+| Vespa (Zombie — keine produktiven Daten) | `privileged: true`, `runAsUser: 0` (Chart überschreibt Subchart-Default) | **HOCH** — Host-Kernel-Zugriff (reduziertes Risiko da keine produktiven Daten) |
 | API Server | `runAsUser: 0` (Root, aber nicht privileged) | Mittel |
 | Web Server (Next.js) | `USER nextjs` (UID 1001) | OK — bereits non-root |
 | NGINX Ingress | `runAsNonRoot: true`, UID 101, no privilege escalation | OK — bereits gehärtet |
@@ -1019,7 +1035,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **Umsetzung (Stufenplan):**
 1. **Phase 1 (ERLEDIGT, 2026-03-08):** `privileged: false` für Celery, Model Server, Vespa via `values-common.yaml`. Eliminiert das schlimmste Finding mit minimalem Risiko.
-2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Dokumentierte Ausnahmen: (a) Vespa (Upstream-Limitation: benötigt Root für `vm.max_map_count`), (b) pg-backup-check CronJob (benötigt Root für `apk add` in Alpine-Container, transient alle 4h, nur API-Calls). Kein `privileged` Mode auf keinem Container.
+2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Dokumentierte Ausnahmen: (a) Vespa Zombie (Upstream-Limitation: benötigt Root für `vm.max_map_count` — reduziertes Risiko da keine produktiven Daten mehr, perspektivisch zu entfernen), (b) pg-backup-check CronJob (benötigt Root für `apk add` in Alpine-Container, transient alle 4h, nur API-Calls). Kein `privileged` Mode auf keinem Container.
 3. **Phase 3 (optional, vor Abnahme):** `readOnlyRootFilesystem: true` mit vollständigem emptyDir-Mapping. Diminishing Returns für den Aufwand.
 
 **Technischer Hinweis**: Alle Onyx Chart Templates unterstützen `securityContext`-Overrides via Values (`{{- toYaml .Values.<component>.securityContext | nindent 12 }}`). Kein Chart-Umbau nötig — Änderungen ausschließlich in `values-common.yaml`.
@@ -1159,12 +1175,12 @@ Phase 6: NACHBEREITUNG
 | SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster (`vob-prod`, ADR-004) |
 | K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
 | Node Pool | `devtest` (2 Nodes, g1a.8d) | `devtest` (shared) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
-| Pods | 16 | 15 | 19 (2x API HA, 2x Web HA, 8 Celery, Vespa, Redis, 2x Model, NGINX) |
+| Pods | 16 | 15 | 19 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA 3-Node (`vob-prod`) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
 | Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` |
 | Monitoring | Shared (`monitoring` NS) | Shared (`monitoring` NS) | Eigener (`monitoring` NS, 9 Pods) |
-| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa = Ausnahme) |
+| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa Zombie = Ausnahme) |
 | Deploy-Strategie | Recreate | Recreate | Recreate (DB Connection Pool Exhaustion vermeiden) |
 
 ### Telemetrie

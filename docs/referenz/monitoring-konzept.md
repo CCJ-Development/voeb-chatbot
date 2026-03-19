@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD deployed (2026-03-12, Helm Rev 3).
+> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD deployed (2026-03-12, Helm Rev 3). OpenSearch-Monitoring hinzugefuegt (2026-03-19), Vespa auf Alive-Check reduziert (Zombie-Mode).
 > **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
 > **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) deployed (2026-03-12, Helm Rev 3)
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), orientiert an BAIT Kap. 5 (freiwillig)
@@ -70,7 +70,7 @@ Onyx hat ein produktives Prometheus-Monitoring. Der API-Server exponiert `/metri
 |-----------|----------------------------|------------------------|----------|
 | Setup-Aufwand | 1-1,5 PT | 1,5 PT | Managed (leicht) |
 | Monatliche Kosten | 70 EUR (840 EUR/Jahr) | 0 EUR | **Self-Hosted** |
-| Metriken-Abdeckung | Nur API (externer Scrape) | Alles (API, Redis, Vespa, Celery, Nodes) | **Self-Hosted** |
+| Metriken-Abdeckung | Nur API (externer Scrape) | Alles (API, Redis, OpenSearch, Vespa (Zombie), Celery, Nodes) | **Self-Hosted** |
 | Maintenance | Null | ~30 Min/Quartal (Helm Upgrade) | Managed |
 | Cluster-Ressourcen | 0 | ~1,1 vCPU, ~1,9 Gi RAM | Managed |
 | K8s-native (ServiceMonitor) | Nein (externer Scrape) | Ja (CRDs) | **Self-Hosted** |
@@ -490,7 +490,7 @@ spec:
 
 ### Phase 3: Alert-Rules (0,25 PT) — ✅ DEPLOYED
 
-**Status:** 20 Regeln aktiv in `values-monitoring.yaml` unter `additionalPrometheusRulesMap`. AlertManager konfiguriert mit Microsoft Teams Webhook (Kanal: Scale42 AI).
+**Status:** 23 Regeln aktiv in `values-monitoring.yaml` unter `additionalPrometheusRulesMap`. AlertManager konfiguriert mit Microsoft Teams Webhook (Kanal: Scale42 AI). OpenSearch-Alerts (#23/#24) und Cluster-Health hinzugefuegt (2026-03-19).
 
 **Alert-Rules:**
 
@@ -503,7 +503,10 @@ spec:
 | `HighSlowRequests` | `rate(onyx_api_slow_requests_total[5m]) > 1` for 10m | warning | >1 Slow Request/Sek |
 | `NodeMemoryPressure` | `node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1` for 5m | critical | <10% freier RAM auf Node |
 | `NodeDiskPressure` | `node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes < 0.15` for 5m | warning | <15% freier Disk auf Node |
-| `VespaStorageFull` | `kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2` for 10m | warning | Vespa PVC <20% frei |
+| `VespaStorageFull` | `kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2` for 10m | warning | Vespa PVC <20% frei (Zombie-Mode: nur Alive-Check, kein Produktiv-Traffic) |
+| `OpenSearchPVCUsageDEVTEST` | `kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"opensearch.*",namespace=~"onyx-dev\|onyx-test"} / kubelet_volume_stats_capacity_bytes < 0.2` for 10m | warning | OpenSearch PVC <20% frei (DEV/TEST) (#23) |
+| `OpenSearchPVCUsagePROD` | `kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"opensearch.*",namespace="onyx-prod"} / kubelet_volume_stats_capacity_bytes < 0.1` for 10m | critical | OpenSearch PVC <10% frei (PROD) (#24) |
+| `OpenSearchClusterRed` | `opensearch_cluster_status{color="red"} == 1` OR `up{job=~"opensearch.*"} == 0` for 5m | critical | OpenSearch Cluster Status red oder nicht erreichbar |
 | `CertExpiringSoon` | `certmanager_certificate_expiration_timestamp_seconds - time() < 14*24*3600` for 1h | warning | Zertifikat läuft in <14 Tagen ab |
 
 **Alerting-Kanal:** Microsoft Teams Webhook (konfiguriert 2026-03-11).
@@ -971,3 +974,4 @@ Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/d
 |---------|-------|-------|----------|
 | v0.3 | 2026-03-12 | COFFEESTUDIOS | PROD-Deployment, Teams-Alerting |
 | v0.3.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: NP 7→8, Kickoff-Referenz, Änderungshistorie |
+| v0.4 | 2026-03-19 | COFFEESTUDIOS | OpenSearch als ueberwachte Komponente hinzugefuegt: PVC Usage Alerts (#23 DEV/TEST warning, #24 PROD critical), Cluster Health Check (red = critical). Vespa-Monitoring auf Alive-Check reduziert (Zombie-Mode, kein Produktiv-Traffic). Alert-Count 20 → 23. |

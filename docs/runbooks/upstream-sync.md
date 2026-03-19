@@ -78,19 +78,23 @@ git merge upstream/main --no-commit --no-ff
 
 ### 7. Bekannte Fixes anwenden
 
-#### 7a. OpenSearch deaktivieren
+#### 7a. OpenSearch + Vespa Konfiguration pruefen
 
-Immer pruefen ob Upstream den Default geaendert hat:
+OpenSearch ist seit v3.0.0 unser Default Document Index. Pruefen ob Upstream neue Env Vars oder Defaults eingefuehrt hat:
 
 ```bash
-grep "OPENSEARCH_FOR_ONYX_ENABLED\|opensearch.*enabled" deployment/helm/charts/onyx/values.yaml
+grep "OPENSEARCH\|opensearch.*enabled\|VESPA\|vespa.*enabled" deployment/helm/charts/onyx/values.yaml
 ```
 
-Falls noetig in `values-common.yaml`:
-- `auth.opensearch.enabled: false`
-- `configMap.OPENSEARCH_FOR_ONYX_ENABLED: "false"`
+Checkliste (Details: `docs/analyse-opensearch-vs-vespa.md` Abschnitt 6):
+- `auth.opensearch.enabled: true` in values-common.yaml (OpenSearch Pod wird deployed)
+- `configMap.ENABLE_OPENSEARCH_INDEXING_FOR_ONYX: "true"` (Dual-Write aktiv)
+- **`vespa.enabled` MUSS `true` bleiben** — v3.x Code erfordert Vespa-Pod fuer Readiness Check (`wait_for_vespa_or_shutdown` in `app_base.py:517`). Erst ab v4.0.0 kann Vespa deaktiviert werden!
+- Vespa Ressourcen auf Zombie-Mode pruefen: DEV/TEST 50m/512Mi, PROD 100m/512Mi (minimale Ressourcen, kein aktiver Index-Traffic)
 
-Plus in `values-dev/test/prod.yaml`: `auth.opensearch.enabled: false` (Deep-Merge Problem!)
+**KRITISCH — Vespa StatefulSet:**
+- `volumeClaimTemplates` sind **immutable** in Kubernetes. PVC-Groesse kann NICHT per Helm geaendert werden. Bei Bedarf: StatefulSet loeschen, PVC manuell loeschen, neu erstellen.
+- Vespa benoetigt **mindestens 4 Gi memory LIMIT** (Hard-Check im Container-Startskript). `requests` koennen niedriger sein (z.B. 512Mi), aber `limits.memory` muss >= 4Gi bleiben.
 
 #### 7b. Alembic Chain reparieren
 
@@ -145,7 +149,18 @@ helm template test deployment/helm/charts/onyx/ \
   --set auth.objectstorage.values.s3_aws_access_key_id=d \
   --set auth.objectstorage.values.s3_aws_secret_access_key=d \
   --set auth.dbreadonly.values.db_readonly_password=d \
-  2>/dev/null | grep -i "onyx-opensearch" && echo "FEHLER!" || echo "OK: Kein OpenSearch"
+  2>/dev/null | grep -i "onyx-opensearch" && echo "OK: OpenSearch-Pod vorhanden" || echo "WARNUNG: Kein OpenSearch-Pod im Template!"
+
+# Vespa Zombie-Mode pruefen (MUSS noch aktiv sein bis v4.0.0):
+helm template test deployment/helm/charts/onyx/ \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-dev.yaml \
+  --set auth.postgresql.values.password=d \
+  --set auth.redis.values.redis_password=d \
+  --set auth.objectstorage.values.s3_aws_access_key_id=d \
+  --set auth.objectstorage.values.s3_aws_secret_access_key=d \
+  --set auth.dbreadonly.values.db_readonly_password=d \
+  2>/dev/null | grep -i "da-vespa" && echo "OK: Vespa-Pod vorhanden (Zombie-Mode)" || echo "FEHLER: Vespa-Pod fehlt — v3.x braucht ihn!"
 
 # Merge-Markers:
 git diff --cached --name-only | xargs grep -l "<<<<<<" 2>/dev/null && echo "FEHLER!" || echo "OK"
@@ -185,8 +200,8 @@ gh workflow run stackit-deploy.yml -f environment=dev -R CCJ-Development/voeb-ch
 # Pods pruefen
 kubectl get pods -n onyx-dev
 
-# API Logs (Alembic + OpenSearch Fehler)
-kubectl logs -n onyx-dev -l app=api-server --tail=50 | grep -i "error\|alembic\|opensearch"
+# API Logs (Alembic + OpenSearch + Vespa Fehler)
+kubectl logs -n onyx-dev -l app=api-server --tail=50 | grep -i "error\|alembic\|opensearch\|vespa"
 
 # Health
 curl -s https://dev.chatbot.voeb-service.de/api/health
@@ -208,4 +223,13 @@ curl -s https://dev.chatbot.voeb-service.de/api/health
 - PROD deployen ohne DEV-Verifizierung
 - Migrations ohne Chain-Check uebernehmen
 - AdminSidebar ohne Hook-Check deployen
-- OpenSearch Override vergessen (crashed API-Server!)
+- `vespa.enabled` auf `false` setzen (bis v4.0.0! — Celery-Worker crashen ohne Vespa-Pod)
+- Vespa StatefulSet `volumeClaimTemplates` aendern (immutable — K8s lehnt Update ab)
+- Vespa memory LIMIT unter 4 Gi setzen (Hard-Check im Container, Pod startet nicht)
+
+---
+
+## Referenzen
+
+- `docs/analyse-opensearch-vs-vespa.md` — Vollstaendige Analyse inkl. Upstream-Sync-Checkliste (Abschnitt 6)
+- `.claude/rules/fork-management.md` — Fork-Management Regeln

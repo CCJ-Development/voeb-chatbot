@@ -1,7 +1,7 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** DEV + TEST + PROD LIVE — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3.
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-17 (PROD TLS aktiviert)
+**Status:** TEST + PROD LIVE — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3. **DEV HTTPS temporaer deaktiviert** (DNS zeigt auf alte LB-IP).
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-19 (DEV HTTPS temporaer deaktiviert)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 
 ---
@@ -12,7 +12,7 @@
 
 | Environment | Zugriff | Status |
 |-------------|---------|--------|
-| DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
+| DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS TEMPORAER DEAKTIVIERT** (2026-03-18) — DNS zeigt auf alte LB-IP `188.34.74.187`, neue IP ist `188.34.118.222`. Wartet auf DNS-Update von Leif/GlobVill. HSTS deaktiviert, `WEB_DOMAIN` auf `http://` gesetzt. Siehe "DEV HTTPS Wiederherstellung" unten. |
 | TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
 | PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, E7 Intermediate |
 
@@ -134,7 +134,7 @@ In Cloudflare Dashboard → DNS → Records:
 
 | Type | Name | Content (IPv4) | Proxy | TTL |
 |------|------|-----------------|-------|-----|
-| A | `dev.chatbot` | `188.34.74.187` | **DNS only** (graue Wolke) | 300 |
+| A | `dev.chatbot` | ~~`188.34.74.187`~~ **`188.34.118.222`** (neue LB-IP seit 2026-03-18) | **DNS only** (graue Wolke) | 300 |
 | A | `test.chatbot` | `188.34.118.201` | **DNS only** (graue Wolke) | 300 |
 | A | `chatbot` | `188.34.92.162` | **DNS only** (graue Wolke) | 300 |
 
@@ -1073,6 +1073,59 @@ Fuer PROD (kundensichtbar) sollte mit VoeB diskutiert werden:
 - **Kommerzielles Zertifikat** (z.B. DigiCert OV/EV): Hoehere Vertrauensstufe, Organisation im Zertifikat sichtbar. Relevant falls VoeB-Mitarbeiter oder externe Partner das Zertifikat pruefen.
 
 > **Empfehlung**: Let's Encrypt — internes Tool, kein externer Kundenverkehr. OV/EV-Zertifikate bringen bei internem Einsatz keinen Sicherheitsvorteil.
+
+---
+
+## DEV HTTPS — Temporaer deaktiviert (seit 2026-03-18)
+
+### Ursache
+
+Upstream-Sync #3 (2026-03-18) erforderte eine Helm-Neuinstallation auf DEV (`helm delete` + `helm install`). Dabei wurde der NGINX Ingress Controller neu erstellt, was eine **neue LoadBalancer-IP** ergab: `188.34.74.187` (alt) → `188.34.118.222` (neu).
+
+Der DNS A-Record bei GlobVill zeigt weiterhin auf die alte IP. Bis Leif den A-Record aktualisiert, ist HTTPS auf DEV nicht erreichbar.
+
+**Lesson Learned:** `helm delete + install` erstellt NGINX Controller neu → neue LB-IP → DNS-Update noetig. `helm upgrade` behaelt die LB-IP.
+
+### Aktuelle Workarounds (DEV)
+
+1. **HSTS deaktiviert** — `nginx.ingress.kubernetes.io/configuration-snippet` in `values-dev.yaml` mit `more_clear_headers "Strict-Transport-Security"` (verhindert Browser-Caching von HSTS auf DEV)
+2. **`WEB_DOMAIN` auf `http://`** — In `values-dev.yaml`: `WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"`. Damit werden Cookies ohne `Secure`-Flag gesetzt und Login funktioniert ueber HTTP.
+3. **Lokaler `/etc/hosts` Workaround** — Auf Nikos Mac: `188.34.118.222 dev.chatbot.voeb-service.de`. ENTFERNEN nach DNS-Update: `sudo sed -i '' '/188.34.118.222/d' /etc/hosts`
+
+### Wiederherstellung (wenn DNS gefixt ist)
+
+Sobald Leif den A-Record `dev.chatbot` auf `188.34.118.222` aktualisiert hat:
+
+```bash
+# 1. DNS verifizieren
+dig +short dev.chatbot.voeb-service.de
+# Erwartete Ausgabe: 188.34.118.222
+
+# 2. values-dev.yaml: WEB_DOMAIN zurueck auf HTTPS
+# VORHER (temporaer):
+#   WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"
+# NACHHER (Wiederherstellung):
+#   WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
+
+# 3. values-dev.yaml: HSTS-Deaktivierung entfernen
+# Den gesamten nginx http-snippet Override-Block entfernen:
+#   nginx.ingress.kubernetes.io/configuration-snippet: |
+#     more_clear_headers "Strict-Transport-Security";
+
+# 4. Deploy
+helm upgrade --install onyx-dev deployment/helm/charts/onyx \
+  --namespace onyx-dev \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-dev.yaml \
+  -f deployment/helm/values/values-dev-secrets.yaml \
+  --wait --timeout 15m
+
+# 5. HTTPS verifizieren
+curl -vI https://dev.chatbot.voeb-service.de/api/health 2>&1 | grep -E "HTTP|TLS"
+
+# 6. /etc/hosts Workaround entfernen
+sudo sed -i '' '/188.34.118.222/d' /etc/hosts
+```
 
 ---
 
