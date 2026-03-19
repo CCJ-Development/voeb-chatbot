@@ -34,8 +34,6 @@ auth:
     values:
       s3_aws_access_key_id: ""       # → GitHub Secret S3_ACCESS_KEY_ID
       s3_aws_secret_access_key: ""   # → GitHub Secret S3_SECRET_ACCESS_KEY
-  opensearch:
-    enabled: false
   dbreadonly:
     enabled: true
     secretName: "onyx-dbreadonly"
@@ -211,16 +209,31 @@ webserver:
       cpu: 250m
       memory: 512Mi
 
-# --- Vespa: 1 Replica ---
+# --- OpenSearch: Upstream-Default seit v3.0.0 ---
+# Ressourcen fuer g1a.4d angepasst (analog DEV).
+opensearch:
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1536Mi
+    limits:
+      cpu: 1500m
+      memory: 3Gi
+  opensearchJavaOpts: "-Xmx1536m -Xms1536m"
+  persistence:
+    size: 20Gi
+
+# --- Vespa: ZOMBIE-MODE (nur fuer Readiness Check) ---
+# WICHTIG: Vespa Hard-Minimum 4Gi Memory-Check (cgroup Limit).
 vespa:
   enabled: true
   replicaCount: 1
   resources:
     requests:
-      cpu: 300m  # Optimiert: Actual ~100m, war 500m. 3x Headroom reicht.
-      memory: 2Gi
+      cpu: 50m
+      memory: 512Mi
     limits:
-      cpu: 1500m
+      cpu: 200m
       memory: 4Gi
   volumeClaimTemplates:
     - metadata:
@@ -230,7 +243,7 @@ vespa:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 20Gi
+            storage: 20Gi  # Immutable: PVC existiert bereits mit 20Gi
 
 # --- Redis: Minimal ---
 redis:

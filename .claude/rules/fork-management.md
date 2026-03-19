@@ -174,6 +174,19 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Merge-Dauer | ~5 Min |
 | Workflow | Branch + PR (erstmals mit Branch Protection) |
 
+## Dritter Upstream-Merge (2026-03-18) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Auslöser | Helm-Release DEV musste gelöscht und neu installiert werden (Chart-Inkompatibilität) |
+| Alembic-Problem | 4 Upstream-Migrationen in Chain eingefügt aber nie ausgeführt (DB auf Head gestempelt) |
+| Fehlende Migrationen | `b5c4d7e8f9a1` (hierarchy_node), `27fb147a843f` (user timestamps), `93a2e195e25c` (voice_provider), `689433b0d8de` (hooks) |
+| Fix | SQL manuell auf DEV-DB ausgeführt via `kubectl exec` + `psycopg2` |
+| LB-IP-Wechsel | `188.34.74.187` → `188.34.118.222` (NGINX Controller neu erstellt) |
+| DNS-Update | Angefragt bei Leif/GlobVill |
+| **Lesson Learned** | `helm delete + install` = neue LB-IP. `helm upgrade` behält LB-IP. |
+| **Lesson Learned** | Alembic `upgrade head` holt eingefügte Migrationen NICHT nach wenn DB bereits auf späterem Head steht |
+
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
 Neben den 10 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
@@ -243,7 +256,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/src/lib/constants.ts` (CORE #6) | 1 Zeile | 1 | Niedrig |
 | `web/src/app/auth/login/LoginText.tsx` (CORE #8) | Conditional | ~8 | Niedrig |
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |
-| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage+Prompts | ~19 | Mittel |
+| `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage+Prompts+EE-Hidden | ~30 | Mittel |
 | `backend/Dockerfile` | COPY | 3 | Mittel |
 | `deployment/docker_compose/env.template` | Append | 27 | Niedrig |
 

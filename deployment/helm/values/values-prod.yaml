@@ -37,8 +37,6 @@ auth:
     values:
       s3_aws_access_key_id: ""       # → GitHub Secret S3_ACCESS_KEY_ID
       s3_aws_secret_access_key: ""   # → GitHub Secret S3_SECRET_ACCESS_KEY
-  opensearch:
-    enabled: false
   dbreadonly:
     enabled: true
     secretName: "onyx-dbreadonly"
@@ -88,10 +86,10 @@ configMap:
 # (Standard Mode seit Upstream PR #9014, nicht Lightweight Mode).
 # Jeder Worker hat eine spezialisierte Aufgabe — 0 Replicas bedeutet Feature offline.
 # Bei 150 erwarteten Usern sind alle Worker-Typen notwendig:
-#   - light: Vespa-Operationen, Permission-Sync, Deletion
+#   - light: OpenSearch/Vespa-Operationen, Permission-Sync, Deletion
 #   - heavy: Document Pruning
 #   - docfetching: Connector-Daten abholen
-#   - docprocessing: Indexing Pipeline (Embed → Vespa)
+#   - docprocessing: Indexing Pipeline (Embed → OpenSearch + Vespa)
 #   - monitoring: System Health Metriken (Celery Queues, Memory)
 #   - user_file_processing: Benutzer-Uploads
 # --- SEC-06 Phase 2: Non-Root Container (BSI SYS.1.6.A10) ---
@@ -108,7 +106,7 @@ celery_shared:
 vespa:
   securityContext:
     privileged: false
-    runAsUser: 0  # Dokumentierte Ausnahme: Vespa braucht root
+    runAsUser: 0  # Dokumentierte Ausnahme: Vespa braucht root (Zombie-Mode, entfernen bei v4.0.0)
 
 celery_beat:
   replicaCount: 1
@@ -272,17 +270,33 @@ webserver:
       cpu: 500m
       memory: 1Gi
 
-# --- Vespa: PROD ---
-vespa:
-  enabled: true
-  replicaCount: 1  # Vespa HA erfordert Content-Cluster-Config (spaeter evaluieren)
+# --- OpenSearch: PROD (Upstream-Default seit v3.0.0) ---
+# g1a.8d hat mehr Headroom als DEV/TEST (g1a.4d). Upstream-Defaults leicht reduziert.
+opensearch:
   resources:
     requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
       cpu: 2000m
       memory: 4Gi
+  opensearchJavaOpts: "-Xmx2g -Xms2g"
+  persistence:
+    size: 30Gi
+
+# --- Vespa: ZOMBIE-MODE PROD (nur fuer Readiness Check) ---
+# WICHTIG: Vespa Hard-Minimum 4Gi Memory-Check (cgroup Limit).
+# Entfernen bei Upstream v4.0.0.
+vespa:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
     limits:
-      cpu: 4000m
-      memory: 8Gi
+      cpu: 500m
+      memory: 4Gi
   volumeClaimTemplates:
     - metadata:
         name: vespa-storage
@@ -291,7 +305,7 @@ vespa:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 50Gi  # PROD: Mehr Speicher als DEV/TEST (20Gi)
+            storage: 50Gi  # Immutable: PVC existiert bereits mit 50Gi
 
 # --- Redis: PROD ---
 redis:

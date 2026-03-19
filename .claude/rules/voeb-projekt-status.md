@@ -25,14 +25,14 @@
   - ✅ K8s Namespace `onyx-dev` + Image Pull Secret + Redis Operator
   - ✅ PostgreSQL: DB `onyx` angelegt, `db_readonly_user` per Terraform
   - ✅ Object Storage: Credentials erstellt, in Helm Secrets konfiguriert
-  - ✅ Helm Release `onyx-dev`: Alle 16 Pods (8 Celery-Worker, Standard Mode) 1/1 Running
-  - ✅ API Health OK, Login funktioniert unter `https://dev.chatbot.voeb-service.de`
+  - ✅ Helm Release `onyx-dev`: Alle 16 Pods (8 Celery-Worker, Standard Mode) 1/1 Running (Helm-Neuinstallation 2026-03-18 nach Upstream-Sync)
+  - ⏳ DEV Login blockiert: DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden (alt: `188.34.74.187`). Mail an Leif/GlobVill gesendet (2026-03-18).
   - ✅ Runbooks: stackit-projekt-setup.md, stackit-postgresql.md, helm-deploy.md
   - ✅ CI/CD Pipeline: Produktionsreif (2026-03-02) — Parallel-Build ~8 Min, SHA-gepinnte Actions, Smoke Tests, Concurrency
   - ✅ Upstream-Workflows: 21 Onyx-Workflows deaktiviert, nur StackIT Deploy + Upstream Check aktiv
   - ✅ CI/CD Run #5 (ea70a11): 10 Min, alle 10 Pods Running (historisch, jetzt 16 Pods), Health Check OK
   - ✅ EE-Crash gelöst: `LICENSE_ENFORCEMENT_ENABLED: "false"` in values-common.yaml
-  - ✅ DNS: A-Records gesetzt (2026-03-05): `dev.chatbot.voeb-service.de` → `188.34.74.187`, `test.chatbot.voeb-service.de` → `188.34.118.201`
+  - ✅ DNS: A-Records gesetzt (2026-03-05): `dev.chatbot.voeb-service.de` → ~~`188.34.74.187`~~ `188.34.118.222` (Update angefragt 2026-03-18), `test.chatbot.voeb-service.de` → `188.34.118.201`
   - ✅ DNS: Cloudflare Proxy auf DNS-only umgestellt und verifiziert (2026-03-05)
   - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
@@ -91,6 +91,7 @@
   - ✅ **Monitoring Exporter deployed** (2026-03-10): postgres_exporter v0.19.1 + redis_exporter v1.82.0. 4 Exporter-Pods, 4 Scrape-Targets UP, 11 neue Alert-Rules. PG + Redis Metriken fließen. Grafana Dashboards importiert (ID 14114 + 763).
   - ✅ Alerting: Microsoft Teams Webhook konfiguriert (2026-03-11). 20 Alert-Rules → Teams-Kanal. `send_resolved: true` für Entwarnung.
   - ✅ **Kostenoptimierung DEV/TEST** (2026-03-16): Resource Requests um 40-80% gesenkt, Node-Downgrade g1a.8d → g1a.4d (4 vCPU, 16 GB), TEST Scale-to-Zero CronJobs (Mo-Fr 08-18 UTC). Kosten: 868 → 585 EUR/Mo (-283 EUR). Details: `audit-output/kostenoptimierung-ergebnis.md`
+  - ✅ **Upstream-Sync #3** (2026-03-18): Helm-Neuinstallation DEV wegen Chart-Inkompatibilität. 4 fehlende Alembic-Migrationen manuell per SQL nachgezogen (user timestamps, voice_provider, hooks, hierarchy_node). Neue LB-IP `188.34.118.222`.
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
@@ -104,11 +105,12 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. ~~DNS-Eintraege~~ ✅ → 2. ~~TLS/HTTPS PROD~~ ✅ → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17): `https://chatbot.voeb-service.de`, ECDSA P-384. Kostenoptimierung DEV/TEST: g1a.4d, 585 EUR/Mo. Entra ID weiterhin blockiert.
+**1. DNS DEV A-Record Update (`188.34.118.222`) — wartet auf Leif/GlobVill → 2. DEV Login verifizieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17). Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
+| DNS DEV A-Record `188.34.118.222` | Leif/GlobVill | DEV Login (HTTPS blockiert, HTTP Cookie-Problem) |
 | Entra ID Zugangsdaten | VÖB IT | Phase 3 |
 
 ## Erledigte Blocker

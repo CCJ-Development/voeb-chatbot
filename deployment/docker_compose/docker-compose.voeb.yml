@@ -28,3 +28,10 @@ services:
     env_file:
       - path: .env
         required: false
+
+  # OpenSearch: JVM Heap fuer lokale Entwicklung reduzieren.
+  # Upstream-Default 2g ist zu viel fuer Docker Desktop (7.6 GiB gesamt).
+  # 512m reicht fuer lokales Testing mit wenig Daten.
+  opensearch:
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"

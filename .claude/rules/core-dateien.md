@@ -59,10 +59,10 @@ paths:
 - HINWEIS: Freigabe durch Niko (2026-03-08) für ext-branding Whitelabel
 
 ## 10. `web/src/sections/sidebar/AdminSidebar.tsx` — Admin Sidebar
-- ERLAUBT: "Upgrade Plan"/Billing ausblenden wenn ext-branding aktiv, "Branding"-Link + "Token Usage"-Link + "System Prompts"-Link einfuegen
+- ERLAUBT: "Upgrade Plan"/Billing ausblenden wenn ext-branding aktiv, "Branding"-Link + "Token Usage"-Link + "System Prompts"-Link einfuegen, ausgegraute EE-Items (Groups, SCIM, Theme, Usage, Query History) komplett ausblenden wenn EE nicht aktiv
 - VERBOTEN: Sidebar-Struktur, andere Sections, Navigation-Logik veraendern
-- MERGE: Settings-Section anpassen (Zeilen ~155-170), Import ergaenzen (SvgPaintBrush, SvgActivity, SvgFileText)
-- HINWEIS: Freigabe durch Niko (2026-03-08) fuer ext-branding Whitelabel. Erweitert fuer ext-token (SvgActivity) und ext-prompts (SvgFileText).
+- MERGE: Settings-Section anpassen (Zeilen ~155-170), Import ergaenzen (SvgPaintBrush, SvgActivity, SvgFileText), EE-Guards in Sections 5/6/7
+- HINWEIS: Freigabe durch Niko (2026-03-08) fuer ext-branding Whitelabel. Erweitert fuer ext-token (SvgActivity), ext-prompts (SvgFileText), EE-Cleanup (2026-03-19).
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

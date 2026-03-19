@@ -125,10 +125,14 @@ function buildItems(
   }
 
   // 5. Permissions
+  // ext-branding: Groups + SCIM sind EE-Features — nur anzeigen wenn EE aktiv.
+  // Ohne EE sind sie nur visueller Clutter (ausgegraut, nicht klickbar).
   if (!isCurator) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.USERS);
-    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS, !enableEnterprise);
-    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM, !enableEnterprise);
+    if (enableEnterprise) {
+      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
+      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM);
+    }
   } else if (enableEnterprise) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
   }
@@ -151,18 +155,18 @@ function buildItems(
       });
     }
     add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.TOKEN_RATE_LIMITS);
-    addDisabled(SECTIONS.ORGANIZATION, ADMIN_ROUTES.THEME, !enableEnterprise);
+    // ext-branding: Appearance & Theming ist EE-Feature — nur anzeigen wenn EE aktiv.
+    if (enableEnterprise) {
+      add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.THEME);
+    }
   }
 
   // 7. Usage (admin only)
-  if (!isCurator) {
-    addDisabled(SECTIONS.USAGE, ADMIN_ROUTES.USAGE, !enableEnterprise);
+  // ext-branding: Usage Statistics + Query History sind EE-Features — nur anzeigen wenn EE aktiv.
+  if (!isCurator && enableEnterprise) {
+    add(SECTIONS.USAGE, ADMIN_ROUTES.USAGE);
     if (settings?.settings.query_history_type !== "disabled") {
-      addDisabled(
-        SECTIONS.USAGE,
-        ADMIN_ROUTES.QUERY_HISTORY,
-        !enableEnterprise
-      );
+      add(SECTIONS.USAGE, ADMIN_ROUTES.QUERY_HISTORY);
     }
   }
 

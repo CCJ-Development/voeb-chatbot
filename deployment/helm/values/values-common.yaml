@@ -18,7 +18,7 @@ global:
 # --- Container Images: StackIT Registry ---
 # Alle Custom-Images (Backend, Frontend, Celery) kommen aus der StackIT Registry.
 # Tag wird über global.version in values-{env}.yaml gesetzt (default: "latest").
-# Model Server + Vespa + Redis nutzen Upstream-Images (Docker Hub).
+# Model Server + Vespa + Redis + OpenSearch nutzen Upstream-Images (Docker Hub).
 api:
   image:
     repository: registry.onstackit.cloud/voeb-chatbot/onyx-backend
@@ -75,23 +75,23 @@ postgresql:
 minio:
   enabled: false
 
-# --- OpenSearch: DEAKTIVIERT ---
-# Wir nutzen Vespa als Vektor-Datenbank.
-opensearch:
-  enabled: false
+# --- OpenSearch: AKTIVIERT (Upstream-Default seit v3.0.0) ---
+# Chart-Default opensearch.enabled=true greift. Subchart deployed OpenSearch 3.4.0.
+# Ressourcen-Overrides pro Environment in values-{env}.yaml.
+# Retrieval: Nach Deployment per Admin UI auf OpenSearch umschalten (einmalig).
 
-# --- Auth: OpenSearch Secret DEAKTIVIERT ---
-# Upstream Chart 0.4.35 hat auth.opensearch.enabled auf true gesetzt.
-# Wir nutzen kein OpenSearch, daher muss das Secret explizit deaktiviert werden,
-# sonst fail die Helm-Validierung (required values fuer opensearch_admin_password).
+# --- Auth: OpenSearch Secret AKTIVIERT ---
+# Chart-Default Passwort "OnyxDev1!" (intern, kein externer Zugang).
+# PROD: Sicheres Passwort per GitHub Secret + --set im CI/CD.
 auth:
   opensearch:
-    enabled: false
+    enabled: true
 
-# --- Vespa: IN-CLUSTER ---
-# SEC-06: privileged entfernt (2026-03-08). Onyx Chart Default war privileged: true + runAsUser: 0.
-# Vespa läuft weiterhin als root (runAsUser: 0) — Upstream-Limitation (vm.max_map_count etc.).
-# Phase 2 evaluiert non-root (Vespa Subchart Default: runAsUser: 1000).
+# --- Vespa: MINIMAL (Zombie-Mode) ---
+# v3.x Code erfordert laufenden Vespa-Pod fuer Celery Readiness Check
+# (wait_for_vespa_or_shutdown in app_base.py:517). Ohne Vespa-Pod crashen alle Worker.
+# Minimale Ressourcen: Nur fuer Health-Endpoint, kein produktiver Einsatz.
+# Bei Upstream v4.0.0: Vespa komplett entfernen (Code-seitig entfernt).
 vespa:
   enabled: true
   image:
@@ -206,13 +206,10 @@ configMap:
   # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)
   EXT_ENABLED: "true"
   EXT_BRANDING_ENABLED: "true"
-  # OpenSearch: DEAKTIVIERT — Upstream hat Default auf "true" geaendert (Chart 0.4.35).
-  # Wir nutzen Vespa, kein OpenSearch. Ohne dieses Override crashed der API-Server
-  # mit "ConnectionError localhost:9200" beim Startup.
-  OPENSEARCH_FOR_ONYX_ENABLED: "false"
-  # OpenSearch Indexing: DEAKTIVIERT — Upstream hat Default auf "true" geaendert.
-  # Ohne dieses Override crashen Celery-Worker mit OpenSearch Readiness Probe Timeout.
-  ENABLE_OPENSEARCH_INDEXING_FOR_ONYX: "false"
+  # OpenSearch: AKTIVIERT (Upstream-Default seit v3.0.0).
+  # OPENSEARCH_HOST, ENABLE_OPENSEARCH_INDEXING_FOR_ONYX etc. werden automatisch
+  # vom Chart-Template gesetzt wenn opensearch.enabled=true (configmap.yaml:15-20).
+  # Retrieval-Umschaltung: Per Admin UI (DB-Flag), nicht per Env Var.
   # XREF-007 Defense-in-Depth: Backend-Limit auf 20 MB (= Ingress proxy-body-size).
   # Onyx Default: 2 GB. Bei Pod-zu-Pod-Traffic wuerde das Ingress-Limit umgangen.
   # 20 MB = 20 * 1024 * 1024 = 20971520 Bytes.

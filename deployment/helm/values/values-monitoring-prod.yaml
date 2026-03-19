@@ -282,7 +282,7 @@ additionalPrometheusRulesMap:
               summary: "Node {{ $labels.instance }} hat weniger als 15% freien Disk"
               description: "Verfuegbar: {{ $value | humanizePercentage }}."
 
-          # 8. Vespa PVC voll (<20%)
+          # 8. Vespa PVC voll (<20%) — Vespa im Zombie-Mode, aber PVC noch aktiv
           - alert: VespaStorageFull
             expr: kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"vespa.*"} / kubelet_volume_stats_capacity_bytes < 0.2
             for: 10m
@@ -290,6 +290,16 @@ additionalPrometheusRulesMap:
               severity: warning
             annotations:
               summary: "Vespa PVC fast voll ({{ $labels.namespace }})"
+              description: "PVC {{ $labels.persistentvolumeclaim }} hat weniger als 20% freien Speicher."
+
+          # 8b. OpenSearch PVC voll (<20%)
+          - alert: OpenSearchStorageFull
+            expr: kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"opensearch.*"} / kubelet_volume_stats_capacity_bytes < 0.2
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              summary: "[PROD] OpenSearch PVC fast voll ({{ $labels.namespace }})"
               description: "PVC {{ $labels.persistentvolumeclaim }} hat weniger als 20% freien Speicher."
 
           # 9. TLS-Zertifikat laeuft bald ab (<14 Tage)

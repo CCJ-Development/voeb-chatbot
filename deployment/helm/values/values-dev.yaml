@@ -32,8 +32,6 @@ auth:
     values:
       s3_aws_access_key_id: ""       # → values-dev-secrets.yaml
       s3_aws_secret_access_key: ""   # → values-dev-secrets.yaml
-  opensearch:
-    enabled: false
   dbreadonly:
     enabled: true
     secretName: "onyx-dbreadonly"
@@ -55,9 +53,12 @@ configMap:
   S3_ENDPOINT_URL: "https://object.storage.eu01.onstackit.cloud"
   S3_FILE_STORE_BUCKET_NAME: "vob-dev"
 
-  # Domain + TLS (Let's Encrypt ECDSA P-384, cert-manager DNS-01 via Cloudflare)
+  # Domain + TLS
+  # TEMPORAER: HTTP statt HTTPS bis DNS A-Record auf neue LB-IP 188.34.118.222 zeigt.
+  # DNS-Update angefragt bei Leif/GlobVill (2026-03-18).
+  # Wenn DNS da: WEB_DOMAIN zurueck auf "https://dev.chatbot.voeb-service.de"
   DOMAIN: "dev.chatbot.voeb-service.de"
-  WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
+  WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"
 
   # Auth: Basic Auth (Entra ID kommt in Phase 3)
   AUTH_TYPE: "basic"
@@ -155,7 +156,29 @@ celery_worker_user_file_processing:
 letsencrypt:
   enabled: false  # Eigener ClusterIssuer (DNS-01 via Cloudflare), nicht Chart-eigener (HTTP-01)
 
-# --- Ingress: HTTPS via NGINX Ingress Controller ---
+# --- NGINX: HSTS TEMPORAER DEAKTIVIERT ---
+# HSTS aus values-common.yaml (max-age=3600) erzwingt HTTPS im Browser.
+# Solange DNS nicht auf die neue LB-IP 188.34.118.222 zeigt, muss DEV per HTTP laufen.
+# Wenn DNS da: Diesen Block KOMPLETT ENTFERNEN (values-common.yaml greift dann).
+nginx:
+  controller:
+    config:
+      hsts: "false"
+      hsts-max-age: "0"
+      # Kopie von values-common.yaml http-snippet OHNE HSTS-Header.
+      # ACHTUNG: Bei Aenderungen an common http-snippet muss dieser Block synchron bleiben!
+      http-snippet: |
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        # HSTS DEAKTIVIERT (DEV): DNS zeigt auf alte IP, HTTPS nicht moeglich.
+        # add_header Strict-Transport-Security "max-age=3600; includeSubDomains" always;
+        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
+        include /etc/nginx/custom-snippets/upstreams.conf;
+        include /etc/nginx/custom-snippets/server.conf;
+
+# --- Ingress: NGINX Ingress Controller ---
 ingress:
   enabled: true
   className: "nginx"
@@ -188,16 +211,36 @@ webserver:
       memory: 512Mi
   # nodeSelector: nicht nötig bei 1 Node Pool. Wird für PROD gesetzt.
 
-# --- Vespa: 1 Replica, minimale Requests (DEV) ---
+# --- OpenSearch: Upstream-Default seit v3.0.0 ---
+# Ressourcen fuer g1a.4d angepasst (Upstream-Default 2000m/4Gi ist zu viel).
+# JVM Heap = 50% vom RAM-Limit.
+opensearch:
+  resources:
+    requests:
+      cpu: 300m
+      memory: 1536Mi
+    limits:
+      cpu: 1500m
+      memory: 3Gi
+  opensearchJavaOpts: "-Xmx1536m -Xms1536m"
+  persistence:
+    size: 20Gi
+
+# --- Vespa: ZOMBIE-MODE (nur fuer Readiness Check) ---
+# v3.x Code erfordert Vespa-Pod (app_base.py:517 wait_for_vespa_or_shutdown).
+# Minimale Ressourcen: Health-Endpoint antworten, sonst nichts.
+# WICHTIG: Vespa hat Hard-Minimum 4Gi Memory-Check (Container cgroup Limit).
+# requests.memory=512Mi (Scheduling-Overhead gering), limits.memory=4Gi (Check bestanden).
+# Entfernen bei Upstream v4.0.0 (Vespa wird dort Code-seitig entfernt).
 vespa:
   enabled: true
   replicaCount: 1
   resources:
     requests:
-      cpu: 300m  # Optimiert: Actual ~100m (DEV), war 500m. 3x Headroom reicht.
-      memory: 2Gi
+      cpu: 50m
+      memory: 512Mi
     limits:
-      cpu: 1500m
+      cpu: 200m
       memory: 4Gi
   volumeClaimTemplates:
     - metadata:
@@ -207,7 +250,7 @@ vespa:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 20Gi
+            storage: 20Gi  # Immutable: PVC existiert bereits mit 20Gi
 
 # --- Redis: Minimal ---
 redis:
