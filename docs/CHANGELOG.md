@@ -9,6 +9,12 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
+- [Infra] **TEST-Umgebung dauerhaft heruntergefahren** (2026-03-19)
+  - Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht
+  - Scale-to-Zero CronJobs + RBAC entfernt (nicht mehr noetig)
+  - Helm Release bleibt (Reaktivierung moeglich), PVCs erhalten
+  - `deployment/k8s/cost-optimization/` entfernt (4 Dateien)
+
 - [UI] **EE-Platzhalter aus Admin-Sidebar entfernt** (2026-03-19)
   - 5 ausgegraute EE-Items (Groups, SCIM, Appearance & Theming, Usage Statistics, Query History) werden ohne Enterprise-Lizenz nicht mehr angezeigt
   - CORE #10 (`AdminSidebar.tsx`): `addDisabled()` durch `if (enableEnterprise)` Guards ersetzt
@@ -59,7 +65,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Node-Downgrade g1a.8d → g1a.4d (4 vCPU, 16 GB RAM)
   - Resource Requests um 40-80% gesenkt (CPU Actual war 5% der Requests)
   - Redis-Operator: 500m → 50m, Prometheus: 500m → 250m, Celery: 250m → 150m
-  - TEST Scale-to-Zero CronJobs (Mo-Fr 08:00-18:00 UTC)
+  - TEST Scale-to-Zero CronJobs (Mo-Fr 08:00-18:00 UTC) [Hinweis: CronJobs 2026-03-19 entfernt, TEST dauerhaft heruntergefahren]
   - Kosten DEV+TEST: 868,47 → 585,29 EUR/Mo (-283,18 EUR, -32,6%)
   - Kosten Gesamt: 1.832,43 → 1.549,25 EUR/Mo (-15,4%)
   - Details: `audit-output/kostenoptimierung-ergebnis.md`, `docs/infrastruktur-review.md`

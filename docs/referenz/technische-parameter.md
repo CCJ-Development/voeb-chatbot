@@ -16,7 +16,7 @@
 | Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
 | Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
 | Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 17 | 16 | 20 |
+| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 20 |
 | API Replicas | 1 | 1 | 2 (HA) |
 | Web Replicas | 1 | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
@@ -25,7 +25,7 @@
 | HTTPS | **TEMPORAER DEAKTIVIERT** (2026-03-18) — DNS zeigt auf alte LB-IP, wartet auf Update | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
 | Auth | basic | basic | basic (Entra ID geplant, Phase 3) |
 | Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell) | workflow_dispatch (manuell, Required Reviewer) |
-| Status | LIVE seit 2026-02-27 | LIVE seit 2026-03-03 | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
+| Status | LIVE seit 2026-02-27 | **Heruntergefahren** (dauerhaft, seit 2026-03-19). Helm Release bleibt. Reaktivierung jederzeit moeglich. | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
 | Deployment-Strategie | Recreate | Recreate | Recreate |
 
 ---
@@ -304,6 +304,8 @@
 
 **Kostenoptimierung (2026-03-16):** DEV+TEST von 868,47 auf 585,29 EUR/Mo gesenkt durch Node-Downgrade g1a.8d → g1a.4d nach Resource-Requests-Optimierung. Details: `audit-output/kostenoptimierung-ergebnis.md`.
 
+**TEST heruntergefahren (2026-03-19):** TEST-Umgebung dauerhaft auf 0 Pods skaliert. Laufende Compute-Ressourcen (TEST-Anteil) entfallen. PVCs bleiben erhalten (minimale Speicherkosten). Helm Release bleibt bestehen fuer Reaktivierung. Scale-to-Zero CronJobs entfernt (nicht mehr noetig).
+
 **Nicht enthalten:** Block Storage (Vespa PVCs 20-50 GB/Env + OpenSearch PVCs 30 GB/Env), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG Flex Preis enthalten.
 
 **Preisquelle:** StackIT Preisliste v1.0.36 (03.03.2026), verifiziert gegen StackIT Calculator (2026-03-05). Alle Preise netto.
@@ -445,8 +447,8 @@
 | PROD-Sizing | 2x g1a.8d reicht fuer ~150 gleichzeitige User |
 | CPU bei Vollauslastung (150 User) | ~40% |
 | RAM bei Vollauslastung (150 User) | ~25% |
-| Aktuelle CPU-Auslastung (DEV+TEST, 2026-03-16) | ~5,8% (930m). Nach Downgrade auf g1a.4d: ~13% von ~7.400m |
-| Aktuelle RAM-Auslastung (DEV+TEST, 2026-03-16) | ~32% (18.399 Mi). Nach Downgrade auf g1a.4d: ~66% von ~28 Gi |
+| Aktuelle CPU-Auslastung (DEV, 2026-03-19) | Nur DEV aktiv (TEST heruntergefahren seit 2026-03-19). Nach Downgrade auf g1a.4d: ~7.400m gesamt, deutlich entlastet |
+| Aktuelle RAM-Auslastung (DEV, 2026-03-19) | Nur DEV aktiv (TEST heruntergefahren seit 2026-03-19). ~28 Gi gesamt, deutlich entlastet |
 | HPA | Nicht aktiv, nachruestbar |
 | Upload-Limit (Ingress Controller) | **20 MB** (`proxy-body-size: "20m"` in values-common.yaml, XREF-007, 2026-03-15) |
 | Upload-Limit (interner NGINX, Chart) | 5 GB (Upstream Helm Chart, READ-ONLY — Port 1024 nicht exponiert) |
@@ -454,7 +456,7 @@
 | Upload-Limit (Backend App) | **20 MB** (`MAX_FILE_SIZE_BYTES: "20971520"` in values-common.yaml, Defense-in-Depth XREF-007, 2026-03-16) |
 | Request-Rate-Limiting (SEC-09) | **10 r/s per IP**, burst 50, nodelay. NGINX `limit_req_zone` + `limit_req` in values-common.yaml + values-prod.yaml. HTTP 429 bei Ueberschreitung. `externalTrafficPolicy: Local` fuer Client-IP Erhaltung. (2026-03-16) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
-| Vespa PVC | 20 GB DEV/TEST, 50 GB PROD (kein separates Backup, Zombie-Mode — kein aktiver Index-Traffic) |
+| Vespa PVC | 20 GB DEV (TEST heruntergefahren, PVC erhalten), 50 GB PROD (kein separates Backup, Zombie-Mode — kein aktiver Index-Traffic) |
 | OpenSearch PVC | 30 GB pro Umgebung (primaerer Document Index) |
 | Gemessene RTO (DEV, 17 MB DB) | Technisch: 3:16 Min, Operativ: 7:15 Min (Test 2026-03-15) |
 | Letzter Restore-Test | 2026-03-15 (DEV, ✅ 100% Integritaet) |

@@ -38,7 +38,7 @@
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
-  - 📋 Scope: DEV live, TEST live, PROD **HTTPS LIVE** (2026-03-17).
+  - 📋 Scope: DEV live, TEST dauerhaft heruntergefahren (seit 2026-03-19), PROD **HTTPS LIVE** (2026-03-17).
 - **Phase 2 PROD:** ✅ **PROD DEPLOYED** (2026-03-11)
   - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
   - ✅ K8s v1.33.9, Flatcar 4459.2.3, 2x g1a.8d (8 vCPU, 32 GB RAM)
@@ -55,43 +55,16 @@
   - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
   - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
   - ⏳ NetworkPolicies onyx-prod: DNS/TLS erledigt, NetworkPolicies als naechstes (vollstaendiges Set inkl. Basis-Policies)
-- **Phase 2 TEST:** ✅ **TEST LIVE** (2026-03-03)
+- **Phase 2 TEST:** **DAUERHAFT HERUNTERGEFAHREN** (seit 2026-03-19)
+  - ⏸️ **Status:** 0 Pods. Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht. Helm Release + PVCs + Secrets bleiben erhalten. Reaktivierung jederzeit moeglich (`kubectl scale` oder `helm upgrade`).
+  - ⏸️ Scale-to-Zero CronJobs + RBAC entfernt (nicht mehr noetig). `deployment/k8s/cost-optimization/` geloescht.
+  - ✅ War LIVE von 2026-03-03 bis 2026-03-19 (15 Pods, 8 Celery-Worker, Standard Mode)
   - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
-  - ✅ Node Pool auf 2 Nodes skaliert (DEV + TEST)
-  - ✅ Terraform apply TEST: PG Flex `vob-test` + Bucket `vob-test`
-  - ✅ Namespace `onyx-test` + Image Pull Secret + DB `onyx` angelegt
+  - ✅ Terraform apply TEST: PG Flex `vob-test` + Bucket `vob-test` (bleiben erhalten)
+  - ✅ Namespace `onyx-test` + Image Pull Secret + DB `onyx` (bleiben erhalten)
   - ✅ GitHub Environment `test` + 5 Secrets (PG, Redis, S3)
-  - ✅ Helm Release `onyx-test`: 15 Pods Running (8 Celery-Worker, Standard Mode) (+ redis-operator im default NS), Health Check OK
-  - ✅ TEST erreichbar unter `https://test.chatbot.voeb-service.de`
-  - ✅ Eigene IngressClass `nginx-test` (Conflict mit DEV vermieden)
-  - ✅ values-test.yaml Commit + Push (2026-03-03)
-  - ✅ CI/CD workflow_dispatch TEST verifiziert — Build + Deploy grün (2026-03-03)
-  - ✅ LLM: 4 Chat-Modelle in TEST konfiguriert (GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1) (2026-03-08)
-  - ✅ Enterprise-Dokumentation überarbeitet: Betriebskonzept, Sicherheitskonzept, Meilensteinplan, ADR-004, README, CHANGELOG (2026-03-03)
-  - ✅ Upstream-Merge: 415 Commits von onyx-foss, 0 Core-Konflikte, DEV grün (2026-03-03)
-  - ✅ DNS/TLS-Runbook erstellt (docs/runbooks/dns-tls-setup.md)
-  - ✅ Fork-Management Doku überarbeitet (8-Schritte-Anleitung)
-  - ✅ Embedding TEST: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-08, 4096 Dim, multilingual). DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
-  - ✅ DNS: A-Records gesetzt + Cloudflare DNS-only verifiziert (2026-03-05)
-  - ✅ TLS/HTTPS DEV: **LIVE** (2026-03-09) — `https://dev.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. cert-manager DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill. Details: docs/runbooks/dns-tls-setup.md
-  - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
-  - ✅ Cloud-Infrastruktur-Audit durchgeführt (2026-03-04): 10 CRITICAL, 18 HIGH, ~20 MEDIUM, ~12 LOW
-  - ✅ 3 Security Quick Wins deployed (2026-03-05): C6 (DB_READONLY→Secret), H8 (Security-Header), H11 (Script Injection Fix)
-  - ✅ C5/SEC-03: NetworkPolicies auf DEV + TEST applied (2026-03-05) — 5 Policies, Cross-NS-Isolation verifiziert
-  - ✅ Node-Upgrade g1a.4d → g1a.8d (ADR-005, 2026-03-06), dann Downgrade g1a.8d → g1a.4d (Kostenoptimierung, 2026-03-16): 4 vCPU, 16 GB RAM, 100 GB Disk pro Node
-  - ✅ Upstream-Merge: 100 Commits (PR #3), 1 Konflikt (AGENTS.md), Core-Patch intakt (2026-03-06)
-  - ✅ Celery: 8 separate Worker-Deployments (Lightweight Mode entfernt, Upstream PR #9014)
-  - ✅ DEV: 16 Pods Running | TEST: 15 Pods Running (redeployed 2026-03-06)
-  - ✅ PR-CI-Workflow (PR #4): helm-validate + build-backend + build-frontend (2026-03-06)
-  - ✅ CI-Checks: helm-validate + build-backend + build-frontend (auf Push-to-main). Kein PR-Requirement (Solo-Dev, 2026-03-09 vereinfacht)
-  - ✅ K8s v1.32 → v1.33 Upgrade (2026-03-08): v1.33.8, Flatcar 4459.2.1, Terraform apply 9m40s, DEV 16/16 + TEST 15/15 Pods Running
-  - ✅ **Monitoring-Stack deployed** (2026-03-10): kube-prometheus-stack (Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter). 11 Pods in `monitoring` NS, 6 Targets, 20 Alert-Rules. Details: `docs/referenz/monitoring-konzept.md`
-  - ✅ Health Probes aktiviert (2026-03-10): API httpGet `/health:8080`, Webserver tcpSocket `:3000`. DEV + TEST deployed. Lesson: Next.js hat keinen HTTP-Health-Endpoint.
-  - ✅ Monitoring NetworkPolicies (2026-03-10): 7 Policies in `monitoring` NS + 3 Policies in `onyx-dev`/`onyx-test`
-  - ✅ **Monitoring Exporter deployed** (2026-03-10): postgres_exporter v0.19.1 + redis_exporter v1.82.0. 4 Exporter-Pods, 4 Scrape-Targets UP, 11 neue Alert-Rules. PG + Redis Metriken fließen. Grafana Dashboards importiert (ID 14114 + 763).
-  - ✅ Alerting: Microsoft Teams Webhook konfiguriert (2026-03-11). 20 Alert-Rules → Teams-Kanal. `send_resolved: true` für Entwarnung.
-  - ✅ **Kostenoptimierung DEV/TEST** (2026-03-16): Resource Requests um 40-80% gesenkt, Node-Downgrade g1a.8d → g1a.4d (4 vCPU, 16 GB), TEST Scale-to-Zero CronJobs (Mo-Fr 08-18 UTC). Kosten: 868 → 585 EUR/Mo (-283 EUR). Details: `audit-output/kostenoptimierung-ergebnis.md`
-  - ✅ **Upstream-Sync #3** (2026-03-18): Helm-Neuinstallation DEV wegen Chart-Inkompatibilität. 4 fehlende Alembic-Migrationen manuell per SQL nachgezogen (user timestamps, voice_provider, hooks, hierarchy_node). Neue LB-IP `188.34.118.222`.
+  - ✅ TLS/HTTPS TEST war LIVE (2026-03-09) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2
+  - ✅ Alle historischen Meilensteine (Monitoring, Upstream-Merges, K8s-Upgrade, etc.) bleiben dokumentiert
 - **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
@@ -105,7 +78,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. DNS DEV A-Record Update (`188.34.118.222`) — wartet auf Leif/GlobVill → 2. DEV Login verifizieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17). Entra ID weiterhin blockiert.
+**1. DNS DEV A-Record Update (`188.34.118.222`) — wartet auf Leif/GlobVill → 2. DEV Login verifizieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17). TEST dauerhaft heruntergefahren (2026-03-19). Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

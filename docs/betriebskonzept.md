@@ -2,7 +2,7 @@
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
 **Letzte Aktualisierung**: 2026-03-19
-**Version**: 0.7
+**Version**: 0.7.1
 
 ---
 
@@ -66,12 +66,12 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
-│  │  │ Namespace: onyx-test (TEST)                           │  │ │
+│  │  │ Namespace: onyx-test (TEST) — HERUNTERGEFAHREN          │  │ │
 │  │  │ IngressClass: nginx-test                              │  │ │
 │  │  │ LoadBalancer IP: 188.34.118.201                       │  │ │
-│  │  │ Status: Scale-to-Zero (heruntergefahren)              │  │ │
-│  │  │                                                       │  │ │
-│  │  │  (Heruntergefahren / Scale-to-Zero, kein aktiver Betrieb)      │  │ │
+│  │  │ Status: Dauerhaft heruntergefahren (seit 2026-03-19)  │  │ │
+│  │  │         0 Pods. Helm Release + PVCs + Secrets erhalten│  │ │
+│  │  │         Reaktivierung: kubectl scale / helm upgrade   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -170,7 +170,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 **Architektur-Aenderung**: Das primaere Document Index Backend wurde von Vespa auf **OpenSearch 3.4.0** umgestellt. Vespa laeuft weiterhin im **Zombie-Mode** (minimale Ressourcen, nur fuer Celery Readiness Check benoetigt). Dual-Write ist aktiv (Dokumente werden in beide Backends geschrieben), aber Retrieval erfolgt ausschliesslich ueber OpenSearch.
 
 - **DEV**: OpenSearch Single-Node deployed (300m/1.5Gi), 17 Pods gesamt
-- **TEST**: Heruntergefahren (Scale-to-Zero)
+- **TEST**: Dauerhaft heruntergefahren (seit 2026-03-19, 0 Pods, PVCs erhalten)
 - **PROD**: OpenSearch noch nicht deployed, Vespa weiterhin im Zombie-Mode
 
 **Hintergrund**: Vespa erfordert als Celery-Dependency einen laufenden Pod (Readiness Check). Ein vollstaendiges Entfernen ist ohne Upstream-Code-Aenderung nicht moeglich. Daher bleibt Vespa mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi PROD) bestehen, waehrend OpenSearch das aktive Retrieval uebernimmt.
@@ -196,10 +196,10 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 | Umgebung | Cluster | Namespace | LB IP | Egress IP | Status |
 |----------|---------|-----------|-------|-----------|--------|
 | DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). Temporaer HTTP (DNS-Update ausstehend bei GlobVill) |
-| TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | Scale-to-Zero (heruntergefahren) |
+| TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | **Dauerhaft heruntergefahren** (seit 2026-03-19). 0 Pods. Helm Release + PVCs + Secrets erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`. |
 | PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 19 Pods. OpenSearch noch nicht deployed |
 
-**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS temporaer nicht verfuegbar (DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden, wartet auf GlobVill). PROD HTTPS LIVE seit 2026-03-17.
+**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS temporaer nicht verfuegbar (DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden, wartet auf GlobVill). PROD HTTPS LIVE seit 2026-03-17. **TEST dauerhaft heruntergefahren seit 2026-03-19** (0 Pods, Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich). Scale-to-Zero CronJobs wurden entfernt (nicht mehr noetig).
 
 ---
 
@@ -826,7 +826,7 @@ Für dringende Fixes auf einer bereits released Version:
 
 ### Skalierungsstrategie
 
-**DEV/TEST**: Keine Autoskalierung. 1 Replica pro Service. Standard Celery Mode (8 separate Worker).
+**DEV**: Keine Autoskalierung. 1 Replica pro Service. Standard Celery Mode (8 separate Worker). **TEST**: Dauerhaft heruntergefahren (seit 2026-03-19). 0 Pods, Helm Release + PVCs erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`.
 
 **PROD (deployed)**:
 - Eigener SKE-Cluster `vob-prod` (ADR-004), 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)
@@ -848,7 +848,7 @@ Für dringende Fixes auf einer bereits released Version:
 
 | Umgebung | Monatliche Kosten (ca.) | Nodes | Anmerkung |
 |----------|------------------------|-------|-----------|
-| DEV + TEST | ~585 EUR/Mo | 2x g1a.4d (geteilt) | TEST Scale-to-Zero (Mo-Fr 08-18 UTC) |
+| DEV + TEST | ~585 EUR/Mo | 2x g1a.4d (geteilt) | TEST dauerhaft heruntergefahren (seit 2026-03-19, 0 Pods). Compute-Kosten nur DEV. PVCs + PG + Bucket bleiben (Speicherkosten minimal). |
 | PROD | ~964 EUR/Mo | 2x g1a.8d (eigener Cluster) | Inkl. PG Flex 4.8 HA + Monitoring |
 | **Gesamt** | **~1.549 EUR/Mo** | | |
 
@@ -1057,12 +1057,13 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
 **Letzte Aktualisierung**: 2026-03-19
-**Version**: 0.7
+**Version**: 0.7.1
 
 ### Versionshistorie
 
 | Version | Datum | Autor | Aenderungen |
 |---------|-------|-------|-------------|
+| 0.7.1 | 2026-03-19 | COFFEESTUDIOS | TEST dauerhaft heruntergefahren (0 Pods), Scale-to-Zero CronJobs entfernt |
 | 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch aktiviert, Vespa Zombie-Mode, DEV HTTP-Workaround |
 | 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 8 Cross-Ref-Fixes (XREF-002/010/013/014/015/016/019/034) |
 | 0.6 | 2026-03-12 | COFFEESTUDIOS | PROD-Cluster (vob-prod) durchgaengig eingearbeitet: Architektur, Infrastruktur, Monitoring (9 Pods, Teams PROD-Kanal, Sidecar-Dashboards), PG Flex 4.8 HA, Backup/PITR, Wartungsfenster 03:00-05:00 UTC, Skalierung/Kapazitaet (150 User), SEC-06 Phase 2, Environment Protection |
