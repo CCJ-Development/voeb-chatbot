@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-19 15:03:32
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-19 15:03:10
+--- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-22 15:13:48
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-19 15:08:37
 @@ -15,7 +15,7 @@
  import SidebarBody from "@/sections/sidebar/SidebarBody";
  import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";

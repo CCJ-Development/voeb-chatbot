@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/layout.tsx.original	2026-03-20 12:44:23
-+++ web/src/app/layout.tsx	2026-03-20 14:01:35
+--- backend/ext/_core_originals/layout.tsx.original	2026-03-22 15:13:48
++++ web/src/app/layout.tsx	2026-03-22 14:55:16
 @@ -31,6 +31,7 @@
  import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
  import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";

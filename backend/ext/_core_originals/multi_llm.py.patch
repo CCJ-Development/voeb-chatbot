@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/multi_llm.py.original	2026-03-17 18:43:48
-+++ backend/onyx/llm/multi_llm.py	2026-03-09 16:18:13
+--- backend/ext/_core_originals/multi_llm.py.original	2026-03-22 15:13:47
++++ backend/onyx/llm/multi_llm.py	2026-03-22 15:13:13
 @@ -368,6 +368,21 @@
          user_identity: LLMUserIdentity | None = None,
          client: "HTTPHandler | None" = None,
@@ -22,7 +22,7 @@
          # Lazy loading to avoid memory bloat for non-inference flows
          from onyx.llm.litellm_singleton import litellm
          from litellm.exceptions import Timeout, RateLimitError
-@@ -662,7 +677,26 @@
+@@ -666,7 +681,26 @@
              # Track LLM cost for Onyx-managed API keys
              if model_response.usage:
                  self._track_llm_cost(model_response.usage)
@@ -49,7 +49,7 @@
              return model_response
          finally:
              if client is not None:
-@@ -742,6 +776,29 @@
+@@ -746,6 +780,29 @@
                  if model_response.usage:
                      self._track_llm_cost(model_response.usage)
  
