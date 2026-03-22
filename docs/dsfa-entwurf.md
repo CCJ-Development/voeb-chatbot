@@ -59,7 +59,7 @@ Der VÖB Service Chatbot ist ein KI-gestütztes Wissensmanagement-Tool für den 
 
 - **Abfrage interner Wissensbestände** mittels natürlichsprachlicher Eingaben (Retrieval-Augmented Generation / RAG)
 - **Interaktion mit Large Language Models** zur Beantwortung fachlicher Fragen
-- **Dokumentensuche und -zusammenfassung** über eine vektorbasierte Suchinfrastruktur (Vespa)
+- **Dokumentensuche und -zusammenfassung** über eine vektorbasierte Suchinfrastruktur (OpenSearch als primaerer Document Index, Vespa als Vektor-Backend)
 
 Der Chatbot trifft **keine autonomen Entscheidungen** über Personen und wird **nicht** für Kreditwürdigkeitsprüfungen, Leistungsbewertungen oder andere Verarbeitungen mit rechtlicher Wirkung eingesetzt.
 
@@ -77,9 +77,9 @@ Der Chatbot trifft **keine autonomen Entscheidungen** über Personen und wird **
 |----------------|-----------|-------------|-------------|-----------------|
 | **Identitätsdaten** | Name, E-Mail-Adresse | Hoch | PostgreSQL (StackIT Managed PG Flex) | Art. 6(1)(f) |
 | **Authentifizierungsdaten** | Passwort-Hash, Session-Cookies, OIDC-Token (geplant) | Kritisch | PostgreSQL | Art. 6(1)(f) |
-| **Konversationsdaten** | Chat-Eingaben, LLM-Antworten, Konversationshistorie | Hoch | PostgreSQL + Vespa (in-cluster) | Art. 6(1)(f) |
+| **Konversationsdaten** | Chat-Eingaben, LLM-Antworten, Konversationshistorie | Hoch | PostgreSQL + OpenSearch/Vespa (in-cluster) | Art. 6(1)(f) |
 | **Nutzungsmetriken (ext-token)** | Token-Verbrauch pro User, pro Modell, Timestamps, Request-Anzahl | Mittel | PostgreSQL (Tabelle `ext_token_usage`) | Art. 6(1)(f) |
-| **Dokumente / Embeddings** | Hochgeladene Dateien, Vektor-Embeddings der Dokumenteninhalte | Mittel | Object Storage (StackIT S3) + Vespa PersistentVolume | Art. 6(1)(f) |
+| **Dokumente / Embeddings** | Hochgeladene Dateien, Vektor-Embeddings der Dokumenteninhalte | Mittel | Object Storage (StackIT S3) + OpenSearch/Vespa PersistentVolume | Art. 6(1)(f) |
 | **IP-Adressen** | Client-IP in Webserver-/API-Logs | Niedrig | Kubernetes Pod-Logs (nicht persistent) | Art. 6(1)(f) |
 | **Session-Daten** | Session-ID, Login-Zeitpunkt | Niedrig | Redis (in-cluster, Cache) | Art. 6(1)(f) |
 | **API-Schlüssel** | StackIT AI Model Serving Token | Kritisch | PostgreSQL (Onyx-DB, Klartext) | Art. 6(1)(f) |
@@ -105,8 +105,9 @@ NGINX Ingress Controller (StackIT SKE Cluster, EU01 Frankfurt)
           │       Branding-Config, System Prompts, Session-State
           │       Verschlüsselung: AES-256 at-rest (StackIT Default)
           │
-          ├──→ Vespa (In-Cluster, PersistentVolume)
-          │       Vektor-Embeddings, Dokumenten-Chunks
+          ├──→ OpenSearch / Vespa (In-Cluster, PersistentVolume)
+          │       Document Index, Vektor-Embeddings, Dokumenten-Chunks
+          │       OpenSearch = primaerer Document Index, Vespa = Vektor-Backend
           │       Verschlüsselung: AES-256 at-rest (StackIT StorageClass)
           │
           ├──→ Redis (In-Cluster)
@@ -166,7 +167,7 @@ NGINX Ingress Controller (StackIT SKE Cluster, EU01 Frankfurt)
 | Frontend | Next.js 16, React 19, TypeScript | StackIT SKE Cluster EU01 |
 | Backend | Python 3.11, FastAPI 0.133.1, SQLAlchemy 2.0 | StackIT SKE Cluster EU01 |
 | Datenbank | PostgreSQL 16 (StackIT Managed PG Flex) | StackIT EU01 Frankfurt |
-| Vektorspeicher | Vespa 8.609.39 (In-Cluster StatefulSet) | StackIT SKE Cluster EU01 |
+| Document Index | OpenSearch (primaer) + Vespa (Vektor-Backend, In-Cluster StatefulSet) | StackIT SKE Cluster EU01 |
 | Cache | Redis 7.0.15 (In-Cluster) | StackIT SKE Cluster EU01 |
 | Objektspeicher | StackIT Object Storage (S3-kompatibel) | StackIT EU01 Frankfurt |
 | LLM-Dienst | StackIT AI Model Serving (vLLM-Backend) | StackIT EU01 Frankfurt |

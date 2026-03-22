@@ -16,7 +16,7 @@
 | Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
 | Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
 | Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 20 |
+| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 19 |
 | API Replicas | 1 | 1 | 2 (HA) |
 | Web Replicas | 1 | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
@@ -430,6 +430,7 @@
 | ext-branding | EXT_BRANDING_ENABLED | Deployed (DEV+TEST, 2026-03-08) | /admin/ext/branding |
 | ext-token | EXT_TOKEN_LIMITS_ENABLED | Deployed (DEV+TEST, 2026-03-09) | /admin/ext/token-usage |
 | ext-prompts | EXT_CUSTOM_PROMPTS_ENABLED | Deployed (DEV+TEST, 2026-03-09) | /admin/ext/system-prompts |
+| ext-i18n | EXT_I18N_ENABLED + NEXT_PUBLIC_EXT_I18N_ENABLED | Deployed (DEV, 2026-03-22) | -- (Frontend-only) |
 | ext-analytics | EXT_ANALYTICS_ENABLED | UEBERSPRUNGEN (in ext-token enthalten) | -- |
 | ext-rbac | EXT_RBAC_ENABLED | BLOCKIERT (Entra ID) | -- |
 | ext-access | EXT_DOC_ACCESS_ENABLED | BLOCKIERT (braucht RBAC) | -- |

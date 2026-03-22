@@ -774,10 +774,10 @@ monitoring-kube-state-metrics-6b4845b878-5lznr           1/1     Running   ~5h
 monitoring-prometheus-node-exporter-x2gzh                1/1     Running   ~5h (Node 1)
 monitoring-prometheus-node-exporter-x2xn9                1/1     Running   ~5h (Node 2)
 postgres-exporter-dev-748c958db6-wt7hw                   1/1     Running   ~10m
-postgres-exporter-test-9ff8dd4fd-xflqk                   1/1     Running   ~10m
+postgres-exporter-test-9ff8dd4fd-xflqk                   1/1     Running   ~10m   # HINWEIS: TEST heruntergefahren seit 2026-03-19 (Exporter laeuft noch, Target onyx-test hat 0 Pods)
 prometheus-monitoring-kube-prometheus-prometheus-0       2/2     Running   ~5h
 redis-exporter-dev-74c6f94956-ndd7j                      1/1     Running   ~10m
-redis-exporter-test-7648fc9f-cvzdb                       1/1     Running   ~10m
+redis-exporter-test-7648fc9f-cvzdb                       1/1     Running   ~10m   # HINWEIS: TEST heruntergefahren seit 2026-03-19 (Exporter laeuft noch, Target onyx-test hat 0 Pods)
 ```
 
 ### NetworkPolicies

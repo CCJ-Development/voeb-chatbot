@@ -43,6 +43,11 @@ web/src/ext/                 ← Frontend-Extensions
   pages/                     ← Eigene Seiten (/ext/...)
   hooks/                     ← React Hooks
   lib/api.ts                 ← API-Client
+  i18n/                      ← Deutsche Lokalisierung (ext-i18n)
+    translations.ts          ← Dictionary (~250 Strings)
+    useTranslation.ts        ← Hook: t() Funktion
+    TranslationProvider.tsx  ← DOM-Observer (Schicht 2)
+    index.ts                 ← Re-Exports
 ```
 
 ## Konfiguration (Lokal / Docker)

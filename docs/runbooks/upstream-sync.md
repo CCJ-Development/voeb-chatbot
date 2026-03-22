@@ -18,7 +18,7 @@ git diff main..upstream/main --stat | tail -5               # Geaenderte Dateien
 
 ### 2. Hook-Dateien auf Konflikte pruefen
 
-Unsere 7 gepatchten Core-Dateien (MUESSEN nach jedem Sync intakt sein):
+Unsere 8 gepatchten Core-Dateien (MUESSEN nach jedem Sync intakt sein):
 
 ```bash
 for FILE in \
@@ -242,6 +242,7 @@ curl -s https://dev.chatbot.voeb-service.de/api/health
 | 2026-03-03 | 415 | 4 (AGENTS, .claude, Chart) | ~5 Min | Erster Sync |
 | 2026-03-06 | 100 | 1 (AGENTS) | ~5 Min | PR #3 |
 | 2026-03-17 | 161 | 3 (AGENTS, CODEOWNERS, AdminSidebar) | ~45 Min | PR #18, AdminSidebar Rewrite |
+| 2026-03-22 | 71 | 0 (alle auto-merged) | ~10 Min | PR #19, Chart 0.4.36, tool_choice-Fix, Hook-System, 8 OpenSearch-Commits |
 
 ## NIEMALS
 

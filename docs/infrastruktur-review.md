@@ -153,6 +153,8 @@ Dies ist bei minimalem Datenvolumen (< 1 GB indexiert) vertretbar, wird aber bei
 | PROD | 963,96 | 11.567,52 |
 | **Gesamt** | **1.832,43** | **21.989,16** |
 
+> **Update 2026-03-16:** Kostenoptimierung umgesetzt. Aktuelle Kosten: DEV+TEST 585 EUR/Mo, PROD 964 EUR/Mo, **Gesamt: 1.549 EUR/Mo** (-15%). Details: `docs/referenz/technische-parameter.md` (SSOT). Die obige Tabelle zeigt die PRE-Optimierung (vor Node-Downgrade g1a.8d -> g1a.4d und TEST-Herunterfahren).
+
 #### Nicht enthaltene Kosten
 
 | Posten | Geschätzter Betrag | Status |

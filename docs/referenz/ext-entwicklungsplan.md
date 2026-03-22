@@ -31,8 +31,11 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           ├── Phase 4f: ext-rbac ← BLOCKIERT (Entra ID)
           │     Rollen, Gruppen, Zugriffssteuerung
           │
-          └── Phase 4g: ext-access ← BLOCKIERT (RBAC)
-                Document Access Control pro Gruppe
+          ├── Phase 4g: ext-access ← BLOCKIERT (RBAC)
+          │     Document Access Control pro Gruppe
+          │
+          └── Phase 4h: ✅ ext-i18n (DEV deployed 2026-03-22)
+                Deutsche Lokalisierung (~250 Strings), TranslationProvider + t()-Calls
 ```
 
 ---
@@ -246,21 +249,22 @@ alembic upgrade head
 
 ## Core-Datei-Aenderungen: Gesamtuebersicht
 
-| Core | Datei | ext-branding | ext-token | ext-prompts | ext-rbac | ext-access |
-|------|-------|:---:|:---:|:---:|:---:|:---:|
-| #1 | `main.py` | — | — | — | — | — |
-| #2 | `multi_llm.py` | — | ✅ | — | — | — |
-| #3 | `access.py` | — | — | — | ✅ | ✅ |
-| #4 | `layout.tsx` | ✅ | — | — | — | — |
-| #5 | `header/` | ✅ | — | — | — | — |
-| #6 | `constants.ts` | ✅ | — | — | — | — |
-| #7 | `prompt_utils.py` | — | — | ✅ | — | — |
-| #8 | `LoginText.tsx` | ✅ | — | — | — | — |
-| #9 | `AuthFlowContainer.tsx` | ✅ | — | — | — | — |
-| #10 | `AdminSidebar.tsx` | ✅ | ✅ | ✅ | — | — |
+| Core | Datei | ext-branding | ext-token | ext-prompts | ext-rbac | ext-access | ext-i18n |
+|------|-------|:---:|:---:|:---:|:---:|:---:|:---:|
+| #1 | `main.py` | — | — | — | — | — | — |
+| #2 | `multi_llm.py` | — | ✅ | — | — | — | — |
+| #3 | `access.py` | — | — | — | ✅ | ✅ | — |
+| #4 | `layout.tsx` | ✅ | — | — | — | — | ✅ |
+| #5 | `header/` | ✅ | — | — | — | — | — |
+| #6 | `constants.ts` | ✅ | — | — | — | — | — |
+| #7 | `prompt_utils.py` | — | — | ✅ | — | — | — |
+| #8 | `LoginText.tsx` | ✅ | — | — | — | — | — |
+| #9 | `AuthFlowContainer.tsx` | ✅ | — | — | — | — | — |
+| #10 | `AdminSidebar.tsx` | ✅ | ✅ | ✅ | — | — | — |
 
 > CORE #1 (`main.py`) ist bereits gepatcht (Extension Framework Hook, Phase 4a).
 > Alle Patches folgen dem try/except-Pattern aus `.claude/rules/core-dateien.md`.
+> **8 von 10 Core-Dateien sind gepatcht** (Stand 2026-03-22). Ungepatcht: access.py (#3, wartet auf ext-rbac), header/ (#5, wartet auf ext-rbac).
 
 ---
 

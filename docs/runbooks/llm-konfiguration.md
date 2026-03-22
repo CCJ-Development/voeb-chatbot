@@ -271,6 +271,8 @@ Diese Fehlermeldung tritt auf, wenn ein aelteres Onyx-Release verwendet wird, da
 
 **Loesung:** Diese Modelle koennen aktuell nicht mit Onyx verwendet werden. Nur Modelle mit Tool-Calling-Support nutzen (siehe Kompatibilitaetstabelle oben).
 
+> **Hinweis (2026-03-22):** Upstream-Sync #4 (2026-03-22) enthaelt `fix(llm): tool_choice wird nicht mehr gesendet wenn keine Tools vorhanden (#9224)`. Dieser Fix koennte Gemma 3 und Mistral-Nemo auf StackIT freischalten — TESTEN!
+
 ### Rate Limits (StackIT)
 
 | Limit | Wert |

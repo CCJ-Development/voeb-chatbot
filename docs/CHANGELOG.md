@@ -19,6 +19,14 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Feinkonzept: `docs/technisches-feinkonzept/ext-i18n.md`
   - Analyse: `docs/analyse-lokalisierung-de.md`
 
+- [Upstream] **Sync #4** (2026-03-22): 71 Commits, Chart 0.4.35 → 0.4.36, 0 Konflikte
+  - `fix(llm)`: tool_choice nicht senden wenn keine Tools vorhanden (#9224) — koennte Gemma/Mistral auf StackIT freischalten
+  - `feat(opensearch)`: Shards/Replicas konfigurierbar, Hybrid Search, Keyword+Semantic Retrieval
+  - `feat(hook)`: Neues Hook-System (API, Executor, DB CRUD) — Onyx baut Plugin-Architektur
+  - `fix(agents)`: Agents standardmaessig privat (#9465)
+  - `feat(admin)`: Groups Page mit Cards (#9453)
+  - `chore`: Next.js 16.1.7, api_server Resource Limits konfigurierbar
+
 ### Changed
 - [Infra] **TEST-Umgebung dauerhaft heruntergefahren** (2026-03-19)
   - Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht

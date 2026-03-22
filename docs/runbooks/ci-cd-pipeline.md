@@ -2,7 +2,9 @@
 
 > **Workflow**: `.github/workflows/stackit-deploy.yml`
 > **Verifiziert**: 2026-03-02 (Run #5, Commit `ea70a11`)
-> **Letzte Änderung**: 2026-03-15
+> **Letzte Änderung**: 2026-03-22
+>
+> **Hinweis:** Seit Upstream-Sync #4 (2026-03-22) existiert `.github/workflows/storybook-deploy.yml` (Storybook Deploy). Harmlos, kann bei Bedarf deaktiviert werden.
 
 ---
 
@@ -66,7 +68,7 @@ Push auf main / workflow_dispatch
 | Image | Quelle | Registry | Warum |
 |-------|--------|----------|-------|
 | `onyx-backend` | `./backend` Dockerfile | StackIT Registry | Unser Fork-Code (Extensions, Config) |
-| `onyx-web-server` | `./web` Dockerfile | StackIT Registry | Unser Fork-Code (Frontend) |
+| `onyx-web-server` | `./web` Dockerfile | StackIT Registry | Unser Fork-Code (Frontend). Build-Args: `NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true`, `NEXT_PUBLIC_EXT_I18N_ENABLED=true` (seit ext-i18n, 2026-03-22) |
 | `onyx-model-server` | Docker Hub Upstream | `docker.io/onyxdotapp` | Identisch mit Upstream — kein eigener Build nötig |
 
 ### Was wird NICHT gebaut

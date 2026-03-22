@@ -525,9 +525,9 @@ pg_acl = [
 
 - NGINX Ingress Controller läuft in-cluster (Helm Subchart)
 - DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.118.222` (neue IP seit Helm-Neuinstallation 2026-03-18), **temporaer HTTP** (DNS A-Record zeigt noch auf alte IP `188.34.74.187`, Update bei GlobVill angefragt). HSTS deaktiviert fuer DEV.
-- TEST: Eigene IngressClass `nginx-test`, LoadBalancer-IP `188.34.118.201`, TLS aktiv (Konflikt-Vermeidung im Shared Cluster)
+- TEST: **Dauerhaft heruntergefahren** (seit 2026-03-19, 0 Pods). Helm Release + TLS-Zertifikat bleiben erhalten. Bei Reaktivierung: IngressClass `nginx-test`, LB-IP `188.34.118.201`, TLS war aktiv.
 - PROD: LoadBalancer-IP `188.34.92.162`, **HTTPS LIVE** seit 2026-03-17
-- TLS: **Aktiv** (TEST+PROD) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare
+- TLS: **Aktiv** (PROD) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare. DEV temporaer HTTP.
 
 **Implementierte Security-Header** (H8, 2026-03-05):
 - `X-Content-Type-Options: nosniff` — verhindert MIME-Type-Sniffing
@@ -769,7 +769,7 @@ Zusätzlich bieten die StackIT-seitigen Rate Limits (200K TPM, 30-600 RPM) einen
 
 ### Extension Layer als Sicherheitsmaßnahmen
 
-Die folgenden Extension-Module (`backend/ext/` + `web/src/ext/`) sind auf allen Environments (DEV, TEST, PROD) deployed und dienen als ergänzende Sicherheitsmaßnahmen. Alle Extensions sind hinter Feature Flags geschützt und beeinflussen bei Deaktivierung nicht die Onyx-Kernfunktionalität.
+Die folgenden Extension-Module (`backend/ext/` + `web/src/ext/`) sind auf DEV und PROD deployed und dienen als ergänzende Sicherheitsmaßnahmen (TEST ist seit 2026-03-19 dauerhaft heruntergefahren — bei Reaktivierung werden Extensions automatisch mit deployed). Alle Extensions sind hinter Feature Flags geschützt und beeinflussen bei Deaktivierung nicht die Onyx-Kernfunktionalität.
 
 | Modul | Feature Flag | Sicherheitsfunktion | Status |
 |-------|-------------|---------------------|--------|
