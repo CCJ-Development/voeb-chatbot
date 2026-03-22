@@ -26,10 +26,11 @@ paths:
 - VERBOTEN: Bestehende Checks verändern/entfernen
 - MERGE: Additiv, einfach einfügen
 
-## 4. `web/src/app/layout.tsx` — Navigation
-- ERLAUBT: Nav-Items für ext/-Seiten, Conditional Rendering, Import ext/-Komponenten
+## 4. `web/src/app/layout.tsx` — Navigation + i18n
+- ERLAUBT: Nav-Items für ext/-Seiten, Conditional Rendering, Import ext/-Komponenten, TranslationProvider Wrapper, `lang="de"`
 - VERBOTEN: Bestehende Nav/Layout umbauen
-- MERGE: Nav-Items einfügen
+- MERGE: Nav-Items einfügen, TranslationProvider-Import + Wrapper beibehalten
+- HINWEIS: ext-i18n (2026-03-22): 1 Import (`TranslationProvider`), `lang="de"` statt `lang="en"`, `<TranslationProvider>` um den Content-div gewickelt
 
 ## 5. `web/src/components/header/` — Branding
 - ERLAUBT: Logo/Titel durch Config-Werte ersetzen mit Fallback auf Original
