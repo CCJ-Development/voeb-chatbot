@@ -1,7 +1,18 @@
 --- backend/ext/_core_originals/LoginText.tsx.original	2026-03-17 18:43:48
-+++ web/src/app/auth/login/LoginText.tsx	2026-03-08 18:38:54
-@@ -12,9 +12,11 @@
-         Welcome to{" "}
++++ web/src/app/auth/login/LoginText.tsx	2026-03-20 14:01:35
+@@ -3,18 +3,21 @@
+ import React, { useContext } from "react";
+ import { SettingsContext } from "@/providers/SettingsProvider";
+ import Text from "@/refresh-components/texts/Text";
++import { t } from "@/ext/i18n";
+ 
+ export default function LoginText() {
+   const settings = useContext(SettingsContext);
+   return (
+     <div className="w-full flex flex-col ">
+       <Text as="p" headingH2 text05>
+-        Welcome to{" "}
++        {t("Welcome to")}{" "}
          {(settings && settings?.enterpriseSettings?.application_name) || "Onyx"}
        </Text>
 -      <Text as="p" text03 mainUiMuted>

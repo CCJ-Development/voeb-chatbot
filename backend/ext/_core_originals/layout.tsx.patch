@@ -1,0 +1,44 @@
+--- backend/ext/_core_originals/layout.tsx.original	2026-03-20 12:44:23
++++ web/src/app/layout.tsx	2026-03-20 14:01:35
+@@ -31,6 +31,7 @@
+ import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
+ import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
+ import AppHealthBanner from "@/sections/AppHealthBanner";
++import { TranslationProvider } from "@/ext/i18n";
+ 
+ const inter = Inter({
+   subsets: ["latin"],
+@@ -84,7 +85,7 @@
+ 
+   const getPageContent = async (content: React.ReactNode) => (
+     <html
+-      lang="en"
++      lang="de"
+       className={`${inter.variable} ${hankenGrotesk.variable}`}
+       suppressHydrationWarning
+     >
+@@ -127,14 +128,16 @@
+           enableSystem
+           disableTransitionOnChange
+         >
+-          <div className="text-text min-h-screen bg-background">
+-            <TooltipProvider>
+-              <PHProvider>
+-                <AppHealthBanner />
+-                {content}
+-              </PHProvider>
+-            </TooltipProvider>
+-          </div>
++          <TranslationProvider>
++            <div className="text-text min-h-screen bg-background">
++              <TooltipProvider>
++                <PHProvider>
++                  <AppHealthBanner />
++                  {content}
++                </PHProvider>
++              </TooltipProvider>
++            </div>
++          </TranslationProvider>
+         </ThemeProvider>
+       </body>
+     </html>

@@ -1,6 +1,6 @@
 --- backend/ext/_core_originals/AuthFlowContainer.tsx.original	2026-03-17 18:43:48
-+++ web/src/components/auth/AuthFlowContainer.tsx	2026-03-08 18:38:54
-@@ -1,5 +1,10 @@
++++ web/src/components/auth/AuthFlowContainer.tsx	2026-03-20 14:01:35
+@@ -1,5 +1,11 @@
 +"use client";
 +
  import Link from "next/link";
@@ -8,10 +8,11 @@
  import { OnyxIcon } from "../icons/icons";
 +import { useContext } from "react";
 +import { SettingsContext } from "@/providers/SettingsProvider";
++import { t } from "@/ext/i18n";
  
  export default function AuthFlowContainer({
    children,
-@@ -10,17 +15,33 @@
+@@ -10,22 +16,38 @@
    authState?: "signup" | "login" | "join";
    footerContent?: React.ReactNode;
  }) {
@@ -43,7 +44,28 @@
            {footerContent ?? (
              <>
 -              New to Onyx?{" "}
-+              New to {appName || "Onyx"}?{" "}
++              {t("New to")} {appName || "Onyx"}?{" "}
                <Link
                  href="/auth/signup"
                  className="text-text-05 mainUiAction underline transition-colors duration-200"
+               >
+-                Create an Account
++                {t("Create an Account")}
+               </Link>
+             </>
+           )}
+@@ -33,12 +55,12 @@
+       )}
+       {authState === "signup" && (
+         <div className="text-sm mt-6 text-center w-full text-text-03 mainUiBody mx-auto">
+-          Already have an account?{" "}
++          {t("Already have an account?")}{" "}
+           <Link
+             href="/auth/login?autoRedirectToSignup=false"
+             className="text-text-05 mainUiAction underline transition-colors duration-200"
+           >
+-            Sign In
++            {t("Sign In")}
+           </Link>
+         </div>
+       )}

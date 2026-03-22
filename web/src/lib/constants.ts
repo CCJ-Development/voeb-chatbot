@@ -111,7 +111,7 @@ export const CREDENTIAL_JSON = "credential_json";
 
 export const MODAL_ROOT_ID = "modal-root";
 
-export const UNNAMED_CHAT = "New Chat";
+export const UNNAMED_CHAT = "Neuer Chat";
 
 export const DEFAULT_AGENT_ID = 0;
 export const GENERAL_ASSISTANT_ID = -1;

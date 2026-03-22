@@ -120,8 +120,13 @@ Die Upstream-Struktur kann sich aendern. Aktuell (Stand 2026-03-17):
 git show upstream/main:backend/onyx/main.py > backend/ext/_core_originals/main.py.original
 diff -u backend/ext/_core_originals/main.py.original backend/onyx/main.py \
   > backend/ext/_core_originals/main.py.patch
-# Analog fuer alle 7 Dateien (main.py, multi_llm.py, prompt_utils.py,
-# constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx)
+# Analog fuer alle 8 Dateien (main.py, multi_llm.py, prompt_utils.py,
+# constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx)
+#
+# WICHTIG: layout.tsx nicht vergessen (ext-i18n TranslationProvider + lang="de")
+git show upstream/main:web/src/app/layout.tsx > backend/ext/_core_originals/layout.tsx.original
+diff -u backend/ext/_core_originals/layout.tsx.original web/src/app/layout.tsx \
+  > backend/ext/_core_originals/layout.tsx.patch
 ```
 
 ### 9. Validierung
@@ -139,6 +144,13 @@ grep -q "ext-branding" web/src/sections/sidebar/AdminSidebar.tsx && echo "OK: Si
 grep -q "ext-token" web/src/sections/sidebar/AdminSidebar.tsx && echo "OK: Sidebar-Token"
 grep -q "ext-prompts" web/src/sections/sidebar/AdminSidebar.tsx && echo "OK: Sidebar-Prompts"
 grep -q "COPY.*ext" backend/Dockerfile && echo "OK: Dockerfile"
+# ext-i18n (seit 2026-03-22):
+grep -q "TranslationProvider" web/src/app/layout.tsx && echo "OK: TranslationProvider"
+grep -q 'lang="de"' web/src/app/layout.tsx && echo "OK: lang=de"
+grep -q 'from.*@/ext/i18n' web/src/app/auth/login/LoginText.tsx && echo "OK: i18n LoginText"
+grep -q 'from.*@/ext/i18n' web/src/components/auth/AuthFlowContainer.tsx && echo "OK: i18n AuthFlow"
+grep -q "Neuer Chat" web/src/lib/constants.ts && echo "OK: UNNAMED_CHAT deutsch"
+grep -q "I18N" web/Dockerfile && echo "OK: web/Dockerfile i18n ARG"
 
 # Helm Template (mit Dummy-Secrets):
 helm template test deployment/helm/charts/onyx/ \
@@ -194,7 +206,21 @@ gh pr merge <NR> -R CCJ-Development/voeb-chatbot --merge --delete-branch
 gh workflow run stackit-deploy.yml -f environment=dev -R CCJ-Development/voeb-chatbot
 ```
 
-### 12. Health Check
+### 12. ext-i18n Dictionary pruefen
+
+Nach jedem Sync: Pruefen ob Upstream neue/geaenderte englische Strings eingefuehrt hat.
+
+```bash
+# Geaenderte user-facing Dateien identifizieren (Login, Chat, Sidebar, Settings)
+git diff HEAD~1 --name-only | grep -E "(auth|chat|sidebar|settings|input|modal)" | grep "\.tsx$"
+
+# Neue Strings in diesen Dateien suchen (Stichproben)
+# Falls neue englische Strings → web/src/ext/i18n/translations.ts erweitern
+```
+
+Geschaetzter Aufwand: ~30-60 Minuten pro Sync.
+
+### 13. Health Check
 
 ```bash
 # Pods pruefen

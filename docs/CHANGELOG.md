@@ -8,6 +8,17 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- [ext-i18n] **Deutsche Lokalisierung** der User-facing UI (~95% Abdeckung)
+  - Drei-Schichten-Architektur: ext-branding (6 Strings) + t()-Calls in Core-Patches (5 Strings) + TranslationProvider DOM-Observer (~240 Strings)
+  - Core #4 (layout.tsx) neu gepatcht: TranslationProvider Wrapper + `lang="de"`
+  - Core #6 (constants.ts): `UNNAMED_CHAT = "Neuer Chat"`
+  - Core #8 + #9 (LoginText, AuthFlowContainer): `t()`-Import fuer SSR-Uebersetzung
+  - web/Dockerfile + CI/CD: Build-Arg `NEXT_PUBLIC_EXT_I18N_ENABLED`
+  - Admin-Bereich bleibt bewusst Englisch (nur CCJ/Niko)
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-i18n.md`
+  - Analyse: `docs/analyse-lokalisierung-de.md`
+
 ### Changed
 - [Infra] **TEST-Umgebung dauerhaft heruntergefahren** (2026-03-19)
   - Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht

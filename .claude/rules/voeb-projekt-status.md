@@ -74,6 +74,7 @@
   - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
+  - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. Lokal getestet (2026-03-22). DEV/PROD Deploy offen.
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 

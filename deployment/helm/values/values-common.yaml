@@ -206,6 +206,7 @@ configMap:
   # Feature Flags für Custom Extensions (backend/ext/ + web/src/ext/)
   EXT_ENABLED: "true"
   EXT_BRANDING_ENABLED: "true"
+  EXT_I18N_ENABLED: "true"
   # OpenSearch: AKTIVIERT (Upstream-Default seit v3.0.0).
   # OPENSEARCH_HOST, ENABLE_OPENSEARCH_INDEXING_FOR_ONYX etc. werden automatisch
   # vom Chart-Template gesetzt wenn opensearch.enabled=true (configmap.yaml:15-20).

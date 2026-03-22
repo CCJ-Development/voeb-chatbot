@@ -5,6 +5,7 @@ import Image from "next/image";
 import { OnyxIcon } from "../icons/icons";
 import { useContext } from "react";
 import { SettingsContext } from "@/providers/SettingsProvider";
+import { t } from "@/ext/i18n";
 
 export default function AuthFlowContainer({
   children,
@@ -41,12 +42,12 @@ export default function AuthFlowContainer({
         <div className="text-sm mt-6 text-center w-full text-text-03 mainUiBody mx-auto">
           {footerContent ?? (
             <>
-              New to {appName || "Onyx"}?{" "}
+              {t("New to")} {appName || "Onyx"}?{" "}
               <Link
                 href="/auth/signup"
                 className="text-text-05 mainUiAction underline transition-colors duration-200"
               >
-                Create an Account
+                {t("Create an Account")}
               </Link>
             </>
           )}
@@ -54,12 +55,12 @@ export default function AuthFlowContainer({
       )}
       {authState === "signup" && (
         <div className="text-sm mt-6 text-center w-full text-text-03 mainUiBody mx-auto">
-          Already have an account?{" "}
+          {t("Already have an account?")}{" "}
           <Link
             href="/auth/login?autoRedirectToSignup=false"
             className="text-text-05 mainUiAction underline transition-colors duration-200"
           >
-            Sign In
+            {t("Sign In")}
           </Link>
         </div>
       )}

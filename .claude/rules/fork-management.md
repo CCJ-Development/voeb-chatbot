@@ -258,12 +258,37 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |
 | `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage+Prompts+EE-Hidden | ~30 | Mittel |
 | `backend/Dockerfile` | COPY | 3 | Mittel |
-| `deployment/docker_compose/env.template` | Append | 27 | Niedrig |
+| `deployment/docker_compose/env.template` | Append | 30 | Niedrig |
+| `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
+| `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.
 
+### `web/Dockerfile` (seit ext-i18n)
+
+4 Zeilen: ARG/ENV `NEXT_PUBLIC_EXT_I18N_ENABLED` in beiden Stages (builder + runner).
+
+**Bei Upstream-Konflikt:**
+```bash
+git checkout --theirs web/Dockerfile
+# In BEIDEN Stages (nach letztem NEXT_PUBLIC ARG/ENV Block):
+# ARG NEXT_PUBLIC_EXT_I18N_ENABLED
+# ENV NEXT_PUBLIC_EXT_I18N_ENABLED=${NEXT_PUBLIC_EXT_I18N_ENABLED}
+```
+
+**Risiko:** Niedrig — Insertion-Stelle ist stabil (Ende der NEXT_PUBLIC-ARG-Liste).
+
+### ext-i18n: Dictionary-Pflege bei Upstream-Sync
+
+Nach jedem Upstream-Sync: Dictionary (`web/src/ext/i18n/translations.ts`) pruefen.
+1. Neue englische Strings in user-facing Screens → Dictionary erweitern
+2. Geaenderte Strings → Dictionary-Keys aktualisieren
+3. `web/src/app/layout.tsx` Patch pruefen: TranslationProvider + `lang="de"` intakt?
+
+**Geschaetzter Aufwand:** ~1 Stunde pro Sync.
+
 ## Warum "Extend, don't modify" funktioniert
-- Max 10 vorhersagbare Core-Konflikte + 2 bekannte Infra-Stellen
+- Max 10 vorhersagbare Core-Konflikte + 4 bekannte Infra-Stellen
 - Unser ext_-Code: Zero Konflikte (Ordner existiert nicht in Upstream)
 - Unsere Infra (Terraform, Helm Values, CI/CD): Zero Konflikte (Pfade existieren nicht in Upstream)
 - Unsere Docs: Zero Konflikte (existieren nicht in Upstream)
