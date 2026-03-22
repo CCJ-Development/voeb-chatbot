@@ -38,6 +38,21 @@ auth:
     values:
       db_readonly_user: "db_readonly_user"
       db_readonly_password: ""  # → GitHub Secret per --set im Workflow
+  # --- Entra ID (OIDC) ---
+  # Client ID + Client Secret werden als K8s Secret bereitgestellt.
+  # Werte kommen per --set im CI/CD Workflow (GitHub Secrets).
+  oauth:
+    enabled: true
+    secretName: "onyx-oauth"
+    values:
+      oauth_client_id: ""       # → GitHub Secret ENTRA_CLIENT_ID (per --set)
+      oauth_client_secret: ""   # → GitHub Secret ENTRA_CLIENT_SECRET (per --set)
+  # JWT Signing Secret für OIDC State Token (CSRF-Schutz)
+  userauth:
+    enabled: true
+    secretName: "onyx-userauth"
+    values:
+      user_auth_secret: ""  # → GitHub Secret USER_AUTH_SECRET (per --set, openssl rand -hex 32)
 
 configMap:
   # PostgreSQL (StackIT Managed Flex 2.4)
@@ -57,9 +72,12 @@ configMap:
   DOMAIN: "dev.chatbot.voeb-service.de"
   WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 
-  # Auth: Basic Auth (Entra ID kommt in Phase 3)
-  AUTH_TYPE: "basic"
-  REQUIRE_EMAIL_VERIFICATION: "false"  # DEV: Kein SMTP konfiguriert
+  # Auth: Microsoft Entra ID (OIDC) — Phase 3
+  # OPENID_CONFIG_URL wird per --set im CI/CD konstruiert (enthält Tenant ID aus GitHub Secret).
+  # Redirect URI: https://dev.chatbot.voeb-service.de/auth/oidc/callback
+  AUTH_TYPE: "oidc"
+  OIDC_PKCE_ENABLED: "true"
+  REQUIRE_EMAIL_VERIFICATION: "false"  # OIDC: Nicht relevant (Entra ID verifiziert)
 
   # VÖB Extension Framework (EXT_ENABLED + EXT_BRANDING_ENABLED in values-common.yaml)
   EXT_TOKEN_LIMITS_ENABLED: "true"

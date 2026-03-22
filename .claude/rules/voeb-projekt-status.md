@@ -70,7 +70,7 @@
   - ✅ GitHub Environment `test` + 5 Secrets (PG, Redis, S3)
   - ✅ TLS/HTTPS TEST war LIVE (2026-03-09) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2
   - ✅ Alle historischen Meilensteine (Monitoring, Upstream-Merges, K8s-Upgrade, etc.) bleiben dokumentiert
-- **Phase 3 (Auth):** ⏳ Blockiert — wartet auf Entra ID von VÖB
+- **Phase 3 (Auth):** ⏳ **IN ARBEIT** — Entra ID Credentials erhalten, DEV-Konfiguration vorbereitet, wartet auf GitHub Secrets + Deploy-Test
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
@@ -84,16 +84,17 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. ✅ CI/CD Workflow aktualisiert (OpenSearch --set) → 2. ✅ DNS DEV A-Record korrekt (Leif hat aktualisiert) → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD auf DEV-Stand (Chart 0.4.36, OpenSearch, ext-i18n) seit 2026-03-22. TEST dauerhaft heruntergefahren (2026-03-19). Entra ID weiterhin blockiert.
+**1. ✅ Entra ID Credentials erhalten → 2. ⏳ GitHub Secrets setzen (4 Secrets, DEV Environment) → 3. DEV Deploy + Login-Test → 4. VÖB: Redirect URI + Permissions bestaetigen → 5. NetworkPolicies PROD → 6. M1-Abnahmeprotokoll.** PROD auf DEV-Stand (Chart 0.4.36, OpenSearch, ext-i18n) seit 2026-03-22. TEST dauerhaft heruntergefahren (2026-03-19).
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
-| Entra ID Zugangsdaten | VÖB IT | Phase 3 |
+| ~~Entra ID Zugangsdaten~~ | ~~VÖB IT~~ | ~~Phase 3~~ |
 
 ## Erledigte Blocker
 | Blocker | Gelöst | Datum |
 |---------|--------|-------|
+| Entra ID Zugangsdaten | ✅ VÖB hat App Registration erstellt, 3 Credentials erhalten, Niko als B2B-Gast aufgenommen | 2026-03-22 |
 | DNS DEV A-Record `188.34.118.222` | ✅ Leif hat A-Record aktualisiert, DEV HTTPS LIVE | 2026-03-22 |
 | DNS PROD (A-Record + ACME-CNAME) | ✅ Leif hat DNS-Eintraege gesetzt, PROD HTTPS LIVE | 2026-03-17 |
 | TLS/HTTPS: ACME-Challenge CNAMEs bei GlobVill | ✅ Leif hat CNAMEs gesetzt, DEV HTTPS LIVE | 2026-03-09 |

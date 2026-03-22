@@ -21,6 +21,11 @@
 #     - S3_SECRET_ACCESS_KEY       (StackIT Object Storage)
 #     - DB_READONLY_PASSWORD       (PG Readonly User für Knowledge Graph)
 #     - REDIS_PASSWORD             (Redis Standalone Passwort)
+#   Nur DEV (Entra ID OIDC):
+#     - ENTRA_CLIENT_ID            (Entra ID App Registration: Anwendungs-ID)
+#     - ENTRA_CLIENT_SECRET        (Entra ID App Registration: Geheimer Schlüssel)
+#     - ENTRA_TENANT_ID            (Entra ID: Verzeichnis-ID, für OPENID_CONFIG_URL)
+#     - USER_AUTH_SECRET            (JWT Signing Secret: openssl rand -hex 32)
 #   Nur PROD:
 #     - OPENSEARCH_PASSWORD        (OpenSearch Admin-Passwort, NICHT Chart-Default nutzen)
 #
@@ -229,6 +234,10 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=${{ secrets.S3_ACCESS_KEY_ID }}" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --set "auth.dbreadonly.values.db_readonly_password=${{ secrets.DB_READONLY_PASSWORD }}" \
+            --set "auth.oauth.values.oauth_client_id=${{ secrets.ENTRA_CLIENT_ID }}" \
+            --set "auth.oauth.values.oauth_client_secret=${{ secrets.ENTRA_CLIENT_SECRET }}" \
+            --set "auth.userauth.values.user_auth_secret=${{ secrets.USER_AUTH_SECRET }}" \
+            --set "configMap.OPENID_CONFIG_URL=https://login.microsoftonline.com/${{ secrets.ENTRA_TENANT_ID }}/v2.0/.well-known/openid-configuration" \
             --wait --timeout 15m
 
       # DEV: Recreate-Strategie per kubectl patch fuer Deployments ohne strategy-Block in Values.

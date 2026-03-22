@@ -6,6 +6,19 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- [Auth] **Entra ID (OIDC) DEV-Konfiguration** vorbereitet
+  - Microsoft Entra ID als SSO-Provider (AUTH_TYPE=oidc, PKCE aktiviert)
+  - Helm Values: auth.oauth + auth.userauth Secrets aktiviert (values-dev.yaml)
+  - CI/CD: 4 neue --set Flags im deploy-dev Job (Client ID, Secret, Tenant ID, Auth Secret)
+  - 4 GitHub Secrets (DEV Environment): ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET, ENTRA_TENANT_ID, USER_AUTH_SECRET
+  - Runbook: docs/runbooks/entra-id-setup.md (Komplett-Anleitung)
+  - Login: "Continue with OIDC SSO" ersetzt E-Mail/Passwort (exklusiv)
+  - JIT User Provisioning: Erster OIDC-Login = ADMIN, weitere = BASIC
+  - Niko als B2B-Gast in VÖB-Tenant aufgenommen (n.ivanov@scale42.de)
+
 ## [2026-03-22]
 
 ### Added
