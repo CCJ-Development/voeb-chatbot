@@ -9,12 +9,17 @@ Verifizierte Step-by-Step-Anleitungen für Setup, Deployment und Betrieb der Sta
 | # | Runbook | Status | Beschreibung |
 |---|---------|--------|-------------|
 | 1 | [stackit-projekt-setup.md](./stackit-projekt-setup.md) | ✅ Verifiziert | StackIT CLI, Service Account, Container Registry |
-| 2 | [stackit-postgresql.md](./stackit-postgresql.md) | ✅ Verifiziert | DB anlegen, Readonly-User, Managed PG Einschränkungen |
-| 3 | [helm-deploy.md](./helm-deploy.md) | ✅ Verifiziert | Helm Install/Upgrade, Secrets, Redis, Troubleshooting |
-| 4 | [ci-cd-pipeline.md](./ci-cd-pipeline.md) | ✅ Verifiziert | CI/CD Pipeline: Deploy, Rollback, Secrets, Troubleshooting |
-| 5 | [dns-tls-setup.md](./dns-tls-setup.md) | ✅ Verifiziert (LIVE seit 2026-03-09) | DNS A-Records, cert-manager, Let's Encrypt, Helm TLS |
-| 6 | [llm-konfiguration.md](./llm-konfiguration.md) | ✅ Verifiziert | LLM Chat + Embedding Modelle, StackIT AI Model Serving |
-| 7 | [rollback-verfahren.md](./rollback-verfahren.md) | ✅ Verifiziert | Entscheidungsbaum, Helm/DB-Rollback, Kommunikation, Post-Mortem |
+| 2 | [stackit-postgresql.md](./stackit-postgresql.md) | ✅ Verifiziert (2026-03-22) | DB anlegen, Readonly-User, Backup/Restore, Alembic |
+| 3 | [helm-deploy.md](./helm-deploy.md) | ✅ Verifiziert (2026-03-22) | Helm Install/Upgrade, Secrets, OpenSearch, Troubleshooting |
+| 4 | [ci-cd-pipeline.md](./ci-cd-pipeline.md) | ✅ Verifiziert (2026-03-22) | CI/CD Pipeline: Deploy, Rollback, Secrets, Troubleshooting |
+| 5 | [dns-tls-setup.md](./dns-tls-setup.md) | ✅ Verifiziert (2026-03-22) | DNS, cert-manager, Let's Encrypt — DEV+PROD HTTPS LIVE |
+| 6 | [llm-konfiguration.md](./llm-konfiguration.md) | ✅ Verifiziert (2026-03-22) | LLM Chat + Embedding Modelle, StackIT AI Model Serving |
+| 7 | [rollback-verfahren.md](./rollback-verfahren.md) | ✅ Verifiziert (2026-03-22) | Entscheidungsbaum, Helm/DB-Rollback, Kommunikation |
+| 8 | [upstream-sync.md](./upstream-sync.md) | ✅ Verifiziert (2026-03-22) | Upstream-Merge, Hook-Check, Validierung, Deploy |
+| 9 | [opensearch-troubleshooting.md](./opensearch-troubleshooting.md) | ✅ Neu (2026-03-22) | Cluster Health, Retrieval-Switch, Recovery |
+| 10 | [ip-schutz-helm.md](./ip-schutz-helm.md) | ✅ Neu (2026-03-22) | LB-IP bei Helm-Neuinstallation schuetzen |
+| 11 | [alert-antwort.md](./alert-antwort.md) | ✅ Neu (2026-03-22) | Was tun bei Alert? Diagnose + Loesung pro Alert |
+| 12 | [secret-rotation.md](./secret-rotation.md) | ✅ Neu (2026-03-22) | Rotation aller PROD Secrets + Kubeconfig + Certs |
 
 ## Konventionen
 

@@ -97,6 +97,7 @@ git branch -d feature/{thema}  # Lokalen Branch aufräumen
 | `ext-branding` | Branding Modul |
 | `ext-prompts` | Custom Prompts Modul |
 | `ext-access` | Access Control Modul |
+| `ext-i18n` | Internationalisierung / Lokalisierung |
 | `stackit-infra` | Terraform, StackIT Ressourcen |
 | `helm` | Helm Charts, Values |
 | `ci` | GitHub Actions, CI/CD Pipelines |

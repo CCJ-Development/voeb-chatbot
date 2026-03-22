@@ -78,9 +78,11 @@ kubectl get pods -n onyx-{env}
 | TEST | `--wait --timeout 15m` | Nein (manuell) | 5 Revisionen |
 | PROD | `--wait --timeout 15m` | Nein (manuell) | 5 Revisionen |
 
-**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 16+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit. Ein manueller Rollback ist nötig, wenn der Deploy fehlschlägt oder die Anwendung danach fehlerhaft ist.
+**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17 Pods (DEV) / 20 Pods (PROD) mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit. Ein manueller Rollback ist nötig, wenn der Deploy fehlschlägt oder die Anwendung danach fehlerhaft ist.
 
-**Nach Helm Rollback:** Recreate-Strategie geht verloren (wurde per `kubectl patch` gesetzt, nicht in Helm Values). Nach Rollback Strategie manuell neu patchen oder CI/CD Re-Deploy ausloesen.
+**Nach Helm Rollback — Recreate-Strategie:** Die Recreate-Strategie wird per `kubectl patch` nach jedem Helm Deploy gesetzt (nicht in den Helm Values). Nach einem `helm rollback` geht dieser Patch verloren — Deployments fallen auf die Helm-Default-Strategie (RollingUpdate) zurück. Das fuehrt bei Onyx zu DB-Connection-Pool-Exhaustion (alte + neue Pods gleichzeitig → `max_connections` erschoepft). **Nach jedem Rollback** Strategie manuell neu setzen oder CI/CD Re-Deploy ausloesen.
+
+**Nach Helm Rollback — OpenSearch-Indizes:** Bei Major-Version-Rollbacks (z.B. Onyx v3 → v2) koennen OpenSearch-Indices inkompatibel sein (Index-Format aendert sich zwischen Major-Versionen). Vor einem solchen Rollback OpenSearch-Status pruefen (`GET /_cat/indices?v`) und ggf. Re-Indexierung planen. Bei Minor-Version-Rollbacks (z.B. Patch-Releases) ist das Risiko vernachlaessigbar.
 
 ---
 

@@ -26,7 +26,7 @@
   - ✅ PostgreSQL: DB `onyx` angelegt, `db_readonly_user` per Terraform
   - ✅ Object Storage: Credentials erstellt, in Helm Secrets konfiguriert
   - ✅ Helm Release `onyx-dev`: Alle 16 Pods (8 Celery-Worker, Standard Mode) 1/1 Running (Helm-Neuinstallation 2026-03-18 nach Upstream-Sync)
-  - ⏳ DEV Login blockiert: DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden (alt: `188.34.74.187`). Mail an Leif/GlobVill gesendet (2026-03-18).
+  - ✅ DNS DEV A-Record aktualisiert auf `188.34.118.222` durch Leif/GlobVill (verifiziert 2026-03-22). DEV HTTPS LIVE.
   - ✅ Runbooks: stackit-projekt-setup.md, stackit-postgresql.md, helm-deploy.md
   - ✅ CI/CD Pipeline: Produktionsreif (2026-03-02) — Parallel-Build ~8 Min, SHA-gepinnte Actions, Smoke Tests, Concurrency
   - ✅ Upstream-Workflows: 21 Onyx-Workflows deaktiviert, nur StackIT Deploy + Upstream Check aktiv
@@ -39,22 +39,27 @@
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
   - 📋 Scope: DEV live, TEST dauerhaft heruntergefahren (seit 2026-03-19), PROD **HTTPS LIVE** (2026-03-17).
-- **Phase 2 PROD:** ✅ **PROD DEPLOYED** (2026-03-11)
+- **Phase 2 PROD:** ✅ **PROD AKTUALISIERT** (2026-03-22, Helm Rev 4)
   - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
   - ✅ K8s v1.33.9, Flatcar 4459.2.3, 2x g1a.8d (8 vCPU, 32 GB RAM)
   - ✅ cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY
   - ✅ Redis Operator + Image Pull Secret in `onyx-prod`
-  - ✅ GitHub Environment `prod` + Required Reviewer + 6 Secrets
-  - ✅ Helm Release `onyx-prod`: 19 Pods Running (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa, Redis, 2×Model, NGINX)
-  - ✅ API Health OK: `http://188.34.92.162/api/health` → 200
+  - ✅ GitHub Environment `prod` + Required Reviewer + 7 Secrets (inkl. OPENSEARCH_PASSWORD)
+  - ✅ Helm Release `onyx-prod`: **20 Pods Running** (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa Zombie, **OpenSearch**, Redis, 2×Model, NGINX). Chart 0.4.36, Image `df049fa`.
+  - ✅ **OpenSearch PROD: LIVE** (2026-03-22) — Primary Document Index, Retrieval aktiviert, Cluster yellow (erwartet bei Single-Node), sicheres Passwort (nicht Chart-Default)
+  - ✅ **Vespa: Zombie-Mode** (2026-03-22) — 100m/512Mi Requests, 4Gi Limit. Nur fuer Celery Readiness Check.
+  - ✅ **ext-i18n PROD: LIVE** (2026-03-22) — ~250 Strings Deutsch, ~95% user-facing UI
+  - ✅ API Health OK: `https://chatbot.voeb-service.de/api/health` → 200
   - ✅ SEC-06 Phase 2: `runAsNonRoot: true` aktiv (Vespa = dokumentierte Ausnahme)
   - ✅ PG ACL: Egress `188.34.73.72/32` + Admin
   - ✅ Maintenance-Window: 03:00-05:00 UTC (O8, eigenes Fenster)
   - ✅ Kubeconfig gueltig bis 2026-06-09 (90 Tage)
   - ✅ DNS: A-Record + ACME-CNAME gesetzt durch Leif/GlobVill (2026-03-17)
   - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
+  - ✅ SEC-09: Rate-Limiting 10r/s, Upload-Limit 20 MB, MAX_FILE_SIZE_BYTES Backend-Limit
   - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
   - ⏳ NetworkPolicies onyx-prod: DNS/TLS erledigt, NetworkPolicies als naechstes (vollstaendiges Set inkl. Basis-Policies)
+  - ✅ CI/CD: `--set opensearch_admin_password` ergaenzt (2026-03-22), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
 - **Phase 2 TEST:** **DAUERHAFT HERUNTERGEFAHREN** (seit 2026-03-19)
   - ⏸️ **Status:** 0 Pods. Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht. Helm Release + PVCs + Secrets bleiben erhalten. Reaktivierung jederzeit moeglich (`kubectl scale` oder `helm upgrade`).
   - ⏸️ Scale-to-Zero CronJobs + RBAC entfernt (nicht mehr noetig). `deployment/k8s/cost-optimization/` geloescht.
@@ -74,22 +79,22 @@
   - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
   - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
   - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
-  - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. Lokal getestet (2026-03-22). DEV/PROD Deploy offen.
+  - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. **DEV + PROD deployed (2026-03-22).**
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. DNS DEV A-Record Update (`188.34.118.222`) — wartet auf Leif/GlobVill → 2. DEV Login verifizieren → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD HTTPS LIVE (2026-03-17). TEST dauerhaft heruntergefahren (2026-03-19). Entra ID weiterhin blockiert.
+**1. ✅ CI/CD Workflow aktualisiert (OpenSearch --set) → 2. ✅ DNS DEV A-Record korrekt (Leif hat aktualisiert) → 3. NetworkPolicies PROD (vollstaendiges Set inkl. Basis-Policies) → 4. CI/CD Re-Run (gruener Lauf) → 5. M1-Abnahmeprotokoll.** PROD auf DEV-Stand (Chart 0.4.36, OpenSearch, ext-i18n) seit 2026-03-22. TEST dauerhaft heruntergefahren (2026-03-19). Entra ID weiterhin blockiert.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
-| DNS DEV A-Record `188.34.118.222` | Leif/GlobVill | DEV Login (HTTPS blockiert, HTTP Cookie-Problem) |
 | Entra ID Zugangsdaten | VÖB IT | Phase 3 |
 
 ## Erledigte Blocker
 | Blocker | Gelöst | Datum |
 |---------|--------|-------|
+| DNS DEV A-Record `188.34.118.222` | ✅ Leif hat A-Record aktualisiert, DEV HTTPS LIVE | 2026-03-22 |
 | DNS PROD (A-Record + ACME-CNAME) | ✅ Leif hat DNS-Eintraege gesetzt, PROD HTTPS LIVE | 2026-03-17 |
 | TLS/HTTPS: ACME-Challenge CNAMEs bei GlobVill | ✅ Leif hat CNAMEs gesetzt, DEV HTTPS LIVE | 2026-03-09 |
 | Cloudflare API Token Auth Error (10000) | ✅ Leif hat Permissions erweitert, ClusterIssuers READY | 2026-03-07 |

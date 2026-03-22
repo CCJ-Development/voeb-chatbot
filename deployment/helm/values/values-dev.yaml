@@ -53,12 +53,9 @@ configMap:
   S3_ENDPOINT_URL: "https://object.storage.eu01.onstackit.cloud"
   S3_FILE_STORE_BUCKET_NAME: "vob-dev"
 
-  # Domain + TLS
-  # TEMPORAER: HTTP statt HTTPS bis DNS A-Record auf neue LB-IP 188.34.118.222 zeigt.
-  # DNS-Update angefragt bei Leif/GlobVill (2026-03-18).
-  # Wenn DNS da: WEB_DOMAIN zurueck auf "https://dev.chatbot.voeb-service.de"
+  # Domain + TLS (HTTPS LIVE seit 2026-03-22, DNS korrekt auf 188.34.118.222)
   DOMAIN: "dev.chatbot.voeb-service.de"
-  WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"
+  WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
 
   # Auth: Basic Auth (Entra ID kommt in Phase 3)
   AUTH_TYPE: "basic"
@@ -156,27 +153,9 @@ celery_worker_user_file_processing:
 letsencrypt:
   enabled: false  # Eigener ClusterIssuer (DNS-01 via Cloudflare), nicht Chart-eigener (HTTP-01)
 
-# --- NGINX: HSTS TEMPORAER DEAKTIVIERT ---
-# HSTS aus values-common.yaml (max-age=3600) erzwingt HTTPS im Browser.
-# Solange DNS nicht auf die neue LB-IP 188.34.118.222 zeigt, muss DEV per HTTP laufen.
-# Wenn DNS da: Diesen Block KOMPLETT ENTFERNEN (values-common.yaml greift dann).
-nginx:
-  controller:
-    config:
-      hsts: "false"
-      hsts-max-age: "0"
-      # Kopie von values-common.yaml http-snippet OHNE HSTS-Header.
-      # ACHTUNG: Bei Aenderungen an common http-snippet muss dieser Block synchron bleiben!
-      http-snippet: |
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-        # HSTS DEAKTIVIERT (DEV): DNS zeigt auf alte IP, HTTPS nicht moeglich.
-        # add_header Strict-Transport-Security "max-age=3600; includeSubDomains" always;
-        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
-        include /etc/nginx/custom-snippets/upstreams.conf;
-        include /etc/nginx/custom-snippets/server.conf;
+# --- NGINX: values-common.yaml greift (HSTS max-age=3600, Security Headers, Rate-Limiting) ---
+# HSTS-Override war temporaer noetig (2026-03-18 bis 2026-03-22) weil DNS auf alte LB-IP zeigte.
+# DNS ist seit 2026-03-22 korrekt auf 188.34.118.222, HTTPS LIVE. Block entfernt.
 
 # --- Ingress: NGINX Ingress Controller ---
 ingress:

@@ -16,10 +16,10 @@
 | Ressource | Spec | Geschätzte Kosten |
 |-----------|------|-------------------|
 | 1× SKE Cluster | 1 Node Pool (`devtest`) | ~72 EUR/Monat |
-| 2× Worker Nodes | g1a.8d (8 vCPU, 32 GB RAM) je | ~566 EUR/Monat |
+| 2× Worker Nodes | g1a.4d (4 vCPU, 16 GB RAM) je — Downgrade 2026-03-16 | ~503 EUR/Monat |
 | 2× PostgreSQL Flex 2.4 | Single (2 CPU, 4 GB, 20 GB SSD) je | ~60 EUR/Monat |
 | 2× Object Storage Bucket | `vob-dev`, `vob-test` | ~10 EUR/Monat |
-| **TOTAL DEV + TEST** | | **~868 EUR/Monat** |
+| **TOTAL DEV + TEST** | | **~585 EUR/Monat** (nach Downgrade 2026-03-16) |
 
 ---
 
@@ -31,7 +31,7 @@
 | MinIO (in-cluster) | **StackIT Object Storage** (extern) | S3-kompatibel, kein Overhead |
 | Docker Hub Images | **StackIT Container Registry** | Datensouveränität |
 | OpenAI / LiteLLM | **StackIT AI Model Serving** (`openai/gpt-oss-120b`) | Daten bleiben in DE, OpenAI-kompatible API |
-| Vespa (in-cluster) | **Vespa (in-cluster)** — bleibt | Kein managed Vespa verfügbar |
+| Vespa (in-cluster) | **OpenSearch (in-cluster) + Vespa (Zombie-Mode)** | OpenSearch primäres Index-Backend seit Upstream-Sync #4 (2026-03-22); Vespa nur noch für Celery Readiness Check aktiv |
 | Redis (in-cluster) | **Redis (in-cluster)** — bleibt | Lightweight genug |
 
 ---
@@ -59,7 +59,7 @@ deployment/
   helm/
     charts/onyx/                      ← BESTEHEND — READ-ONLY, nicht anfassen
     values/                           ← NEU
-      values-common.yaml              ← PG aus, MinIO aus, Vespa+Redis an
+      values-common.yaml              ← PG aus, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an
       values-dev.yaml                 ← 1 Replica pro Service, 8 Celery-Worker (Standard Mode)
       values-test.yaml                ← NEU — TEST analog DEV, eigene Credentials
       values-prod.yaml              ← PROD: Platzhalter (noch nicht deployed)
@@ -187,7 +187,7 @@ terraform apply tfplan
 Das Modul in `deployment/terraform/modules/stackit/main.tf` provisioniert:
 
 **SKE Cluster** (`vob-chatbot`):
-- 1 Node Pool `devtest` mit 2× g1a.8d (min=2, max=2)
+- 1 Node Pool `devtest` mit 2× g1a.4d (min=2, max=2) — Downgrade von g1a.8d seit 2026-03-16 (Kostenoptimierung); PROD bleibt g1a.8d
 - Kubernetes v1.33.8 (upgraded 2026-03-08, Flatcar 4459.2.1)
 - Flatcar OS
 - Maintenance-Window: 02:00–04:00 UTC
@@ -326,7 +326,7 @@ curl -s http://<EXTERNAL_IP>/api/health
 | kube-system (Calico, DNS, VPN, Metrics) | ~1.4 CPU | ~2 Gi | — |
 | **TOTAL Node** | **~4.9 CPU** | **~9 Gi** | |
 
-**Verfuegbar (1x g1a.8d)**: ~7.9 CPU / ~28.3 Gi RAM. ~1.4 CPU werden von kube-system (Calico, CoreDNS, VPN, Metrics) beansprucht.
+**Verfuegbar (1x g1a.4d)**: ~3.7 CPU / ~13 Gi RAM (nach Downgrade 2026-03-16). ~1.4 CPU werden von kube-system (Calico, CoreDNS, VPN, Metrics) beansprucht. Auslastung DEV+TEST eng (~93%), beobachten.
 
 ---
 
@@ -635,7 +635,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 
 | Kriterium | Test | Status |
 |-----------|------|--------|
-| K8s Cluster läuft | `kubectl get nodes` → Ready, g1a.8d | [x] ✅ (2026-02-27) |
+| K8s Cluster läuft | `kubectl get nodes` → Ready, g1a.4d (Downgrade 2026-03-16) | [x] ✅ (2026-02-27) |
 | PostgreSQL erreichbar | DB `onyx` existiert, Alembic-Migrationen laufen | [x] ✅ (2026-02-27) |
 | Vespa deployed | Pod Running, Application Package deployed | [x] ✅ (2026-02-27) |
 | Redis deployed | Pod Running, Celery Beat/Worker verbunden | [x] ✅ (2026-02-27) |
@@ -653,7 +653,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 
 | Kriterium | Test | Status |
 |-----------|------|--------|
-| 2 Nodes im Cluster | `kubectl get nodes` → 2× Ready, g1a.8d | [x] ✅ (2026-03-03) |
+| 2 Nodes im Cluster | `kubectl get nodes` → 2× Ready, g1a.4d (Downgrade 2026-03-16) | [x] ✅ (2026-03-03) |
 | TEST PostgreSQL erreichbar | DB `onyx` existiert auf TEST-Instanz | [x] ✅ (2026-03-03) |
 | Object Storage (vob-test) | Credentials aktiv, Bucket erreichbar | [x] ✅ (2026-03-03) |
 | Namespace onyx-test | `kubectl get ns onyx-test` → Active | [x] ✅ (2026-03-03) |

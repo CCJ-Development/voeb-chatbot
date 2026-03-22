@@ -31,7 +31,7 @@
 - Zugriff auf GitHub-Repo `CCJ-Development/voeb-chatbot`
 - `gh` CLI authentifiziert (oder GitHub UI)
 - Für Cluster-Zugriff: `kubectl` mit gültiger Kubeconfig
-  - DEV/TEST-Cluster `vob-chatbot`: Ablauf **2026-05-28**
+  - DEV/TEST-Cluster `vob-chatbot`: Ablauf **2026-06-14** (erneuert 2026-03-16)
   - PROD-Cluster `vob-prod`: Ablauf **2026-06-09**
 
 ---
@@ -152,13 +152,10 @@ kubectl get pods -n onyx-dev
 kubectl get pods -n onyx-dev \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
 
-# API Health Check (via Load Balancer IP)
-curl http://188.34.74.187/api/health
-
-# API Health Check (via HTTPS — bevorzugt wenn DNS/TLS aktiv)
+# API Health Check (via HTTPS)
 curl https://dev.chatbot.voeb-service.de/api/health    # DEV
-curl https://test.chatbot.voeb-service.de/api/health   # TEST
-curl https://chatbot.voeb-service.de/api/health         # PROD (sobald DNS/TLS aktiv)
+curl https://test.chatbot.voeb-service.de/api/health   # TEST (heruntergefahren seit 2026-03-19)
+curl https://chatbot.voeb-service.de/api/health         # PROD (HTTPS LIVE seit 2026-03-17)
 ```
 
 ---
@@ -211,6 +208,7 @@ kubectl set image deployment/onyx-dev-api-server \
 | `S3_SECRET_ACCESS_KEY` | Per Environment | StackIT Object Storage |
 | `DB_READONLY_PASSWORD` | Per Environment | PG Readonly User |
 | `REDIS_PASSWORD` | Per Environment | Redis Standalone |
+| `OPENSEARCH_PASSWORD` | Nur PROD | OpenSearch Admin-Passwort (NICHT Chart-Default nutzen!) |
 
 > **Wichtig:** `STACKIT_KUBECONFIG` existiert zweimal — einmal global (DEV/TEST) und einmal als Environment Secret in `prod` (PROD). Das Environment Secret ueberschreibt das globale Secret wenn der Deploy-Job im GitHub Environment `prod` laeuft. Bei Kubeconfig-Renewal muessen **beide** Secrets aktualisiert werden.
 
@@ -235,7 +233,7 @@ Es gibt zwei Kubeconfigs fuer zwei separate Cluster:
 
 | Cluster | Environments | Ablauf | GitHub Secret Scope |
 |---------|-------------|--------|---------------------|
-| `vob-chatbot` (DEV/TEST) | dev, test | **2026-05-28** | Global |
+| `vob-chatbot` (DEV/TEST) | dev, test | **2026-06-14** (erneuert 2026-03-16) | Global |
 | `vob-prod` (PROD) | prod | **2026-06-09** | Environment `prod` |
 
 **Schritt 1: DEV/TEST-Cluster erneuern**
@@ -310,15 +308,10 @@ Neue Ablaufdaten aktualisieren in:
 Der Smoke Test prüft `/api/health` mit 12 Versuchen (alle 10s = 2 Min Timeout).
 
 ```bash
-# Manuell prüfen (via Load Balancer IP)
-curl -v http://188.34.74.187/api/health          # DEV
-curl -v http://188.34.118.201/api/health          # TEST
-curl -v http://188.34.92.162/api/health           # PROD
-
-# Manuell prüfen (via HTTPS — bevorzugt wenn DNS/TLS aktiv)
+# Manuell prüfen (via HTTPS)
 curl -v https://dev.chatbot.voeb-service.de/api/health    # DEV
-curl -v https://test.chatbot.voeb-service.de/api/health   # TEST
-curl -v https://chatbot.voeb-service.de/api/health         # PROD (sobald DNS/TLS aktiv)
+curl -v https://test.chatbot.voeb-service.de/api/health   # TEST (heruntergefahren seit 2026-03-19)
+curl -v https://chatbot.voeb-service.de/api/health         # PROD (HTTPS LIVE seit 2026-03-17)
 
 # Pod-Logs ansehen
 kubectl logs deployment/onyx-dev-api-server -n onyx-dev --tail=50
@@ -348,7 +341,9 @@ Docker Hub Image ist öffentlich, schnell, und mit `v2.9.8` gepinnt.
 
 ### Warum Recreate statt RollingUpdate (DEV)?
 
-Der DEV-Cluster hat 1 Node (g1a.8d, 8 vCPU seit 2026-03-06). Recreate ist beibehalten um Port-Konflikte bei Model Servern zu vermeiden. Downtime ist für DEV akzeptabel.
+Der DEV-Cluster hat 2 Nodes (g1a.4d, 4 vCPU je, Downgrade seit 2026-03-16). Recreate ist beibehalten um Port-Konflikte bei Model Servern zu vermeiden und bei begrenzten Ressourcen keine Pending-Pods zu erzeugen. Downtime ist für DEV akzeptabel.
+
+> **Wichtig bei Rollback:** `helm rollback` setzt die Deployment-Strategie auf den Helm-Chart-Default (RollingUpdate) zurück. Nach einem Rollback muss der `kubectl patch`-Schritt aus dem CI/CD-Workflow manuell wiederholt werden, um Recreate zu reaktivieren. Alternativ: erneuter Workflow-Run mit dem funktionierenden Image-Tag (`-f image_tag=<TAG>`).
 
 ### Warum `LICENSE_ENFORCEMENT_ENABLED: "false"`?
 
@@ -362,6 +357,10 @@ Alle Environments nutzen `--wait --timeout 15m` statt `--atomic`. `--atomic` wü
 
 War vorher hardcoded in `values-dev.yaml` — steht im Git-Repository. Credentials gehören nicht in Git, auch nicht für DEV. Alle anderen Credentials (PG, S3) waren bereits als Secrets konfiguriert.
 
+### OpenSearch-Migration (2026-03-19 DEV, 2026-03-22 PROD)
+
+Onyx migriert von Vespa auf OpenSearch als Vektor-Datenbank (ab v4.0.0 entfernt Vespa komplett). Der CI/CD-Workflow muss `OPENSEARCH_PASSWORD` als Secret bereitstellen — der Chart-Default ist ein bekanntes Passwort und darf in Produktion nicht verwendet werden. Vespa läuft in einem Übergangsmodus ("Zombie-Mode") bis die Migration abgeschlossen ist; erst danach kann der Vespa-Pod entfernt werden. Details: `memory/project_opensearch-migration.md`.
+
 ---
 
 ## 8. Wartung
@@ -370,7 +369,7 @@ War vorher hardcoded in `values-dev.yaml` — steht im Git-Repository. Credentia
 
 | Was | Wann | Wie |
 |-----|------|-----|
-| Kubeconfig-Ablauf | Monatlich | Beide Kubeconfigs pruefen: DEV/TEST `vob-chatbot` (aktuell: 2026-05-28) + PROD `vob-prod` (aktuell: 2026-06-09) |
+| Kubeconfig-Ablauf | Monatlich | Beide Kubeconfigs pruefen: DEV/TEST `vob-chatbot` (aktuell: 2026-06-14) + PROD `vob-prod` (aktuell: 2026-06-09) |
 | GitHub Actions Updates | Bei Dependabot-Alert oder monatlich | SHA im Workflow gegen neuestes Release-Tag prüfen |
 | Model Server Version | Bei Onyx-Release | Docker Hub Tags prüfen, `MODEL_SERVER_TAG` aktualisieren |
 | Robot Account Token | Bei Ablauf | StackIT Portal → Container Registry → Robot Account |

@@ -87,10 +87,10 @@ deployment/terraform/
 deployment/helm/
   charts/onyx/               ← Onyx Helm Chart (READ-ONLY, nicht verändern!)
   values/
-    values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, Vespa+Redis an, Health Probes)
+    values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an, Health Probes)
     values-dev.yaml          ← DEV: 1 Replica, 8 Celery-Worker (Standard Mode), Auth disabled
     values-test.yaml         ← TEST: 1 Replica, 8 Celery-Worker, Auth disabled
-    values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (deployed 2026-03-11)
+    values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (aktualisiert 2026-03-22, Chart 0.4.36, 20 Pods)
     values-monitoring.yaml   ← kube-prometheus-stack DEV/TEST (separater Helm Release in NS monitoring)
     values-monitoring-prod.yaml ← kube-prometheus-stack PROD (90d Retention, 50Gi, separater Teams-Kanal)
     values-dev-secrets.yaml  ← DEV Secrets: PG, Redis, S3 Credentials (gitignored)

@@ -1,7 +1,7 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** TEST + PROD LIVE — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3. **DEV HTTPS temporaer deaktiviert** (DNS zeigt auf alte LB-IP).
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-19 (DEV HTTPS temporaer deaktiviert)
+**Status:** DEV + TEST + PROD LIVE — HTTPS aktiv auf allen Environments, Let's Encrypt ECDSA P-384, TLSv1.3. TEST heruntergefahren seit 2026-03-19.
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-22 (DEV HTTPS wiederhergestellt nach DNS-Update von Leif)
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 
 ---
@@ -12,9 +12,9 @@
 
 | Environment | Zugriff | Status |
 |-------------|---------|--------|
-| DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS TEMPORAER DEAKTIVIERT** (2026-03-18) — DNS zeigt auf alte LB-IP `188.34.74.187`, neue IP ist `188.34.118.222`. Wartet auf DNS-Update von Leif/GlobVill. HSTS deaktiviert, `WEB_DOMAIN` auf `http://` gesetzt. Siehe "DEV HTTPS Wiederherstellung" unten. |
-| TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) |
-| PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, E7 Intermediate |
+| DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-22) — DNS-Update von Leif/GlobVill durchgefuehrt, LB-IP `188.34.118.222`. ECDSA P-384, TLSv1.3, HTTP/2. |
+| TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) — **Cluster heruntergefahren seit 2026-03-19** (Scale-to-Zero, Helm Release bleibt erhalten). |
+| PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, E7 Intermediate, HSTS 1 Jahr. |
 
 ### Zielzustand
 
@@ -677,7 +677,7 @@ Alternativ: Ersten Deploy nach TLS-Umstellung manuell per `helm upgrade` ausfueh
 # ALLE Voraussetzungen pruefen bevor Helm Deploy gestartet wird:
 
 # 1. DNS
-dig +short dev.chatbot.voeb-service.de | grep -q "188.34.74.187" && echo "DNS DEV: OK" || echo "STOP: DNS DEV nicht aufgeloest!"
+dig +short dev.chatbot.voeb-service.de | grep -q "188.34.118.222" && echo "DNS DEV: OK" || echo "STOP: DNS DEV nicht aufgeloest!"
 
 # 2. ClusterIssuers
 kubectl get clusterissuer onyx-dev-letsencrypt -o jsonpath='{.status.conditions[0].status}' | grep -q "True" && echo "Issuer DEV: OK" || echo "STOP: ClusterIssuer DEV nicht ready!"
@@ -730,7 +730,7 @@ helm upgrade --install onyx-test \
 
 ```bash
 dig +short dev.chatbot.voeb-service.de
-# Erwartete Ausgabe: 188.34.74.187
+# Erwartete Ausgabe: 188.34.118.222
 
 dig +short test.chatbot.voeb-service.de
 # Erwartete Ausgabe: 188.34.118.201
@@ -864,8 +864,8 @@ Falls etwas schiefgeht:
 
 ```yaml
 configMap:
-  DOMAIN: "188.34.74.187"
-  WEB_DOMAIN: "http://188.34.74.187"
+  DOMAIN: "188.34.118.222"
+  WEB_DOMAIN: "http://188.34.118.222"
 
 letsencrypt:
   enabled: false
@@ -989,19 +989,19 @@ kubectl get clusterissuer
 
 ---
 
-## Schritt 7: PROD DNS + TLS (ausstehend)
+## Schritt 7: PROD DNS + TLS — ERLEDIGT (2026-03-17)
 
-**Status:** Wartet auf DNS-Eintraege von Leif/GlobVill (angefragt 2026-03-11).
+**Status:** ✅ PROD HTTPS LIVE seit 2026-03-17. Leif/GlobVill hat alle DNS-Eintraege gesetzt. TLSv1.3, ECDSA P-384, HSTS 1 Jahr.
 
 ### Voraussetzungen
 
 | # | Was | Status |
 |---|-----|--------|
 | 1 | PROD LoadBalancer IP | ✅ `188.34.92.162` |
-| 2 | PROD Cluster deployed | ✅ `vob-prod`, 19 Pods Running |
+| 2 | PROD Cluster deployed | ✅ `vob-prod`, 20 Pods Running (inkl. OpenSearch, Stand 2026-03-22) |
 | 3 | cert-manager auf PROD | ✅ v1.19.4 installiert, ClusterIssuer `onyx-prod-letsencrypt` READY |
-| 4 | A-Record `chatbot` → `188.34.92.162` bei GlobVill | ⏳ Angefragt |
-| 5 | ACME CNAME `_acme-challenge.chatbot` bei GlobVill | ⏳ Angefragt |
+| 4 | A-Record `chatbot` → `188.34.92.162` bei GlobVill | ✅ **ERLEDIGT** (2026-03-17, Leif/GlobVill) |
+| 5 | ACME CNAME `_acme-challenge.chatbot` bei GlobVill | ✅ **ERLEDIGT** (2026-03-17, Leif/GlobVill) |
 
 ### DNS-Eintraege (Leif bei GlobVill)
 
@@ -1076,41 +1076,38 @@ Fuer PROD (kundensichtbar) sollte mit VoeB diskutiert werden:
 
 ---
 
-## DEV HTTPS — Temporaer deaktiviert (seit 2026-03-18)
+## DEV HTTPS — Temporaer deaktiviert (2026-03-18 bis 2026-03-22) — ERLEDIGT
 
-### Ursache
+> **Status: ✅ ERLEDIGT (2026-03-22)** — Leif/GlobVill hat den A-Record auf `188.34.118.222` aktualisiert. DEV HTTPS ist wieder LIVE. Alle Workarounds wurden entfernt.
+
+### Ursache (Protokoll)
 
 Upstream-Sync #3 (2026-03-18) erforderte eine Helm-Neuinstallation auf DEV (`helm delete` + `helm install`). Dabei wurde der NGINX Ingress Controller neu erstellt, was eine **neue LoadBalancer-IP** ergab: `188.34.74.187` (alt) → `188.34.118.222` (neu).
 
-Der DNS A-Record bei GlobVill zeigt weiterhin auf die alte IP. Bis Leif den A-Record aktualisiert, ist HTTPS auf DEV nicht erreichbar.
+Der DNS A-Record bei GlobVill zeigte auf die alte IP. Von 2026-03-18 bis 2026-03-22 war HTTPS auf DEV nicht erreichbar.
 
 **Lesson Learned:** `helm delete + install` erstellt NGINX Controller neu → neue LB-IP → DNS-Update noetig. `helm upgrade` behaelt die LB-IP.
 
-### Aktuelle Workarounds (DEV)
+### Workarounds (waren aktiv von 2026-03-18 bis 2026-03-22, jetzt entfernt)
 
-1. **HSTS deaktiviert** — `nginx.ingress.kubernetes.io/configuration-snippet` in `values-dev.yaml` mit `more_clear_headers "Strict-Transport-Security"` (verhindert Browser-Caching von HSTS auf DEV)
-2. **`WEB_DOMAIN` auf `http://`** — In `values-dev.yaml`: `WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"`. Damit werden Cookies ohne `Secure`-Flag gesetzt und Login funktioniert ueber HTTP.
-3. **Lokaler `/etc/hosts` Workaround** — Auf Nikos Mac: `188.34.118.222 dev.chatbot.voeb-service.de`. ENTFERNEN nach DNS-Update: `sudo sed -i '' '/188.34.118.222/d' /etc/hosts`
+1. **HSTS deaktiviert** — `nginx.ingress.kubernetes.io/configuration-snippet` in `values-dev.yaml` mit `more_clear_headers "Strict-Transport-Security"` (verhindert Browser-Caching von HSTS auf DEV) — **entfernt 2026-03-22**
+2. **`WEB_DOMAIN` auf `http://`** — In `values-dev.yaml`: `WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"`. Damit wurden Cookies ohne `Secure`-Flag gesetzt und Login funktionierte ueber HTTP. — **rueckgesetzt auf `https://` 2026-03-22**
+3. **Lokaler `/etc/hosts` Workaround** — Auf Nikos Mac: `188.34.118.222 dev.chatbot.voeb-service.de`. — **entfernt 2026-03-22** (`sudo sed -i '' '/188.34.118.222/d' /etc/hosts`)
 
-### Wiederherstellung (wenn DNS gefixt ist)
+### Wiederherstellung (durchgefuehrt 2026-03-22)
 
-Sobald Leif den A-Record `dev.chatbot` auf `188.34.118.222` aktualisiert hat:
+Nachdem Leif den A-Record `dev.chatbot` auf `188.34.118.222` aktualisiert hat, wurden folgende Schritte ausgefuehrt:
 
 ```bash
 # 1. DNS verifizieren
 dig +short dev.chatbot.voeb-service.de
-# Erwartete Ausgabe: 188.34.118.222
+# Ausgabe: 188.34.118.222  ✅
 
 # 2. values-dev.yaml: WEB_DOMAIN zurueck auf HTTPS
-# VORHER (temporaer):
-#   WEB_DOMAIN: "http://dev.chatbot.voeb-service.de"
-# NACHHER (Wiederherstellung):
-#   WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"
+#   WEB_DOMAIN: "https://dev.chatbot.voeb-service.de"  ✅ durchgefuehrt
 
-# 3. values-dev.yaml: HSTS-Deaktivierung entfernen
-# Den gesamten nginx http-snippet Override-Block entfernen:
-#   nginx.ingress.kubernetes.io/configuration-snippet: |
-#     more_clear_headers "Strict-Transport-Security";
+# 3. values-dev.yaml: HSTS-Deaktivierung entfernt
+#   nginx http-snippet Override-Block entfernt  ✅ durchgefuehrt
 
 # 4. Deploy
 helm upgrade --install onyx-dev deployment/helm/charts/onyx \
@@ -1119,12 +1116,15 @@ helm upgrade --install onyx-dev deployment/helm/charts/onyx \
   -f deployment/helm/values/values-dev.yaml \
   -f deployment/helm/values/values-dev-secrets.yaml \
   --wait --timeout 15m
+# ✅ Durchgefuehrt 2026-03-22
 
 # 5. HTTPS verifizieren
 curl -vI https://dev.chatbot.voeb-service.de/api/health 2>&1 | grep -E "HTTP|TLS"
+# ✅ TLSv1.3, HTTP/2, 200 OK
 
-# 6. /etc/hosts Workaround entfernen
+# 6. /etc/hosts Workaround entfernt
 sudo sed -i '' '/188.34.118.222/d' /etc/hosts
+# ✅ Entfernt 2026-03-22
 ```
 
 ---
@@ -1138,10 +1138,11 @@ sudo sed -i '' '/188.34.118.222/d' /etc/hosts
 | 3 | Cloudflare API Token erstellen + uebermitteln | **ERLEDIGT** (2026-03-07) — Permissions korrigiert, ClusterIssuers READY | Leif (VoeB) |
 | 4 | **ACME Challenge CNAME-Delegation bei GlobVill** | **✅ ERLEDIGT** (2026-03-09) — CNAMEs gesetzt, Zertifikate ausgestellt | Leif (VoeB) |
 | 5 | ACME-Email-Adresse — Team-Adresse statt persoenliche? | Empfehlung: Team-Adresse | CCJ + VoeB |
-| 6 | PROD: A-Record + ACME CNAME | ⏳ Angefragt bei Leif/GlobVill (2026-03-11). LB IP: `188.34.92.162`. Siehe Schritt 7. | CCJ + VoeB |
-| 7 | Let's Encrypt Zertifikat-Renewal verifizieren | Nach 60 Tagen pruefen (auto-renew) | CCJ |
-| 8 | Cloudflare API Token Backup | Token als GitHub Environment Secret hinterlegen (Disaster Recovery) | CCJ |
-| 9 | CAA Records bei GlobVill setzen | Empfohlen: `voeb-service.de CAA 0 issue "letsencrypt.org"` | Leif (VoeB) |
+| 6 | PROD: A-Record + ACME CNAME | **✅ ERLEDIGT** (2026-03-17) — Leif/GlobVill hat DNS-Eintraege gesetzt, PROD HTTPS LIVE. LB IP: `188.34.92.162`. | CCJ + VoeB |
+| 7 | DEV DNS A-Record Update auf `188.34.118.222` | **✅ ERLEDIGT** (2026-03-22) — Leif/GlobVill hat A-Record aktualisiert, DEV HTTPS LIVE. | Leif (VoeB) |
+| 8 | Let's Encrypt Zertifikat-Renewal verifizieren | Nach 60 Tagen pruefen (auto-renew) — DEV erstmalig ca. 2026-05-08 | CCJ |
+| 9 | Cloudflare API Token Backup | Token als GitHub Environment Secret hinterlegen (Disaster Recovery) | CCJ |
+| 10 | CAA Records bei GlobVill setzen | Empfohlen: `voeb-service.de CAA 0 issue "letsencrypt.org"` | Leif (VoeB) |
 
 ---
 
@@ -1396,7 +1397,7 @@ dig CNAME _acme-challenge.dev.chatbot.voeb-service.de
 - [cert-manager Certificate privateKey Config](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificatePrivateKey)
 - [Cloudflare API Tokens erstellen](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
 - [Let's Encrypt Challenge Types](https://letsencrypt.org/docs/challenge-types/) — DNS-01 vs HTTP-01
-- [Let's Encrypt Rate Limits](https://letsencrypt.org/docs/rate-limits/) — 50 Zertifikate/Domain/Woche
+- [Let's Encrypt Rate Limits](https://letsencrypt.org/docs/rate-limits/) — 5 identische Zertifikate/Domain/Woche (Duplicate Certificate Limit)
 - [Let's Encrypt Generation Y Hierarchy](https://letsencrypt.org/2025/11/24/gen-y-hierarchy) — ECDSA P-384 Intermediates
 - [BSI TR-02102-2 TLS-Richtlinie (2026-01)](https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Publications/TechGuidelines/TG02102/BSI-TR-02102-2.html) — RSA 3072 / ECDSA P-384 Minimum
 - [Helm Deploy Runbook](./helm-deploy.md) — Domain/Cookie-Konfiguration

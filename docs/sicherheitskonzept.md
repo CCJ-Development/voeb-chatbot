@@ -1,8 +1,8 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-03-19
-**Version**: 0.7
+**Letzte Aktualisierung**: 2026-03-22
+**Version**: 0.8
 **Nächste Überprüfung**: 2026-04-19
 
 ---
@@ -19,6 +19,7 @@
 | 0.6 | 2026-03-12 | Nikolaj Ivanov | PROD-Umgebung eingearbeitet (19 Pods, SKE `vob-prod`, PG Flex 4.8 HA 3-Node), SEC-06 Phase 2 ERLEDIGT (`runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa = dokumentierte Ausnahme), NetworkPolicies monitoring-NS PROD (8 Policies inkl. AlertManager-Webhook-Egress), Monitoring PROD (Teams PROD-Kanal), Extensions als Sicherheitsmaßnahmen dokumentiert (ext-token Kostenkontrolle, ext-prompts LLM-Steuerung), GitHub Environment `prod` (Required Reviewer + 6 Secrets), StackIT BSI C5 Type 2 referenziert |
 | 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: DSFA-Status GEPLANT→ENTWURF IN ARBEIT, NP 7→8 (AlertManager-Webhook-Egress), HSTS-Details ergänzt, AES-256 explizit bei SEC-07 |
 | 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch Security (SSL/TLS intern, Admin-Credentials im K8s Secret), Document Index Vespa→OpenSearch Migration dokumentiert, DEV HTTP-Workaround (DNS-Eintraege ausstehend, HSTS deaktiviert), PROD HTTPS LIVE aktualisiert |
+| 0.8 | 2026-03-22 | COFFEESTUDIOS | DEV HTTPS LIVE (DNS A-Record von Leif auf 188.34.118.222 aktualisiert, HSTS reaktiviert), PROD 20 Pods (+OpenSearch), GitHub Environment `prod` 7 Secrets (+OPENSEARCH_PASSWORD) |
 
 ---
 
@@ -44,11 +45,11 @@ Dieses Konzept gilt für:
 
 | Umgebung | Status | URL | Auth |
 |----------|--------|-----|------|
-| DEV | LIVE seit 2026-02-27 | `http://dev.chatbot.voeb-service.de` (temporaer HTTP — DNS A-Record auf neue LB-IP `188.34.118.222` ausstehend bei GlobVill, HSTS deaktiviert) | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
+| DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
 | TEST | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
 | PROD | HTTPS LIVE seit 2026-03-17 | `https://chatbot.voeb-service.de` | Temporär `AUTH_TYPE: basic` (Entra ID wartet auf VÖB) |
 
-> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (19 Pods, `https://chatbot.voeb-service.de`). DEV ist temporaer nur ueber HTTP erreichbar (DNS A-Record auf neue LB-IP `188.34.118.222` ausstehend bei GlobVill seit 2026-03-18). Entra ID steht noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
+> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (20 Pods, `https://chatbot.voeb-service.de`). DEV ist seit 2026-03-22 HTTPS LIVE (`https://dev.chatbot.voeb-service.de`, DNS A-Record von Leif auf `188.34.118.222` aktualisiert). Entra ID steht noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
 
 ---
 
@@ -63,7 +64,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 
 | Anforderung | Status | Details |
 |-------------|--------|---------|
-| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (TEST+PROD), TEMPORÄR HTTP (DEV) | TLSv1.3 / ECDSA P-384 auf TEST + PROD. DEV temporaer HTTP (DNS A-Record auf neue LB-IP ausstehend bei GlobVill, HSTS deaktiviert) |
+| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV+TEST+PROD) | TLSv1.3 / ECDSA P-384 auf allen Environments. DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record auf `188.34.118.222` aktualisiert). |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
 | Zugriffskontrollen (Authentifizierung) | TEILWEISE | Basic Auth aktiv (DEV/TEST). Entra ID (OIDC) geplant (Phase 3) |
 | Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01). PROD: Egress `188.34.73.72/32` + Admin-IP |
@@ -191,7 +192,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 | GitHub Repository | VÖB | Read | Einsicht in Code, PRs, Issues |
 | GitHub Environment `dev` | CI/CD Pipeline (auto) | Deploy | Automatisch bei Push auf `main` |
 | GitHub Environment `test` | Tech Lead | Deploy (workflow_dispatch) | Manueller Trigger |
-| GitHub Environment `prod` | Tech Lead + Reviewer | Deploy (workflow_dispatch + Approval) | Required Reviewer + 6 Secrets (implementiert 2026-03-11) |
+| GitHub Environment `prod` | Tech Lead + Reviewer | Deploy (workflow_dispatch + Approval) | Required Reviewer + 7 Secrets (implementiert 2026-03-11, +OPENSEARCH_PASSWORD 2026-03-22) |
 | GitHub Actions Secrets (global) | Repository Admin | Read/Write | STACKIT_REGISTRY_*, STACKIT_KUBECONFIG |
 | GitHub Actions Secrets (per env) | Environment Admin | Read/Write | PG, Redis, S3, DB_READONLY Passwörter |
 
@@ -202,7 +203,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 | SKE Cluster `vob-chatbot` (DEV/TEST) | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs zurückgestellt |
 | SKE Cluster `vob-chatbot` (DEV/TEST) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
 | SKE Cluster `vob-prod` (PROD) | Tech Lead | Cluster-Admin (Kubeconfig) | Eigener Cluster (ADR-004), Kubeconfig gültig bis 2026-06-09 |
-| SKE Cluster `vob-prod` (PROD) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | GitHub Environment `prod` mit Required Reviewer + 6 Secrets |
+| SKE Cluster `vob-prod` (PROD) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | GitHub Environment `prod` mit Required Reviewer + 7 Secrets |
 | Namespace `onyx-dev` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
 | Namespace `onyx-test` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
 | Namespace `onyx-prod` | Tech Lead + Reviewer | Full Access | Eigener Cluster, Required Reviewer auf GitHub Environment |
@@ -251,7 +252,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 | SEC-04: Remote State Backend | Terraform | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — Solo-Dev, FileVault |
 | SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
 | Branch Protection auf `main` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-07): PR required, 3 Status Checks, kein Review (Solo-Dev) |
-| Environment Protection auf `prod` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-11): Required Reviewer + 6 environment-getrennte Secrets |
+| Environment Protection auf `prod` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-11): Required Reviewer + 7 environment-getrennte Secrets (inkl. OPENSEARCH_PASSWORD seit 2026-03-22) |
 | VÖB als Required Reviewer | GitHub Environment `prod` | Langfristig | Offen |
 
 ### 4-Augen-Prinzip (Best Practice, orientiert an BAIT Kap. 2/7)
@@ -281,7 +282,7 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 | Maßnahme | Konfiguration | Effekt | Status |
 |----------|--------------|--------|--------|
-| GitHub Environment Protection auf `prod` | Required Reviewer + 6 Secrets | Kein PROD-Deploy ohne Freigabe | **ERLEDIGT** (2026-03-11) |
+| GitHub Environment Protection auf `prod` | Required Reviewer + 7 Secrets | Kein PROD-Deploy ohne Freigabe | **ERLEDIGT** (2026-03-11, +OPENSEARCH_PASSWORD 2026-03-22) |
 
 **Geplante Maßnahmen**:
 
@@ -302,9 +303,9 @@ Das Projekt wird aktuell von einem einzelnen Tech Lead (Nikolaj Ivanov, CCJ) ent
 
 #### TLS/HTTPS
 
-**Status: IMPLEMENTIERT (TEST + PROD) | TEMPORÄR HTTP (DEV — DNS ausstehend)**
+**Status: IMPLEMENTIERT (DEV + TEST + PROD)**
 
-- DEV: **Temporaer HTTP** — `http://dev.chatbot.voeb-service.de`. DNS A-Record zeigt auf alte LB-IP `188.34.74.187`, neue IP ist `188.34.118.222` (Helm-Neuinstallation 2026-03-18). Update bei GlobVill angefragt. HSTS deaktiviert fuer DEV, damit HTTP-Zugriff nicht vom Browser blockiert wird. HTTPS wird reaktiviert sobald DNS aktualisiert ist.
+- DEV: **HTTPS LIVE** — `https://dev.chatbot.voeb-service.de`. DNS A-Record von Leif auf `188.34.118.222` aktualisiert (2026-03-22). HSTS reaktiviert (`max-age=3600`).
 - TEST: `https://test.chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2
 - PROD: `https://chatbot.voeb-service.de` — TLSv1.3, ECDSA P-384, HTTP/2, HSTS 1 Jahr (LIVE seit 2026-03-17)
 
@@ -322,7 +323,7 @@ letsencrypt:
   enabled: true
 ```
 
-**DNS-Status (2026-03-19)**: TEST A-Record gesetzt (`test.chatbot.voeb-service.de` → `188.34.118.201`). PROD A-Record gesetzt (`chatbot.voeb-service.de` → `188.34.92.162`). **DEV A-Record veraltet** — zeigt auf `188.34.74.187` (alte LB-IP), muss auf `188.34.118.222` aktualisiert werden (Leif/GlobVill angefragt 2026-03-18). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt. Details: `docs/runbooks/dns-tls-setup.md`
+**DNS-Status (2026-03-22)**: DEV A-Record aktualisiert (`dev.chatbot.voeb-service.de` → `188.34.118.222`, Leif 2026-03-22). TEST A-Record gesetzt (`test.chatbot.voeb-service.de` → `188.34.118.201`). PROD A-Record gesetzt (`chatbot.voeb-service.de` → `188.34.92.162`). Cloudflare Proxy auf DNS-only (graue Wolke). ACME-Challenge CNAMEs bei GlobVill gesetzt. Details: `docs/runbooks/dns-tls-setup.md`
 
 #### Interne Kommunikation (Cluster-intern)
 
@@ -382,8 +383,8 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 
 1. **GitHub Actions Secrets** (CI/CD-Pipeline):
    - Global (Repository-weit): `STACKIT_REGISTRY_USER`, `STACKIT_REGISTRY_PASSWORD`, `STACKIT_KUBECONFIG`
-   - Per Environment (`dev`, `test`, `prod`): `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `DB_READONLY_PASSWORD`, `REDIS_PASSWORD`
-   - PROD: 6 environment-getrennte Secrets + Required Reviewer (GitHub Environment Protection)
+   - Per Environment (`dev`, `test`, `prod`): `POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `DB_READONLY_PASSWORD`, `REDIS_PASSWORD`, `OPENSEARCH_PASSWORD` (PROD)
+   - PROD: 7 environment-getrennte Secrets + Required Reviewer (GitHub Environment Protection)
    - Environment-Trennung stellt sicher, dass DEV-Secrets nicht in TEST/PROD verwendet werden
 
 2. **Kubernetes Secrets** (Runtime):
@@ -442,7 +443,7 @@ Internet
   └─→ [SKE Cluster vob-prod (PROD, eigener Cluster)]
         NGINX Ingress (LoadBalancer)
           PROD: 188.34.92.162 (HTTPS LIVE seit 2026-03-17)
-        [onyx-prod Namespace] — 19 Pods
+        [onyx-prod Namespace] — 20 Pods
           2x API Server HA, 2x Web Server HA
           OpenSearch, Redis, Celery (8 Worker), 2x Model Server, NGINX, Vespa (Zombie)
         [monitoring Namespace] — 9 Pods
@@ -524,10 +525,10 @@ pg_acl = [
 **IMPLEMENTIERT (mit TLS, seit 2026-03-09)**:
 
 - NGINX Ingress Controller läuft in-cluster (Helm Subchart)
-- DEV: IngressClass `nginx`, LoadBalancer-IP `188.34.118.222` (neue IP seit Helm-Neuinstallation 2026-03-18), **temporaer HTTP** (DNS A-Record zeigt noch auf alte IP `188.34.74.187`, Update bei GlobVill angefragt). HSTS deaktiviert fuer DEV.
+- DEV: **HTTPS LIVE** (seit 2026-03-22) — IngressClass `nginx`, LoadBalancer-IP `188.34.118.222`, TLS aktiv, HSTS reaktiviert (`max-age=3600`).
 - TEST: **Dauerhaft heruntergefahren** (seit 2026-03-19, 0 Pods). Helm Release + TLS-Zertifikat bleiben erhalten. Bei Reaktivierung: IngressClass `nginx-test`, LB-IP `188.34.118.201`, TLS war aktiv.
 - PROD: LoadBalancer-IP `188.34.92.162`, **HTTPS LIVE** seit 2026-03-17
-- TLS: **Aktiv** (PROD) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare. DEV temporaer HTTP.
+- TLS: **Aktiv** (DEV + TEST + PROD) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, cert-manager DNS-01 via Cloudflare.
 
 **Implementierte Security-Header** (H8, 2026-03-05):
 - `X-Content-Type-Options: nosniff` — verhindert MIME-Type-Sniffing
@@ -543,7 +544,7 @@ pg_acl = [
 - Details: `docs/runbooks/dns-tls-setup.md`
 - SSL-Redirect
 
-**HSTS (HTTP Strict Transport Security):** Konfiguriert via NGINX Ingress Annotation. **DEV: deaktiviert** (temporaer HTTP wegen DNS-Problem, HSTS wuerde Browser-Cache HTTP-Zugriff blockieren). TEST: `max-age=3600`. PROD: `max-age=31536000` (1 Jahr). Verhindert HTTP-Downgrade-Angriffe auf TEST/PROD.
+**HSTS (HTTP Strict Transport Security):** Konfiguriert via NGINX Ingress Annotation. **DEV: `max-age=3600`** (reaktiviert 2026-03-22 nach DNS-Update). TEST: `max-age=3600`. PROD: `max-age=31536000` (1 Jahr). Verhindert HTTP-Downgrade-Angriffe auf allen Environments.
 
 ### WAF (Web Application Firewall)
 
@@ -674,7 +675,7 @@ deploy-{env}          → ~2 Min (Helm upgrade + Smoke Test)
 | Concurrency Control | IMPLEMENTIERT | Max 1 Deploy pro Environment gleichzeitig, cancel-in-progress bei neuem Push |
 | Environment-getrennte Secrets | IMPLEMENTIERT | GitHub Environments `dev`, `test`, `prod` mit jeweils eigenen Secrets |
 | Gepinnte Image-Versionen | IMPLEMENTIERT | Model Server auf `v2.9.8` fixiert (nicht `:latest`) |
-| Required Reviewers (PROD) | IMPLEMENTIERT | GitHub Environment `prod` mit Required Reviewer + 6 Secrets (seit 2026-03-11) |
+| Required Reviewers (PROD) | IMPLEMENTIERT | GitHub Environment `prod` mit Required Reviewer + 7 Secrets (seit 2026-03-11, +OPENSEARCH_PASSWORD 2026-03-22) |
 | Container Security Scanning | OFFEN | Kein Trivy/Snyk-Scan in der Pipeline (kein SEC-Finding, aber empfohlen für PROD) |
 
 **SHA-gepinnte Actions (verifiziert)**:
@@ -811,7 +812,7 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | DSGVO | Direkt anwendbar | AVV mit StackIT (Art. 28) | [AUSSTEHEND -- Klärung mit VÖB] |
 | EU AI Act | Direkt anwendbar | KI-Kompetenz (Art. 4) — seit 02.02.2025 in Kraft | OFFEN (mit VÖB klären) |
 | EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
-| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf TEST+PROD, DEV temporaer HTTP — DNS ausstehend) |
+| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST+PROD, alle Environments HTTPS LIVE) |
 | BAIT | Freiwillig | Zugangskontrolle | TEILWEISE (Basic Auth auf DEV/TEST/PROD, Entra ID geplant) |
 | BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 8 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress, App-NS PROD ausstehend) |
 | BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
@@ -1175,7 +1176,7 @@ Phase 6: NACHBEREITUNG
 | SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster (`vob-prod`, ADR-004) |
 | K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
 | Node Pool | `devtest` (2 Nodes, g1a.8d) | `devtest` (shared) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
-| Pods | 16 | 15 | 19 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
+| Pods | 16 | 15 | 20 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA 3-Node (`vob-prod`) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
 | Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` |
@@ -1234,8 +1235,7 @@ configMap:
 ### Vor PROD Go-Live (P1)
 
 1. **NetworkPolicies onyx-prod**: Vollständiges Set (default-deny + allow-rules) — kommt mit DNS/TLS-Hardening
-2. **TLS PROD**: DNS-Einträge (A-Record + ACME-CNAME) bei GlobVill angefragt (2026-03-11), dann Let's Encrypt aktivieren
-3. **Entra ID**: App Registration + Credentials von VÖB IT
+2. **Entra ID**: App Registration + Credentials von VÖB IT
 4. **M7**: Cluster-API-ACL (`cluster_acl`) von `0.0.0.0/0` auf Cluster-Egress-IP einschränken (empfohlen)
 
 ### Vor VÖB-Abnahme (P2)

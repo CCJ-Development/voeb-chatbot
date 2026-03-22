@@ -1,6 +1,6 @@
 # Runbook: LLM- und Embedding-Konfiguration
 
-**Zuletzt verifiziert:** 2026-03-08
+**Zuletzt verifiziert:** 2026-03-22
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -53,14 +53,14 @@
 | Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
 | Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
 
-#### Chat-Modelle — NICHT kompatibel mit Onyx
+#### Chat-Modelle — Noch nicht verifiziert (nach Upstream-Sync #4)
 
-| Modell | Model ID | Kontext | Tool Calling | Problem |
-|--------|----------|---------|-------------|---------|
-| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | ❌ | vLLM-Instanz hat `--enable-auto-tool-choice` nicht aktiviert |
-| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | ❌ | vLLM-Instanz hat `--enable-auto-tool-choice` nicht aktiviert |
+| Modell | Model ID | Kontext | Tool Calling | Status |
+|--------|----------|---------|-------------|--------|
+| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | ❌ (StackIT) | Neu testen — tool_choice-Fix in #9224 koennte Blockierung aufheben |
+| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | ❌ (StackIT) | Neu testen — tool_choice-Fix in #9224 koennte Blockierung aufheben |
 
-> **Warum Gemma und Mistral-Nemo nicht funktionieren:** Onyx sendet bei jedem Chat-Request `tool_choice: "auto"` (fuer Suche, Actions, Agents). StackIT hat fuer diese Modelle kein Tool Calling auf der vLLM-Instanz aktiviert. Das fuehrt zu HTTP 400: `"auto" tool choice requires --enable-auto-tool-choice and --tool-call-parser to be set`. Dies ist eine serverseitige StackIT-Limitation, die wir nicht beeinflussen koennen. `drop_params: True` in LiteLLM Custom Configs wurde getestet, wird aber von Onyx nicht korrekt weitergereicht.
+> **Hintergrund:** Onyx sendete bisher bei jedem Chat-Request `tool_choice: "auto"`, was auf StackIT-Instanzen ohne `--enable-auto-tool-choice` zu HTTP 400 fuehrte. Upstream-Sync #4 (2026-03-22) enthaelt `fix(llm): tool_choice wird nicht mehr gesendet wenn keine Tools vorhanden (#9224)`. Ob dieser Fix die Modelle vollstaendig kompatibel macht, muss getestet werden.
 
 > **Hinweis:** In Onyx muss der Provider Name IMMER `openai` sein — unabhaengig vom tatsaechlichen Modell. Alle kompatiblen Modelle koennen in einem einzigen Provider konfiguriert werden (gleicher API Key + API Base, mehrere Model Configurations).
 
@@ -263,15 +263,13 @@ Diese Fehlermeldung tritt auf, wenn ein aelteres Onyx-Release verwendet wird, da
 
 **Ursache:** Das Modell hat kein Tool Calling auf der StackIT vLLM-Instanz aktiviert. Onyx sendet `tool_choice: "auto"` bei jedem Chat-Request, was vom vLLM-Backend abgelehnt wird.
 
-**Betroffene Modelle (Stand 2026-03-08):** `google/gemma-3-27b-it`, `neuralmagic/Mistral-Nemo-Instruct-2407-FP8`
+**Betroffene Modelle (zuletzt getestet 2026-03-08):** `google/gemma-3-27b-it`, `neuralmagic/Mistral-Nemo-Instruct-2407-FP8`
 
-**Getestete Workarounds:**
+**Getestete Workarounds (vor Fix):**
 - `drop_params: True` in LiteLLM Custom Configs → wird von Onyx nicht korrekt an LiteLLM weitergereicht
 - Separater Provider mit `drop_params` → gleicher Fehler
 
-**Loesung:** Diese Modelle koennen aktuell nicht mit Onyx verwendet werden. Nur Modelle mit Tool-Calling-Support nutzen (siehe Kompatibilitaetstabelle oben).
-
-> **Hinweis (2026-03-22):** Upstream-Sync #4 (2026-03-22) enthaelt `fix(llm): tool_choice wird nicht mehr gesendet wenn keine Tools vorhanden (#9224)`. Dieser Fix koennte Gemma 3 und Mistral-Nemo auf StackIT freischalten — TESTEN!
+**Status nach Upstream-Sync #4 (2026-03-22):** Onyx sendet `tool_choice` nicht mehr wenn keine Tools vorhanden sind (`fix(llm): #9224`). Dieser Fix koennte Gemma 3 und Mistral-Nemo auf StackIT freischalten. **Beide Modelle muessen neu getestet werden** — bis dahin als "nicht verifiziert" behandeln (nicht automatisch als kompatibel einstufen).
 
 ### Rate Limits (StackIT)
 
@@ -290,11 +288,11 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 
 | Feld | DEV | TEST | PROD |
 |------|-----|------|------|
-| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` | `https://chatbot.voeb-service.de` [DNS ausstehend] |
-| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | Noch nicht konfiguriert (wartet auf DNS/TLS-Aktivierung) |
-| Chat Default | GPT-OSS 120B | GPT-OSS 120B | Noch nicht konfiguriert |
-| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | Noch nicht konfiguriert |
-| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | Noch nicht konfiguriert |
+| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` (heruntergefahren seit 2026-03-19, 0 Pods) | `https://chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-17) |
+| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | HTTPS LIVE. LLM/Embedding-Konfiguration per Admin UI. |
+| Chat Default | GPT-OSS 120B | GPT-OSS 120B | Per Admin UI konfiguriert |
+| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | Per Admin UI konfiguriert |
+| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | Per Admin UI konfiguriert |
 
 > **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
 

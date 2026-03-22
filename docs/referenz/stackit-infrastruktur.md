@@ -26,10 +26,10 @@
 
 | Environment | Node-Typ | vCPU | RAM | Anzahl | Pool |
 |-------------|----------|------|-----|--------|------|
-| DEV + TEST | g1a.8d | 8 | 32 GB | 2 (1 pro Env) | `devtest` |
+| DEV + TEST | g1a.4d | 4 | 16 GB | 2 (1 pro Env) | `devtest` |
 | PROD (dedicated) | g1a.8d | 8 | 32 GB | 2 (bei Bedarf 3) | eigener Cluster |
 
-**DEV+TEST allokierbare Kapazitaet (2x g1a.8d):** ~15.8 CPU / ~56.6 Gi RAM — je ~7.9 CPU / ~28.3 Gi pro Env
+**DEV+TEST allokierbare Kapazitaet (2x g1a.4d):** ~7.4 CPU / ~26 Gi RAM — je ~3.7 CPU / ~13 Gi pro Env
 **PROD allokierbare Kapazitaet (2x g1a.8d):** ~15.8 CPU / ~56.6 Gi RAM
 **PROD geschaetzte Auslastung:** CPU ~55% Requests / ~62% mit Monitoring, RAM ~27% Requests / ~30% mit Monitoring (bei 150 Usern, basierend auf values-prod.yaml PROD-Requests)
 
@@ -37,6 +37,7 @@
 > Begründung: CPU-Isolation, Ausfallsicherheit, Enterprise-Standard.
 
 > **Upgrade (ADR-005):** g1a.4d → g1a.8d seit 2026-03-06 (8 separate Celery-Worker nach Upstream PR #9014).
+> **Downgrade DEV+TEST (2026-03-16):** g1a.8d → g1a.4d (Kostenoptimierung). PROD bleibt g1a.8d.
 
 ---
 
@@ -65,7 +66,7 @@
 | Typ | Zweck | Technologie |
 |-----|-------|-------------|
 | Object Storage | Dokumente, Uploads, Connector-Daten, Backups | S3-kompatibel |
-| Block Storage SSD | K8s PersistentVolumeClaims, Vespa-Indizes | Premium Performance Tier 2 (`premium-perf2-stackit`) |
+| Block Storage SSD | K8s PersistentVolumeClaims, OpenSearch-Indizes + Vespa (Zombie-Mode) | Premium Performance Tier 2 (`premium-perf2-stackit`) |
 
 **Buckets (Object Storage):** `vob-dev`, `vob-test`, `vob-prod`
 **PROD Backups:** PG PITR + Object Store Versioning
@@ -116,15 +117,17 @@
 | Background Worker (Monitoring) | 250m | 256 Mi | 1 |
 | Background Worker (User File) | 500m | 512 Mi | 1 |
 | Redis | 250m | 512 Mi | 1 |
-| Vespa (Vektor-Suche) | 2000m | 4 Gi | 1 |
+| OpenSearch (primaerer Document Index) | 1000m | 2 Gi | 1 |
+| Vespa (Zombie-Mode, kein aktiver Betrieb) | 100m | 512 Mi | 1 |
 | System-Overhead (kube-system) | ~1.4 CPU | ~2 Gi | — |
-| **TOTAL PROD** | **~9.5-10 CPU** | **~15-16 Gi** | — |
+| **TOTAL PROD** | **~8.6-9.1 CPU** | **~16-17 Gi** | — |
 
 ### Skalierung
 
 - 2× g1a.8d Worker Nodes decken den erwarteten Bedarf
 - Bei Lastspitzen: 3. Node hinzufügen (HPA-ready)
-- Vespa als In-Cluster Deployment (PROD: 1–2 Replicas)
+- OpenSearch als primaeres Document Index Backend (DEV + PROD aktiv)
+- Vespa im Zombie-Mode (minimale Ressourcen, kein aktiver Betrieb mehr)
 - Redis als In-Cluster Pod (kein Managed Redis notwendig)
 
 ---
@@ -135,10 +138,11 @@
 |--------|-----|------|------|
 | Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` (eigener Cluster `vob-prod`, deployed 2026-03-11) |
 | Cluster | shared (`vob-chatbot`) | shared (`vob-chatbot`) | **eigener Cluster** (ADR-004) |
-| Worker Nodes | eigener Node (g1a.8d) | eigener Node (g1a.8d) | 2× g1a.8d dedicated |
+| Worker Nodes | eigener Node (g1a.4d) | eigener Node (g1a.4d) | 2× g1a.8d dedicated |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 Replica (3 Nodes HA) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
-| Vespa | In-Cluster (1 Replica) | In-Cluster (1 Replica) | In-Cluster (1–2 Replicas) |
+| OpenSearch | In-Cluster (1 Replica) | In-Cluster (1 Replica) | In-Cluster (1 Replica) |
+| Vespa | In-Cluster (Zombie-Mode) | In-Cluster (Zombie-Mode) | In-Cluster (Zombie-Mode) |
 | Redis | In-Cluster Pod | In-Cluster Pod | In-Cluster Pod |
 | LLM | StackIT AI Serving | gleich | gleich + Monitoring |
 | Backups | PG PITR (auto) | PG PITR (auto) | PG PITR + ObjStore Versioning |
@@ -149,11 +153,11 @@
 
 | Environment | Domain | IP | Status |
 |-------------|--------|-----|--------|
-| DEV | `dev.chatbot.voeb-service.de` | `188.34.74.187` | A-Record gesetzt (2026-03-05) |
+| DEV | `dev.chatbot.voeb-service.de` | `188.34.118.222` | A-Record aktualisiert (2026-03-22, LB-IP nach Helm-Neuinstallation 2026-03-18) |
 | TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05) |
-| PROD | `chatbot.voeb-service.de` | `188.34.92.162` | Deployed (2026-03-11), DNS/TLS offen (wartet auf GlobVill) |
+| PROD | `chatbot.voeb-service.de` | `188.34.92.162` | **HTTPS LIVE** (2026-03-17), Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr |
 
-Cloudflare: DNS-only (kein Proxy). TLS: LIVE seit 2026-03-09. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv.
+Cloudflare: DNS-only (kein Proxy). TLS DEV/TEST: LIVE seit 2026-03-09. TLS PROD: LIVE seit 2026-03-17. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv.
 
 ---
 

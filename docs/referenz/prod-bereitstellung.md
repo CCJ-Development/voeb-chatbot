@@ -1,8 +1,8 @@
 # PROD-Bereitstellung — Planungsdokument
 
-**Status:** Phase A-F abgeschlossen, **PROD HTTPS LIVE** (19 Pods, Health OK, TLS ECDSA P-384). NetworkPolicies + Auth offen.
+**Status:** Phase A-F abgeschlossen, **PROD HTTPS LIVE** (20 Pods, Health OK, TLS ECDSA P-384). NetworkPolicies + Auth offen.
 **Erstellt:** 2026-03-11
-**Letzte Aktualisierung:** 2026-03-17 — DNS/TLS PROD aktiviert (Leif/GlobVill), ECDSA P-384
+**Letzte Aktualisierung:** 2026-03-22 — Pod-Zaehlung auf 20 aktualisiert (OpenSearch), Vespa-Resources korrigiert
 **Autor:** CCJ / Coffee Studios (Nikolaj Ivanov)
 **Ziel-URL:** `https://chatbot.voeb-service.de`
 
@@ -19,7 +19,7 @@ Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem get
 | Komponente | DEV | TEST | PROD |
 |------------|-----|------|------|
 | SKE Cluster | `vob-chatbot` (shared) | `vob-chatbot` (shared) | **`vob-prod`** (dedicated, seit 2026-03-11) |
-| Namespace | `onyx-dev` (16 Pods) | `onyx-test` (15 Pods) | `onyx-prod` (19 Pods) |
+| Namespace | `onyx-dev` (17 Pods) | `onyx-test` (15 Pods, heruntergefahren) | `onyx-prod` (20 Pods) |
 | PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 2.4 Single `vob-test` | Flex 4.8 Replica HA `vob-prod` (3 Nodes) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
 | Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`) |
@@ -108,6 +108,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | Celery Beat | 1 | Singleton (Scheduler) |
 | Celery Light/Heavy/DocFetch/DocProcess/Monitoring/UserFile | je 1 | ✅ **Gesetzt** (2026-03-11). Worker-Isolation = Onyx Standard Mode. 0 Replicas = Feature offline |
 | Vespa | 1 | HA erfordert Content-Cluster-Config (spaeter evaluieren) |
+| OpenSearch | 1 | Kein HA (Single-Node, akzeptabel fuer aktuelle Nutzung). Cluster Health "yellow" = normal bei Single-Node (1 unassigned Replica) |
 | Redis | 1 | In-Cluster Standalone |
 | Model Server (Inference + Index) | je 1 | Self-hosted Embedding |
 
@@ -176,11 +177,11 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
 | C1 | PROD LoadBalancer IP ermitteln | [x] | Erster Helm Deploy (D5) | ✅ **Erledigt (2026-03-11).** LB IP: `188.34.92.162` (NGINX Ingress Service) |
-| C2 | DNS A-Record setzen | [ ] | C1 | `chatbot.voeb-service.de` → `188.34.92.162`. **Mail an Leif (GlobVill) gesendet (2026-03-11)** |
-| C3 | ACME-Challenge CNAME verifizieren | [ ] | B7, C2 | `dig _acme-challenge.chatbot.voeb-service.de CNAME` |
-| C4 | Certificate-Ressource erstellen | [ ] | B6, C3 | ECDSA P-384, DNS Names: `chatbot.voeb-service.de` |
-| C5 | HTTPS verifizieren | [ ] | C4 | `curl -vI https://chatbot.voeb-service.de`, TLSv1.3, HTTP/2 pruefen |
-| C6 | Cloudflare Proxy-Modus pruefen | [ ] | C2 | DNS-only (kein Proxy!) — sonst IP-Mismatch. Analog DEV/TEST |
+| C2 | DNS A-Record setzen | [x] | C1 | ✅ **Erledigt (2026-03-17).** `chatbot.voeb-service.de` → `188.34.92.162`. Leif (GlobVill) hat DNS-Eintrag gesetzt |
+| C3 | ACME-Challenge CNAME verifizieren | [x] | B7, C2 | ✅ **Erledigt (2026-03-17).** `_acme-challenge.chatbot.voeb-service.de` → Cloudflare Zone. CNAME durch Leif/GlobVill gesetzt |
+| C4 | Certificate-Ressource erstellen | [x] | B6, C3 | ✅ **Erledigt (2026-03-17).** ECDSA P-384, Let's Encrypt Production ACME, DNS-01 via Cloudflare |
+| C5 | HTTPS verifizieren | [x] | C4 | ✅ **Erledigt (2026-03-17).** TLSv1.3, HTTP/2, ECDSA P-384 (E7 Intermediate), HSTS 1 Jahr |
+| C6 | Cloudflare Proxy-Modus pruefen | [x] | C2 | ✅ **Erledigt (2026-03-17).** DNS-only (kein Proxy) — analog DEV/TEST |
 
 **Hinweis:** C1 erfordert einen initialen Helm Deploy (Phase D). DNS kann erst danach gesetzt werden. Workaround: Erster Deploy ohne TLS (HTTP), dann TLS nachruestbar.
 
@@ -197,7 +198,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | D5 | `values-prod.yaml` vervollstaendigen | [x] | A9 | ✅ **Erledigt (2026-03-11).** POSTGRES_HOST eingetragen, AUTH_TYPE temporaer auf "basic" (O3), Header aktualisiert |
 | D6 | Erster PROD Deploy | [x] | D1-D5, B3-B8 | ✅ **Erledigt (2026-03-11).** 19 Pods Running, Health OK. Smoke-Test im CI schlug fehl (Timing: API crashte anfangs wegen korruptem S3-Secret, manuell gefixt). Re-Run noetig fuer gruenen CI-Lauf |
 | D7 | Recreate-Strategie patchen | [x] | D6 | ✅ **Geloest (2026-03-11).** "Patch deployment strategy and wait (PROD)"-Step in `stackit-deploy.yml` ergaenzt (analog DEV Z.234-260 / TEST Z.356-382). Patcht 10 Deployments auf Recreate-Strategie + wartet auf Rollout. Enterprise-Begruendung: RollingUpdate fuehrt bei Onyx zu DB-Connection-Pool-Exhaustion (monitoring-konzept.md Lesson Learned #8) |
-| D8 | Smoke Test verifizieren | [x] | D6 | ✅ **Erledigt (2026-03-11).** `curl http://188.34.92.162/api/health` → `{"success":true}`. 19/19 Pods Running, 0 CrashLoops |
+| D8 | Smoke Test verifizieren | [x] | D6 | ✅ **Erledigt (2026-03-11).** `curl http://188.34.92.162/api/health` → `{"success":true}`. 20/20 Pods Running (inkl. OpenSearch), 0 CrashLoops |
 | D9 | DB-Migration pruefen | [x] | D6 | ✅ **Erledigt (2026-03-11).** Alembic-Migrationen (inkl. ext_-Tabellen) automatisch beim API-Start ausgefuehrt |
 
 **Offene Fragen Phase D:**
@@ -213,7 +214,7 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
 | E1 | SEC-06 Phase 2: `runAsNonRoot: true` | [x] | D6 | ✅ **Geloest (2026-03-11).** `values-prod.yaml`: `runAsUser: 1001` + `runAsNonRoot: true` fuer celery_shared, inferenceCapability, indexCapability. Vespa bleibt `runAsUser: 0` (dokumentierte Ausnahme). Helm template verifiziert. **WICHTIG:** Vor PROD-Deploy auf DEV/TEST validieren! |
-| E2 | NetworkPolicies PROD erstellen | [x] | D6, A10 | ✅ **Geloest (2026-03-11).** Bestehende Policy-YAMLs sind namespace-agnostisch → funktionieren fuer `onyx-prod`. `apply.sh` aktualisiert (7 Policies statt 5). `monitoring/apply.sh` aktualisiert (onyx-prod hinzugefuegt, dynamisch mit Namespace-Check) |
+| E2 | NetworkPolicies PROD erstellen | [x] | D6, A10 | ✅ **Geloest (2026-03-11, aktualisiert 2026-03-22).** Bestehende Policy-YAMLs sind namespace-agnostisch → funktionieren fuer `onyx-prod`. `apply.sh` aktualisiert. **Monitoring-NS: 8 Policies** (Basis-5 + PG-Exporter-Egress + Redis-Exporter-Egress + AlertManager-Webhook-Egress). **App-NS: 1 Policy** (`06-allow-monitoring-scrape` + `07-allow-redis-exporter-ingress`). `monitoring/apply.sh` aktualisiert (onyx-prod hinzugefuegt, dynamisch mit Namespace-Check) |
 | E3 | NetworkPolicies Monitoring-NS erstellen | [ ] | F1 | Analog `deployment/k8s/network-policies/monitoring/` |
 | E4 | Cluster ACL pruefen | [ ] | A9 | `cluster_acl` in Terraform — soll PROD-API-Server nur von bestimmten IPs erreichbar sein? |
 | E5 | HSTS Header auf 1 Jahr setzen | [x] | D5 | ✅ **Geloest (2026-03-11).** `values-prod.yaml` ueberschreibt `nginx.controller.config.http-snippet` mit `max-age=31536000` (1 Jahr). DEV/TEST bleiben bei `max-age=3600` (1h) aus `values-common.yaml`. BSI TR-02102: min. 6 Monate. OWASP: 1 Jahr + includeSubDomains. Env-spezifischer Override = Clean Architecture |
@@ -448,7 +449,7 @@ deployment/terraform/environments/prod/
 ### Infrastruktur
 
 - [ ] SKE Cluster `vob-prod` provisioniert und gesund
-- [ ] Alle Pods Running (erwartet: ~20 Pods inkl. HA-Replicas)
+- [ ] Alle Pods Running (erwartet: 20 Pods: 2×API, 2×Web, 2×Celery-Primary, 1×Beat, 6×Celery-Worker, 1×Vespa, 1×OpenSearch, 1×Redis, 2×Model)
 - [ ] `/api/health` erreichbar und OK
 - [ ] HTTPS aktiv, TLSv1.3, ECDSA P-384 (BSI TR-02102)
 - [ ] DNS `chatbot.voeb-service.de` aufloesbar und korrekt
@@ -594,11 +595,16 @@ Exakte Berechnung basierend auf `values-prod.yaml` (nach allen Korrekturen):
 | Celery DocProcessing | 1 | 500m | 1000m | 1024 Mi | 4096 Mi |
 | Celery Monitoring | 1 | 250m | 500m | 256 Mi | 512 Mi |
 | Celery UserFile | 1 | 500m | 1000m | 512 Mi | 2048 Mi |
-| Vespa | 1 | 2000m | 4000m | 4096 Mi | 8192 Mi |
+| Vespa | 1 | 100m | 4000m | 512 Mi | 4096 Mi |
+| OpenSearch | 1 | 1000m | 2000m | 2048 Mi | 4096 Mi |
 | Redis | 1 | 250m | 500m | 512 Mi | 1024 Mi |
 | Inference Model | 1 | 500m | 2000m | 1024 Mi | 4096 Mi |
 | Index Model | 1 | 500m | 2000m | 1024 Mi | 4096 Mi |
-| **Summe onyx-prod** | **17** | **8750m** | **19500m** | **15616 Mi (~15.25 Gi)** | **43520 Mi (~42.5 Gi)** |
+| **Summe onyx-prod** | **18** | **8850m** | **21500m** | **17664 Mi (~17.25 Gi)** | **47616 Mi (~46.5 Gi)** |
+
+> **Vespa-Hinweis (2026-03-22):** Vespa laeuft im Zombie-Mode (Request 100m/512Mi), benoetigt aber 4 Gi LIMIT damit der cgroup-Check beim Start nicht fehlschlaegt. Request-Werte sind niedrig (Vespa ist durch OpenSearch als Primary-Store abgeloest), Limit bleibt hoch als Safety-Net.
+>
+> **OpenSearch (2026-03-22):** Cluster Health "yellow" = Normal bei Single-Node (1 unassigned Replica). Kein Handlungsbedarf. Nur bei "red" eingreifen.
 
 ### 11.2 Monitoring-Pods (Namespace `monitoring`)
 
@@ -618,12 +624,12 @@ Exakte Berechnung basierend auf `values-prod.yaml` (nach allen Korrekturen):
 
 | | CPU Requests | RAM Requests | CPU Limits | RAM Limits |
 |---|---|---|---|---|
-| onyx-prod (17 Pods) | 8750m | ~15.25 Gi | 19500m | ~42.5 Gi |
+| onyx-prod (18 Pods, inkl. OpenSearch) | 8850m | ~17.25 Gi | 21500m | ~46.5 Gi |
 | monitoring (~9 Pods) | 1175m | ~2 Gi | ~2450m | ~4 Gi |
 | System (kube-system) | ~500m | ~1 Gi | ~800m | ~2 Gi |
-| **Gesamt** | **10425m** | **~18.25 Gi** | **22750m** | **~48.5 Gi** |
+| **Gesamt** | **10525m** | **~20.25 Gi** | **24750m** | **~52.5 Gi** |
 | **Allocatable (2× g1a.8d)** | 15820m | ~55 Gi (56.666 Mi) | 15820m | ~55 Gi (56.666 Mi) |
-| **Auslastung** | **66%** | **32%** | **144%** | **86%** |
+| **Auslastung** | **67%** | **37%** | **157%** | **95%** |
 
 **Bewertung:**
 - **CPU Requests 66%:** Komfortabel. Genug Headroom fuer Burst und temporaere Debug-Pods.

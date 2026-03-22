@@ -1,8 +1,8 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-19
-**Version**: 0.7.1
+**Letzte Aktualisierung**: 2026-03-22
+**Version**: 0.8
 
 ---
 
@@ -43,8 +43,8 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ Namespace: onyx-dev (DEV)                             │  │ │
 │  │  │ IngressClass: nginx                                   │  │ │
 │  │  │ LoadBalancer IP: 188.34.118.222                       │  │ │
-│  │  │ HTTPS: Temporaer HTTP (DNS-Update auf neue LB-IP     │  │ │
-│  │  │        ausstehend bei GlobVill)                       │  │ │
+│  │  │ HTTPS: LIVE (DNS A-Record auf 188.34.118.222          │  │ │
+│  │  │        aktualisiert durch GlobVill, 2026-03-22)       │  │ │
 │  │  │                                                       │  │ │
 │  │  │  Pods (17):                                            │  │ │
 │  │  │  ├── onyx-dev-web-server       (Frontend, 1 Replica)  │  │ │
@@ -86,7 +86,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ IngressClass: nginx (eigener Cluster, kein Konflikt)  │  │ │
 │  │  │ LoadBalancer IP: 188.34.92.162                        │  │ │
 │  │  │                                                       │  │ │
-│  │  │  Pods (19):                                           │  │ │
+│  │  │  Pods (20):                                           │  │ │
 │  │  │  ├── onyx-prod-web-server       (Frontend, 2 Replicas HA)│  │ │
 │  │  │  ├── onyx-prod-api-server       (Backend, 2 Replicas HA) │  │ │
 │  │  │  ├── onyx-prod-celery-beat      (Scheduler, 1 Replica)│  │ │
@@ -99,10 +99,10 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-prod-celery-worker-user-file    (1 Rep.)    │  │ │
 │  │  │  ├── onyx-prod-inference-model  (Model Server, 1 Rep.)│  │ │
 │  │  │  ├── onyx-prod-indexing-model   (Model Server, 1 Rep.)│  │ │
+│  │  │  ├── opensearch                (Document Index, 1 Rep.)│  │ │
 │  │  │  ├── vespa                     (Zombie-Mode, 1 Rep.)  │  │ │
 │  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
-│  │  │  Hinweis: OpenSearch noch nicht auf PROD deployed      │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
@@ -149,7 +149,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  Alle Envs: 4 Chat-Modelle konfiguriert (2026-03-08):      │ │
 │  │    GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B │ │
 │  │  Embedding DEV+TEST: Qwen3-VL-Embedding 8B (aktiv)           │ │
-│  │  Embedding PROD: Noch nicht konfiguriert (RAG-Tests ausstehend)│ │
+│  │  Embedding PROD: Qwen3-VL-Embedding 8B (aktiv, OpenSearch)    │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
@@ -171,9 +171,9 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 
 - **DEV**: OpenSearch Single-Node deployed (300m/1.5Gi), 17 Pods gesamt
 - **TEST**: Dauerhaft heruntergefahren (seit 2026-03-19, 0 Pods, PVCs erhalten)
-- **PROD**: OpenSearch noch nicht deployed, Vespa weiterhin im Zombie-Mode
+- **PROD**: OpenSearch deployed (2026-03-22), Retrieval aktiv. 20 Pods gesamt. Vespa im Zombie-Mode (100m/512Mi Requests, 4Gi Limit — nur fuer Celery Readiness Check).
 
-**Hintergrund**: Vespa erfordert als Celery-Dependency einen laufenden Pod (Readiness Check). Ein vollstaendiges Entfernen ist ohne Upstream-Code-Aenderung nicht moeglich. Daher bleibt Vespa mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi PROD) bestehen, waehrend OpenSearch das aktive Retrieval uebernimmt.
+**Hintergrund**: Vespa erfordert als Celery-Dependency einen laufenden Pod (Readiness Check). Ein vollstaendiges Entfernen ist ohne Upstream-Code-Aenderung nicht moeglich. Daher bleibt Vespa mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi Requests / 4Gi Limit PROD) bestehen, waehrend OpenSearch das aktive Retrieval uebernimmt.
 
 ### Komponenten-Uebersicht
 
@@ -183,7 +183,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 | Backend (API Server) | Python 3.11, FastAPI 0.133.1, SQLAlchemy 2.0, Pydantic 2.11 | REST API | 1 | 2 (HA) |
 | Background Worker | Celery 5.5 (Standard Mode, 8 separate Worker) | Async Tasks, Indexing | 7 Worker + 1 Beat | 7 Worker + 1 Beat |
 | Model Server | Onyx Model Server v2.9.8 (Docker Hub Upstream) | Embedding, Inference | 2 (Index + Inference) | 2 (Index + Inference) |
-| OpenSearch | OpenSearch 3.4.0 (In-Cluster, Single-Node) | Document Index Backend (Dual-Write, primaeres Retrieval) | 1 (DEV) | Noch nicht deployed |
+| OpenSearch | OpenSearch 3.4.0 (In-Cluster, Single-Node) | Document Index Backend (Dual-Write, primaeres Retrieval) | 1 (DEV) | 1 (PROD, deployed 2026-03-22) |
 | Vespa | Vespa 8.609.39 (In-Cluster, **Zombie-Mode**) | Nur Celery Readiness Check, minimale Ressourcen. Kein aktives Retrieval. Dual-Write aktiv. | 1 | 1 |
 | Redis | Redis 7.0.15 (In-Cluster, OT Operator) | Cache, Celery Broker | 1 | 1 |
 | PostgreSQL | StackIT Managed Flex (Extern) | Relationale Daten | Flex 2.4 Single | Flex 4.8 HA (3-Node) |
@@ -195,11 +195,11 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 
 | Umgebung | Cluster | Namespace | LB IP | Egress IP | Status |
 |----------|---------|-----------|-------|-----------|--------|
-| DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). Temporaer HTTP (DNS-Update ausstehend bei GlobVill) |
+| DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). HTTPS LIVE (DNS A-Record aktualisiert 2026-03-22) |
 | TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | **Dauerhaft heruntergefahren** (seit 2026-03-19). 0 Pods. Helm Release + PVCs + Secrets erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`. |
-| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 19 Pods. OpenSearch noch nicht deployed |
+| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 20 Pods. OpenSearch deployed + Retrieval aktiv (2026-03-22). Chart 0.4.36, Image df049fa, Helm Rev 4 |
 
-**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS temporaer nicht verfuegbar (DNS A-Record muss auf neue LB-IP `188.34.118.222` aktualisiert werden, wartet auf GlobVill). PROD HTTPS LIVE seit 2026-03-17. **TEST dauerhaft heruntergefahren seit 2026-03-19** (0 Pods, Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich). Scale-to-Zero CronJobs wurden entfernt (nicht mehr noetig).
+**Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record `188.34.118.222` durch GlobVill aktualisiert). PROD HTTPS LIVE seit 2026-03-17. **TEST dauerhaft heruntergefahren seit 2026-03-19** (0 Pods, Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich). Scale-to-Zero CronJobs wurden entfernt (nicht mehr noetig).
 
 ---
 
@@ -241,6 +241,7 @@ Das VÖB-spezifische Extension Framework erweitert Onyx FOSS um Enterprise-Featu
 | **ext-branding** | Whitelabel: Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent | `EXT_BRANDING_ENABLED` | `/admin/ext/branding` | ✅ DEV + TEST deployed (2026-03-08) |
 | **ext-token** | LLM Usage Tracking + Limits: Per-User, Per-Model, Timeline, Usage Dashboard | `EXT_TOKEN_LIMITS_ENABLED` | `/admin/ext/token-usage` | ✅ DEV + TEST deployed (2026-03-09) |
 | **ext-prompts** | Custom System Prompts: Globale Anweisungen für jeden LLM-Aufruf (prepend, nicht replace) | `EXT_CUSTOM_PROMPTS_ENABLED` | `/admin/ext/system-prompts` | ✅ DEV + TEST deployed (2026-03-09) |
+| **ext-i18n** | Deutsche Lokalisierung (~95% UI): ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer) | `EXT_I18N_ENABLED` | — (keine Admin-UI) | ✅ DEV + PROD deployed (2026-03-22) |
 
 ### Feature Flags
 
@@ -250,6 +251,7 @@ Alle Flags werden in `backend/ext/config.py` definiert und über Umgebungsvariab
 - `EXT_BRANDING_ENABLED` — ext-branding
 - `EXT_TOKEN_LIMITS_ENABLED` — ext-token
 - `EXT_CUSTOM_PROMPTS_ENABLED` — ext-prompts
+- `NEXT_PUBLIC_EXT_I18N_ENABLED` — ext-i18n (Frontend Build-Arg + Runtime Env)
 
 Aktivierung in `deployment/helm/values/values-{env}.yaml` oder `deployment/docker_compose/.env`.
 
@@ -446,7 +448,7 @@ helm upgrade --install onyx-prod deployment/helm/charts/onyx \
 **Szenarien**:
 
 1. **Fehlerhaftes Deployment (alle Environments)**
-   - Alle Environments (DEV, TEST, PROD) nutzen `--wait --timeout 15m`: Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
+   - Alle Environments (DEV, TEST, PROD) nutzen `--wait --timeout 15m`: Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17-20 Pods mit Cold Start (Alembic Migrations, Model Server, OpenSearch) brauchen mehr Zeit.
    - Manueller Rollback: `helm rollback onyx-{env} -n onyx-{env}`
    - Helm History: Maximal 5 Revisionen (`--history-max 5`)
 
@@ -512,7 +514,7 @@ Entwicklung (Feature-Branch)
 | **TEST** | Manuell (`workflow_dispatch`) | Tech Lead triggert Deploy | `helm rollback` (manuell) | 15 Min |
 | **PROD** | Manuell (`workflow_dispatch`) | Tech Lead + Required Reviewer (GitHub Environment Protection) | `helm rollback` (manuell) | 15 Min |
 
-**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17+ Pods mit Cold Start (Alembic Migrations, Model Server) brauchen mehr Zeit.
+**Hinweis**: Alle Environments nutzen `--wait --timeout 15m` (kein `--atomic`). Kein automatischer Rollback bei Timeout — Release bleibt stehen und kann debuggt werden. Grund: 17-20 Pods mit Cold Start (Alembic Migrations, Model Server, OpenSearch) brauchen mehr Zeit.
 
 ### Dokumentation von Änderungen
 
@@ -821,7 +823,7 @@ Für dringende Fixes auf einer bereits released Version:
 | Celery Beat | 100m CPU, 256Mi RAM | 250m CPU, 512Mi RAM |
 | Model Server (je) | 250m CPU, 768Mi RAM | 1000m CPU, 2Gi RAM |
 | OpenSearch | 300m CPU, 1.5Gi RAM (DEV) | 1000m CPU, 2Gi RAM (PROD) |
-| Vespa (Zombie-Mode) | 50m CPU, 512Mi RAM (DEV) | 100m CPU, 512Mi RAM (PROD) |
+| Vespa (Zombie-Mode) | 50m CPU, 512Mi RAM (DEV) | 100m CPU / 512Mi Req, 4Gi Limit (PROD) |
 | Redis | 100m CPU, 128Mi RAM | 250m CPU, 256Mi RAM |
 
 ### Skalierungsstrategie
@@ -1056,13 +1058,14 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-19
-**Version**: 0.7.1
+**Letzte Aktualisierung**: 2026-03-22
+**Version**: 0.8
 
 ### Versionshistorie
 
 | Version | Datum | Autor | Aenderungen |
 |---------|-------|-------|-------------|
+| 0.8 | 2026-03-22 | COFFEESTUDIOS | PROD 20 Pods (OpenSearch deployed + Retrieval aktiv), Vespa PROD 100m/512Mi Req / 4Gi Limit, DEV HTTPS LIVE (DNS aktualisiert), ext-i18n deployed (DEV + PROD), Chart 0.4.36 / Image df049fa / Helm Rev 4 |
 | 0.7.1 | 2026-03-19 | COFFEESTUDIOS | TEST dauerhaft heruntergefahren (0 Pods), Scale-to-Zero CronJobs entfernt |
 | 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch aktiviert, Vespa Zombie-Mode, DEV HTTP-Workaround |
 | 0.6.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 8 Cross-Ref-Fixes (XREF-002/010/013/014/015/016/019/034) |

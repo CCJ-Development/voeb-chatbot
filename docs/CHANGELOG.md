@@ -6,7 +6,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [2026-03-22]
 
 ### Added
 - [ext-i18n] **Deutsche Lokalisierung** der User-facing UI (~95% Abdeckung)
@@ -26,6 +26,29 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `fix(agents)`: Agents standardmaessig privat (#9465)
   - `feat(admin)`: Groups Page mit Cards (#9453)
   - `chore`: Next.js 16.1.7, api_server Resource Limits konfigurierbar
+
+- [Infra] **PROD Upgrade** (2026-03-22): Chart 0.4.32 → 0.4.36, Helm Rev 4, 20 Pods
+  - OpenSearch PROD deployed + Retrieval aktiviert (Primary Document Index)
+  - Vespa PROD auf Zombie-Mode reduziert (100m/512Mi Requests, 4Gi Limit)
+  - ext-i18n PROD deployed (~250 Strings Deutsch, ~95% user-facing UI)
+  - OpenSearch PROD Passwort gesichert (nicht Chart-Default), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
+  - CI/CD `stackit-deploy.yml`: `--set opensearch_admin_password` fuer PROD ergaenzt (2026-03-22)
+
+### Fixed
+- [Infra] **DNS DEV A-Record Blocker geloest** (2026-03-22)
+  - Leif/GlobVill hat A-Record auf `188.34.118.222` aktualisiert (anfrage 2026-03-18)
+  - DEV HTTPS `https://dev.chatbot.voeb-service.de` wieder vollstaendig erreichbar
+  - `/etc/hosts` Workaround kann entfernt werden
+- [Infra] **values-dev.yaml WEB_DOMAIN auf HTTPS korrigiert** (2026-03-22)
+  - `WEB_DOMAIN: "http://..."` → `"https://..."` — Secure-Cookies werden jetzt korrekt gesetzt
+  - HSTS-Override-Block entfernt (values-common.yaml HSTS greift)
+- [Docs] **Runbook-Komplettreparatur** (2026-03-22): 9 Runbooks aktualisiert, 4 neue erstellt
+  - 12 veraltete Befehle/Werte korrigiert (alte DEV-IP, Node-Typ, Secrets, Pod-Counts)
+  - dns-tls-setup, ci-cd-pipeline, llm-konfiguration, prod-bereitstellung: stark veraltete Abschnitte aktualisiert
+  - upstream-sync, helm-deploy, rollback, postgresql, monitoring-konzept: teilweise Korrekturen
+  - Neue Runbooks: opensearch-troubleshooting, ip-schutz-helm, alert-antwort, secret-rotation
+  - fork-management.md: 7/10 → 8/10 Core-Patches (layout.tsx seit ext-i18n)
+  - OpenSearchClusterRed Alert als "geplant, nicht implementiert" dokumentiert (kein Exporter)
 
 ### Changed
 - [Infra] **TEST-Umgebung dauerhaft heruntergefahren** (2026-03-19)

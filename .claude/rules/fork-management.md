@@ -92,7 +92,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 7 von 10 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx — die 3 ungepatchten: access.py, layout.tsx, header/ werden erst mit ext-rbac/ext-access gepatcht):
+Fuer JEDE gepatchte Core-Datei (aktuell 8 von 10 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx — die 2 ungepatchten: access.py, header/ werden erst mit ext-rbac/ext-access gepatcht):
 
 ```bash
 # Beispiel Backend-Datei:
@@ -183,9 +183,23 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Fehlende Migrationen | `b5c4d7e8f9a1` (hierarchy_node), `27fb147a843f` (user timestamps), `93a2e195e25c` (voice_provider), `689433b0d8de` (hooks) |
 | Fix | SQL manuell auf DEV-DB ausgeführt via `kubectl exec` + `psycopg2` |
 | LB-IP-Wechsel | `188.34.74.187` → `188.34.118.222` (NGINX Controller neu erstellt) |
-| DNS-Update | Angefragt bei Leif/GlobVill |
+| DNS-Update | ✅ Leif hat A-Record aktualisiert auf `188.34.118.222` (verifiziert 2026-03-22) |
 | **Lesson Learned** | `helm delete + install` = neue LB-IP. `helm upgrade` behält LB-IP. |
 | **Lesson Learned** | Alembic `upgrade head` holt eingefügte Migrationen NICHT nach wenn DB bereits auf späterem Head steht |
+
+## Vierter Upstream-Merge (2026-03-22) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Upstream-Commits | 71 |
+| Konflikte | 0 |
+| Core-Datei-Konflikte | 0 |
+| ext_-Code Konflikte | 0 |
+| Infrastruktur-Konflikte | 0 |
+| Chart-Version | 0.4.35 → 0.4.36 |
+| Wichtig | Hook-System, OpenSearch-Verbesserungen, Groups Page, tool_choice-Fix |
+| Workflow | Branch + PR (#19), Squash Merge |
+| PROD-Deploy | Manueller `helm upgrade` am selben Tag (Chart 0.4.32 → 0.4.36, OpenSearch + ext-i18n) |
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 

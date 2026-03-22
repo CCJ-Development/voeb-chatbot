@@ -21,6 +21,8 @@
 #     - S3_SECRET_ACCESS_KEY       (StackIT Object Storage)
 #     - DB_READONLY_PASSWORD       (PG Readonly User für Knowledge Graph)
 #     - REDIS_PASSWORD             (Redis Standalone Passwort)
+#   Nur PROD:
+#     - OPENSEARCH_PASSWORD        (OpenSearch Admin-Passwort, NICHT Chart-Default nutzen)
 #
 # Hinweis: Die StackIT Project ID (UUID) wird NICHT als Secret benötigt.
 # Die Container Registry nutzt einen eigenen Projektnamen (REGISTRY_PROJECT).
@@ -471,6 +473,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=${{ secrets.S3_ACCESS_KEY_ID }}" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=${{ secrets.S3_SECRET_ACCESS_KEY }}" \
             --set "auth.dbreadonly.values.db_readonly_password=${{ secrets.DB_READONLY_PASSWORD }}" \
+            --set "auth.opensearch.values.opensearch_admin_password=${{ secrets.OPENSEARCH_PASSWORD }}" \
             --wait --timeout 15m
 
       # PROD: Recreate-Strategie per kubectl patch (analog DEV/TEST).

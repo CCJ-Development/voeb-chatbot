@@ -1,6 +1,6 @@
 # Runbook: StackIT PostgreSQL Flex — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-02-27 (DEV/TEST). PROD-Abschnitt ergaenzt 2026-03-15.
+**Zuletzt verifiziert:** 2026-03-22 (DEV/TEST + PROD).
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -315,6 +315,16 @@ kubectl delete job pg-backup-check-manual -n monitoring
 | `permission denied to create role` | Managed PG hat kein CREATEROLE | User per Terraform anlegen |
 | `Connection refused` | PG Flex ACL blockiert | ACL in `environments/{env}/main.tf` prüfen. DEV+TEST: Egress `188.34.93.194/32`, PROD: Egress `188.34.73.72/32` (jeweils + Admin-IP) |
 | `password authentication failed` | Falsches Passwort | `terraform output -raw pg_password` prüfen |
+| Alembic `upgrade head` holt Migrationen nicht nach | Eingefuegte Upstream-Migrationen werden von Alembic ignoriert, wenn DB bereits auf einem spaeteren Head gestempelt ist | SQL der fehlenden Migrationen manuell ausfuehren. Aufgetreten bei Upstream-Sync #3 (2026-03-18): 4 Upstream-Migrationen (`b5c4d7e8f9a1`, `27fb147a843f`, `93a2e195e25c`, `689433b0d8de`) wurden in die Chain eingefuegt aber nie ausgefuehrt. Fix: `kubectl exec` in API-Server Pod → `psycopg2` → SQL manuell. Details: `memory/feedback_upstream-sync-lessons.md` |
+
+**Hinweis bei PROD-Befehlen:** Immer `KUBECONFIG=~/.kube/config-prod` voranstellen, wenn nicht als Default-Kubeconfig gesetzt. Beispiel:
+
+```bash
+KUBECONFIG=~/.kube/config-prod kubectl run pg-client --restart=Never --namespace onyx-prod \
+  --image=postgres:16-alpine \
+  --env="PGPASSWORD=<PG_PASSWORD>" \
+  --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "\dt"
+```
 
 ---
 

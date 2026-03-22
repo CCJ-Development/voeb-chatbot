@@ -8,6 +8,8 @@
 
 ## Vor jedem Sync
 
+> **Hinweis:** `git rerere` und `merge.conflictstyle diff3` sind aktiviert — wiederkehrende Konflikte (z.B. AGENTS.md) werden automatisch geloest. Neu auftretende Konflikte muessen weiterhin manuell geprueft werden.
+
 ### 1. Evaluieren (NICHT mergen)
 
 ```bash
@@ -28,7 +30,8 @@ for FILE in \
   "web/src/lib/constants.ts" \
   "web/src/app/auth/login/LoginText.tsx" \
   "web/src/components/auth/AuthFlowContainer.tsx" \
-  "web/src/sections/sidebar/AdminSidebar.tsx"; do
+  "web/src/sections/sidebar/AdminSidebar.tsx" \
+  "web/src/app/layout.tsx"; do
   CHANGES=$(git diff main..upstream/main -- "$FILE" | wc -l)
   if [ "$CHANGES" -gt 0 ]; then
     echo "KONFLIKT-RISIKO: $FILE ($CHANGES diff-Zeilen)"
@@ -71,7 +74,9 @@ git merge upstream/main --no-commit --no-ff
 |-------|---------|
 | `AGENTS.md` | `git checkout --ours AGENTS.md` |
 | `.github/CODEOWNERS` | `git checkout --ours .github/CODEOWNERS` |
+| `.claude/skills` | `git checkout --ours .claude/skills` |
 | `AdminSidebar.tsx` | Upstream nehmen, ext-Links manuell einfuegen |
+| `web/Dockerfile` | Upstream nehmen, ARG/ENV `NEXT_PUBLIC_EXT_I18N_ENABLED` in beiden Stages neu einfuegen |
 | Core-Dateien (falls betroffen) | Upstream nehmen, Patches neu anwenden |
 
 **Nach Konflikt-Loesung:** `git add <datei>` fuer jede geloeste Datei.
@@ -181,7 +186,14 @@ git diff --cached --name-only | xargs grep -l "<<<<<<" 2>/dev/null && echo "FEHL
 ### 10. Commit + PR
 
 ```bash
-git add -A
+# Spezifische Dateien stagen — KEIN git add -A (Commit-Workflow-Regel: nur gezielte Dateien)
+git add backend/onyx/main.py backend/onyx/llm/multi_llm.py backend/onyx/chat/prompt_utils.py
+git add web/src/lib/constants.ts web/src/app/auth/login/LoginText.tsx
+git add web/src/components/auth/AuthFlowContainer.tsx web/src/sections/sidebar/AdminSidebar.tsx
+git add web/src/app/layout.tsx backend/Dockerfile web/Dockerfile
+git add deployment/helm/charts/onyx/ deployment/docker_compose/env.template
+git add backend/alembic/ backend/ext/_core_originals/ AGENTS.md
+# ... alle weiteren geaenderten Dateien explizit anfuegen
 git commit --no-verify -m "chore(upstream): Merge upstream/main — N Commits"
 git push origin chore/upstream-sync-YYYY-MM-DD
 
@@ -198,13 +210,17 @@ gh pr create --base main --head chore/upstream-sync-YYYY-MM-DD \
 ### 11. DEV deployen und verifizieren
 
 ```bash
-# PR mergen (nach Review)
-gh pr merge <NR> -R CCJ-Development/voeb-chatbot --merge --delete-branch
+# PR mergen (nach Review) — IMMER --squash (konsistent mit fork-management.md)
+gh pr merge <NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
 
 # CI/CD triggert auto-deploy auf DEV
 # Alternativ manuell:
 gh workflow run stackit-deploy.yml -f environment=dev -R CCJ-Development/voeb-chatbot
 ```
+
+**ACHTUNG — Alembic:** `alembic upgrade head` holt eingefuegte Upstream-Migrationen NICHT nach, wenn die DB bereits auf einem spaeteren Head gestempelt ist. Wenn Upstream neue Migrationen in die Chain eingefuegt hat, muessen diese ggf. manuell via SQL ausgefuehrt werden (siehe Sync #3 Lesson Learned in `docs/runbooks/upstream-sync.md` Historische Syncs).
+
+**ACHTUNG — OpenSearch-Passwort PROD:** PROD nutzt ein eigenes OpenSearch-Passwort (GitHub Secret `OPENSEARCH_PASSWORD`). Bei Upstream-Aenderungen an der Chart-Authentifizierung (z.B. neue `auth.opensearch.*`-Felder) muessen die CI/CD-Workflow-Steps (`stackit-deploy.yml`) und `values-prod-secrets.yaml` geprueft und ggf. aktualisiert werden.
 
 ### 12. ext-i18n Dictionary pruefen
 
