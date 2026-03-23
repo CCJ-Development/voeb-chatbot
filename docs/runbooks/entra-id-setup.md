@@ -348,23 +348,134 @@ configMap:
 
 | Secret | Ablaufdatum | Verantwortlich | Rotation |
 |--------|-----------|----------------|----------|
-| Client Secret | VÖB bestimmt (Entra ID Default: 6/12/24 Monate) | VÖB IT | Neues Secret in Entra ID erstellen, GitHub Secret aktualisieren, re-deploy |
+| Client Secret | **2028-03-13** (720 Tage, erstellt 2026-03-23) | VÖB IT | Neues Secret in Entra ID erstellen (VALUE kopieren!), GitHub Secret aktualisieren, re-deploy. **Reminder: 2028-02-20** (3 Wochen vorher) |
 | USER_AUTH_SECRET | Kein Ablauf | CCJ | Bei Kompromittierung: `openssl rand -hex 32`, GitHub Secret aktualisieren |
 | ENTRA_TENANT_ID | Permanent | VÖB | Aendert sich nie |
 | ENTRA_CLIENT_ID | Permanent (solange App Registration existiert) | VÖB | Aendert sich nur bei Neuanlage |
 
+## Lessons Learned (DEV-Aktivierung 2026-03-23)
+
+### 1. Client Secret ID vs. Value
+**Problem:** VÖB hat die **Secret ID** (Bezeichner) statt den **Secret Value** (eigentlicher Schluessel) uebergeben. Microsoft meldet `AADSTS7000215: Invalid client secret provided`.
+
+**Hintergrund:** In Entra ID gibt es pro Client Secret zwei Werte:
+- **ID:** Immer sichtbar, UUID-Format, identifiziert das Secret
+- **Wert (Value):** Nur einmalig nach Erstellung sichtbar, der eigentliche Schluessel
+
+**Diagnose:**
+```bash
+# Client Credentials Grant testen (braucht keinen User-Login):
+kubectl exec -n onyx-dev deploy/onyx-dev-api-server -- python3 -c "
+import os, urllib.request, urllib.parse, json
+data = urllib.parse.urlencode({
+    'grant_type': 'client_credentials',
+    'client_id': os.environ['OAUTH_CLIENT_ID'],
+    'client_secret': os.environ['OAUTH_CLIENT_SECRET'],
+    'scope': 'https://graph.microsoft.com/.default',
+}).encode()
+req = urllib.request.Request(
+    'https://login.microsoftonline.com/' + os.environ.get('OPENID_CONFIG_URL','').split('/')[3] + '/oauth2/v2.0/token',
+    data=data)
+req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+try:
+    resp = urllib.request.urlopen(req, timeout=10)
+    print('SECRET OK')
+except urllib.error.HTTPError as e:
+    body = json.loads(e.read().decode())
+    print(f'{body[\"error\"]}: {body[\"error_description\"][:200]}')
+    # invalid_client = Secret falsch
+    # unauthorized_client = Secret korrekt, aber Grant Type nicht erlaubt
+"
+```
+
+**Fix:** VÖB muss neues Secret erstellen und den **Wert** (nicht die ID) uebermitteln.
+
+### 2. PKCE Cookie geht durch NGINX Proxy verloren
+**Problem:** `OIDC_PKCE_ENABLED=true` fuehrt zu `Missing PKCE verifier cookie in OAuth callback` und Redirect-Loop.
+
+**Ursache:** Der PKCE Code Verifier wird als Cookie gesetzt (`/auth/oidc/authorize`). Der Callback kommt aber ueber Next.js (Server-Side Fetch), das die Cookies zwar weiterleitet, aber das PKCE-Cookie erreicht den Backend-Callback nicht zuverlaessig.
+
+**Entscheidung:** PKCE deaktiviert (`OIDC_PKCE_ENABLED=false`). Kein Security-Risiko — wir sind ein Confidential Client mit serverseitigem Client Secret. PKCE ist fuer Public Clients (Mobile Apps, SPAs ohne Secret) konzipiert.
+
+### 3. Fehlende Error-Logs bei OIDC 500
+**Problem:** Token Exchange Fehler werden als HTTP 500 zurueckgegeben, aber NICHT geloggt. Die `httpx-oauth` Library faengt `GetAccessTokenError` und wirft `OAuth2AuthorizeCallbackError(status_code=500)`, die von FastAPI als HTTPException behandelt wird — ohne Traceback.
+
+**Workaround fuer Debugging:**
+```bash
+# Manuelle Token Exchange Simulation (zeigt Microsoft-Fehlermeldung):
+kubectl exec -n onyx-dev deploy/onyx-dev-api-server -- python3 -c "
+import os, urllib.request, urllib.parse, json
+# ... (siehe Diagnose-Script oben)
+"
+```
+
+### 4. Redirect URI Tippfehler
+**Problem:** VÖB IT hat URIs mit `voebservice` statt `voeb-service` (Bindestrich fehlte) eingetragen. Fuehrt zu `AADSTS50011: Reply URL does not match`.
+
+**Fix:** URIs in Entra ID bereinigen. Korrekte URIs:
+- DEV: `https://dev.chatbot.voeb-service.de/auth/oidc/callback`
+- PROD: `https://chatbot.voeb-service.de/auth/oidc/callback`
+
+### 5. Debug-Env-Vars nach Troubleshooting entfernen
+Nach erfolgreichem Login-Test muessen die temporaeren Debug-Variablen entfernt werden:
+```bash
+kubectl set env deploy/onyx-dev-api-server -n onyx-dev LOG_LEVEL=INFO UVICORN_LOG_LEVEL- FASTAPI_DEBUG-
+```
+
 ## PROD-Rollout (nach erfolgreicher DEV-Validierung)
 
 1. Gleiche GitHub Secrets im `prod` Environment setzen
-2. `values-prod.yaml`: `AUTH_TYPE: "oidc"`, `OIDC_PKCE_ENABLED: "true"`, `auth.oauth` + `auth.userauth` aktivieren
+2. `values-prod.yaml`: `AUTH_TYPE: "oidc"`, `OIDC_PKCE_ENABLED: "false"`, `auth.oauth` + `auth.userauth` aktivieren
 3. `stackit-deploy.yml`: `--set` Flags im deploy-prod Job ergaenzen
-4. Redirect URI `https://chatbot.voeb-service.de/auth/oidc/callback` in Entra ID eintragen
+4. Redirect URI `https://chatbot.voeb-service.de/auth/oidc/callback` in Entra ID eintragen (bereits vorhanden)
 5. `VALID_EMAIL_DOMAINS` setzen (nach VÖB-Vorgabe)
 6. `TRACK_EXTERNAL_IDP_EXPIRY` entscheiden (Standard vs. Strikt)
 7. Deploy + Validierung
+
+## Offene Punkte vor PROD-Rollout
+
+### P1: OIDC Error-Logging (Kritisch)
+**Problem:** Token Exchange Fehler (httpx-oauth `GetAccessTokenError`) werden als HTTP 500 zurueckgegeben aber NICHT geloggt. Debugging dauerte Stunden.
+**Loesung:** Middleware in `backend/ext/` die 500er auf `/auth/oidc/callback` abfaengt und den Response-Body loggt (enthaelt Microsoft-Fehlercode).
+**Aufwand:** Niedrig (1 Middleware-Datei in ext/).
+
+### P2: Auth-spezifischer Prometheus Alert (Hoch)
+**Problem:** Der bestehende `HighErrorRate` Alert (>5% 5xx) greift nicht zuverlaessig fuer Auth-Fehler — bei normalem API-Traffic gehen einzelne Login-500er im Rauschen unter.
+**Loesung:** Dedizierter Alert auf `onyx_api_requests_by_tenant_total{handler="/auth/oidc/callback",status="500"}`.
+```yaml
+- alert: OIDCCallbackFailure
+  expr: increase(onyx_api_requests_by_tenant_total{handler="/auth/oidc/callback",status="500"}[10m]) > 0
+  for: 1m
+  labels:
+    severity: critical
+  annotations:
+    summary: "OIDC Login fehlgeschlagen ({{ $labels.environment }})"
+    description: "Token Exchange auf /auth/oidc/callback gibt 500 zurueck. Pruefen: Client Secret abgelaufen? Entra ID erreichbar?"
+```
+**Aufwand:** Niedrig (AlertRule in values-monitoring.yaml).
+
+### P3: Client Secret Ablauf-Monitoring (Hoch) — TEILWEISE ERLEDIGT
+**Problem:** Wenn das Entra ID Client Secret ablaeuft, bricht der Login ohne Vorwarnung.
+**Ablaufdatum:** **2028-03-13** (720 Tage ab Erstellung 2026-03-23).
+**Erledigt:** Ablaufdatum im Runbook dokumentiert (Secret-Rotation Tabelle).
+**Offen:** Kalender-Reminder fuer 2028-02-20 setzen (3 Wochen vorher). Langfristig: Cronjob der den `client_credentials` Grant testet.
+**Aufwand:** Niedrig (Reminder) / Mittel (Cronjob).
+
+### P4: Login-Audit-Log (Mittel, Compliance)
+**Problem:** Keine Aufzeichnung wer sich wann erfolgreich/erfolglos angemeldet hat. Fuer DSGVO/BSI-Grundschutz relevant.
+**Loesung:** `on_after_login` Hook in `backend/ext/` der erfolgreiche Logins loggt (User-Email, Zeitpunkt, IP). Fehlgeschlagene Logins ueber P1 (Error-Logging) abgedeckt.
+**Aufwand:** Mittel (ext/-Modul mit DB-Tabelle oder strukturiertem Log).
+
+### P5: Debug-Env-Vars zuruecksetzen (nach Login-Test)
+```bash
+kubectl set env deploy/onyx-dev-api-server -n onyx-dev LOG_LEVEL=INFO UVICORN_LOG_LEVEL- FASTAPI_DEBUG-
+```
 
 ## Aenderungshistorie
 
 | Version | Datum | Autor | Aenderung |
 |---------|-------|-------|----------|
+| 1.3 | 2026-03-23 | COFFEESTUDIOS | DEV Login erfolgreich, Secret-Ablauf 2028-03-13 dokumentiert, Debug-Vars zurueckgesetzt |
+| 1.2 | 2026-03-23 | COFFEESTUDIOS | 5 offene Punkte vor PROD dokumentiert (Error-Logging, Alert, Secret-Ablauf, Audit-Log, Debug-Vars) |
+| 1.1 | 2026-03-23 | COFFEESTUDIOS | PKCE deaktiviert, Lessons Learned (Secret ID/Value, Logs, Redirect Tippfehler) |
 | 1.0 | 2026-03-22 | COFFEESTUDIOS | Erstversion (DEV-Konfiguration) |
