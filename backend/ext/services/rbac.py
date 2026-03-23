@@ -134,7 +134,7 @@ def _build_user_group_response(
         select(User__UserGroup).where(
             User__UserGroup.user_group_id == group.id
         )
-    ).scalars().all()
+    ).scalars().unique().all()
 
     user_ids = [m.user_id for m in memberships if m.user_id is not None]
     curator_ids = [
@@ -147,7 +147,7 @@ def _build_user_group_response(
     if user_ids:
         user_rows = db_session.execute(
             select(User).where(User.id.in_(user_ids))
-        ).scalars().all()
+        ).scalars().unique().all()
         users = [
             {
                 "id": str(u.id),
@@ -163,7 +163,7 @@ def _build_user_group_response(
             UserGroup__ConnectorCredentialPair.user_group_id == group.id,
             UserGroup__ConnectorCredentialPair.is_current == True,  # noqa: E712
         )
-    ).scalars().all()
+    ).scalars().unique().all()
 
     cc_pairs = []
     if cc_pair_rows:
@@ -172,7 +172,7 @@ def _build_user_group_response(
             select(ConnectorCredentialPair).where(
                 ConnectorCredentialPair.id.in_(cc_pair_ids)
             )
-        ).scalars().all()
+        ).scalars().unique().all()
         cc_pairs = [
             {
                 "id": p.id,
@@ -191,7 +191,7 @@ def _build_user_group_response(
         select(Persona__UserGroup.persona_id).where(
             Persona__UserGroup.user_group_id == group.id
         )
-    ).scalars().all()
+    ).scalars().unique().all()
 
     personas = []
     if persona_rows:
@@ -199,7 +199,7 @@ def _build_user_group_response(
 
         persona_objs = db_session.execute(
             select(Persona).where(Persona.id.in_(persona_rows))
-        ).scalars().all()
+        ).scalars().unique().all()
         personas = [
             {"id": p.id, "name": p.name or f"Persona {p.id}"}
             for p in persona_objs
@@ -210,7 +210,7 @@ def _build_user_group_response(
         select(DocumentSet__UserGroup.document_set_id).where(
             DocumentSet__UserGroup.user_group_id == group.id
         )
-    ).scalars().all()
+    ).scalars().unique().all()
 
     document_sets = []
     if doc_set_rows:
@@ -218,7 +218,7 @@ def _build_user_group_response(
 
         doc_set_objs = db_session.execute(
             select(DocumentSet).where(DocumentSet.id.in_(doc_set_rows))
-        ).scalars().all()
+        ).scalars().unique().all()
         document_sets = [
             {"id": ds.id, "name": ds.name or f"DocSet {ds.id}"}
             for ds in doc_set_objs
@@ -250,7 +250,7 @@ def fetch_all_user_groups(
             select(UserGroup).where(
                 UserGroup.is_up_for_deletion == False  # noqa: E712
             ).order_by(UserGroup.name)
-        ).scalars().all()
+        ).scalars().unique().all()
     elif user.role in (UserRole.CURATOR, UserRole.GLOBAL_CURATOR):
         # Only groups where user is curator
         groups = db_session.execute(
@@ -262,7 +262,7 @@ def fetch_all_user_groups(
                 UserGroup.is_up_for_deletion == False,  # noqa: E712
             )
             .order_by(UserGroup.name)
-        ).scalars().all()
+        ).scalars().unique().all()
     else:
         return []
 
@@ -398,7 +398,7 @@ def update_user_group(
                 User__UserGroup.user_group_id == user_group_id,
                 User__UserGroup.is_curator == True,  # noqa: E712
             )
-        ).scalars().all()
+        ).scalars().unique().all()
         if m.user_id is not None
     ]
 
@@ -409,7 +409,7 @@ def update_user_group(
             select(User__UserGroup).where(
                 User__UserGroup.user_group_id == user_group_id
             )
-        ).scalars().all()
+        ).scalars().unique().all()
         if m.user_id is not None
     }
 
@@ -474,7 +474,7 @@ def delete_user_group(
                 User__UserGroup.user_group_id == user_group_id,
                 User__UserGroup.is_curator == True,  # noqa: E712
             )
-        ).scalars().all()
+        ).scalars().unique().all()
         if m.user_id is not None
     ]
 
@@ -552,7 +552,7 @@ def add_users_to_group(
             select(User__UserGroup.user_id).where(
                 User__UserGroup.user_group_id == user_group_id
             )
-        ).scalars().all()
+        ).scalars().unique().all()
     )
 
     added = 0

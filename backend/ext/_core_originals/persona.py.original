@@ -242,25 +242,7 @@ def update_persona_access(
         ).delete(synchronize_session="fetch")
 
         if group_ids:
-            # === VÖB ext-rbac: Group-based sharing (Core #11) ===
-            try:
-                from ext.config import EXT_RBAC_ENABLED
-
-                if EXT_RBAC_ENABLED:
-                    for gid in group_ids:
-                        db_session.add(
-                            Persona__UserGroup(
-                                persona_id=persona_id, user_group_id=gid
-                            )
-                        )
-                else:
-                    raise NotImplementedError(
-                        "Onyx MIT does not support group-based sharing"
-                    )
-            except ImportError:
-                raise NotImplementedError(
-                    "Onyx MIT does not support group-based sharing"
-                )
+            raise NotImplementedError("Onyx MIT does not support group-based sharing")
 
     # When sharing changes, user file ACLs need to be updated in the vector DB
     if needs_sync:

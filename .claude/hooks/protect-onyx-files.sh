@@ -22,7 +22,7 @@ if [[ "$FILE_PATH" == */backend/ext/* ]] || \
   exit 0  # Erlaubt
 fi
 
-# 10 erlaubte Core-Dateien (erweitert 2026-03-08, CORE #8-#10 fuer ext-branding)
+# 12 erlaubte Core-Dateien (erweitert 2026-03-23, CORE #11-#12 fuer ext-rbac/ext-access)
 ALLOWED_CORE=(
   "backend/onyx/main.py"
   "backend/onyx/llm/multi_llm.py"
@@ -34,6 +34,8 @@ ALLOWED_CORE=(
   "web/src/app/auth/login/LoginText.tsx"
   "web/src/components/auth/AuthFlowContainer.tsx"
   "web/src/sections/sidebar/AdminSidebar.tsx"
+  "backend/onyx/db/persona.py"
+  "backend/onyx/db/document_set.py"
 )
 
 for allowed in "${ALLOWED_CORE[@]}"; do
@@ -48,7 +50,7 @@ if [[ "$FILE_PATH" == */backend/onyx/* ]] || \
    [[ "$FILE_PATH" == */web/src/components/* ]] || \
    [[ "$FILE_PATH" == */web/src/lib/* ]]; then
   echo "❌ BLOCKIERT: $FILE_PATH gehört zum Onyx-Core und darf nicht verändert werden." >&2
-  echo "Erlaubt sind nur: backend/ext/, web/src/ext/, docs/, und die 10 definierten Core-Dateien." >&2
+  echo "Erlaubt sind nur: backend/ext/, web/src/ext/, docs/, und die 12 definierten Core-Dateien." >&2
   exit 2  # Exit 2 = Aktion wird deterministisch blockiert
 fi
 

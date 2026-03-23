@@ -1,0 +1,29 @@
+--- backend/ext/_core_originals/persona.py.original	2026-03-23 21:46:02
++++ backend/onyx/db/persona.py	2026-03-23 21:46:39
+@@ -242,7 +242,25 @@
+         ).delete(synchronize_session="fetch")
+ 
+         if group_ids:
+-            raise NotImplementedError("Onyx MIT does not support group-based sharing")
++            # === VÖB ext-rbac: Group-based sharing (Core #11) ===
++            try:
++                from ext.config import EXT_RBAC_ENABLED
++
++                if EXT_RBAC_ENABLED:
++                    for gid in group_ids:
++                        db_session.add(
++                            Persona__UserGroup(
++                                persona_id=persona_id, user_group_id=gid
++                            )
++                        )
++                else:
++                    raise NotImplementedError(
++                        "Onyx MIT does not support group-based sharing"
++                    )
++            except ImportError:
++                raise NotImplementedError(
++                    "Onyx MIT does not support group-based sharing"
++                )
+ 
+     # When sharing changes, user file ACLs need to be updated in the vector DB
+     if needs_sync:
