@@ -71,3 +71,16 @@ def register_ext_routers(application: FastAPI) -> None:
 
         include_router_with_global_prefix_prepended(application, prompts_router)
         logger.info("Extension prompts router registered")
+
+    # ext-rbac: Group Management
+    from ext.config import EXT_RBAC_ENABLED
+
+    if EXT_RBAC_ENABLED:
+        from ext.routers.rbac import admin_router as rbac_admin_router
+        from ext.routers.rbac import minimal_router as rbac_minimal_router
+
+        include_router_with_global_prefix_prepended(application, rbac_admin_router)
+        include_router_with_global_prefix_prepended(
+            application, rbac_minimal_router
+        )
+        logger.info("Extension RBAC routers registered")

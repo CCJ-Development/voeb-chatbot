@@ -9,6 +9,18 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-rbac] **Gruppenverwaltung** (2026-03-23)
+  - 7 Backend-Endpoints: CRUD + User-Zuordnung + Curator + Minimal-Liste
+  - API-Pfad `/manage/admin/user-group` (kompatibel mit bestehendem Frontend)
+  - CVE-2025-51479 Vermeidung: Curator-Berechtigung pro Gruppe validiert
+  - Curator-Auto-Demotion: User wird BASIC wenn letzte Curator-Gruppe entfernt
+  - Hartes DELETE mit Cascade (alle 7 M2M-Tabellen, FOSS-Cleanup ist EE-only)
+  - Frontend: `/admin/ext-groups` mit Gruppenliste, Create-Modal, Detail-Seite
+  - AdminSidebar (Core #10): "Gruppen"-Link bei `EXT_RBAC_ENABLED`
+  - Core-Dateien 10→12: `persona.py` (#11) + `document_set.py` (#12) reserviert fuer Phase 4g
+  - 29 Unit Tests, Feature Flag `EXT_RBAC_ENABLED` + `NEXT_PUBLIC_EXT_RBAC_ENABLED`
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-rbac.md` (v0.7)
+
 - [Auth] **Entra ID (OIDC) DEV Login funktioniert** (2026-03-23)
   - Microsoft Entra ID als SSO-Provider (AUTH_TYPE=oidc, PKCE deaktiviert)
   - Helm Values: auth.oauth + auth.userauth Secrets aktiviert (values-dev.yaml)

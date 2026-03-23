@@ -1,5 +1,5 @@
 --- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-22 15:13:48
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-19 15:08:37
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-23 17:49:13
 @@ -15,7 +15,7 @@
  import SidebarBody from "@/sections/sidebar/SidebarBody";
  import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
@@ -9,20 +9,27 @@
  import {
    useBillingInformation,
    useLicense,
-@@ -125,17 +125,26 @@
+@@ -125,17 +125,33 @@
    }
  
    // 5. Permissions
 +  // ext-branding: Groups + SCIM sind EE-Features — nur anzeigen wenn EE aktiv.
 +  // Ohne EE sind sie nur visueller Clutter (ausgegraut, nicht klickbar).
++  // ext-rbac: Eigener Gruppen-Link auf /admin/ext-groups (nicht /admin/groups wegen proxy.ts EE-Rewrite).
++  const extRbacEnabled = process.env.NEXT_PUBLIC_EXT_RBAC_ENABLED === "true";
    if (!isCurator) {
      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.USERS);
 -    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS, !enableEnterprise);
 -    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM, !enableEnterprise);
++    if (extRbacEnabled) {
++      items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
++    }
 +    if (enableEnterprise) {
 +      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
 +      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM);
 +    }
++  } else if (extRbacEnabled) {
++    items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
    } else if (enableEnterprise) {
      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
    }
@@ -39,7 +46,7 @@
        add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.BILLING);
      } else {
        items.push({
-@@ -146,18 +155,18 @@
+@@ -146,18 +162,18 @@
        });
      }
      add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.TOKEN_RATE_LIMITS);

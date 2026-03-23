@@ -29,6 +29,12 @@ services:
       - path: .env
         required: false
 
+  web_server:
+    build:
+      args:
+        - NEXT_PUBLIC_EXT_I18N_ENABLED=${NEXT_PUBLIC_EXT_I18N_ENABLED:-}
+        - NEXT_PUBLIC_EXT_RBAC_ENABLED=${NEXT_PUBLIC_EXT_RBAC_ENABLED:-}
+
   # OpenSearch: JVM Heap fuer lokale Entwicklung reduzieren.
   # Upstream-Default 2g ist zu viel fuer Docker Desktop (7.6 GiB gesamt).
   # 512m reicht fuer lokales Testing mit wenig Daten.

@@ -92,7 +92,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 8 von 10 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx — die 2 ungepatchten: access.py, header/ werden erst mit ext-rbac/ext-access gepatcht):
+Fuer JEDE gepatchte Core-Datei (aktuell 8 von 12 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx — die 4 ungepatchten: access.py (#3), header/ (#5) werden mit ext-access gepatcht, persona.py (#11) und document_set.py (#12) sind reserviert fuer Phase 4g):
 
 ```bash
 # Beispiel Backend-Datei:
@@ -203,7 +203,7 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 10 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
+Neben den 12 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
 
 ### `backend/Dockerfile` (seit Phase 4a)
 
@@ -272,9 +272,14 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/src/components/auth/AuthFlowContainer.tsx` (CORE #9) | Logo+Name | ~25 | Mittel |
 | `web/src/sections/sidebar/AdminSidebar.tsx` (CORE #10) | Branding+TokenUsage+Prompts+EE-Hidden | ~30 | Mittel |
 | `backend/Dockerfile` | COPY | 3 | Mittel |
+| `backend/onyx/db/persona.py` (CORE #11) | Hook | ~10 | **Mittel-Hoch** |
+| `backend/onyx/db/document_set.py` (CORE #12) | Hook | ~8 | Niedrig |
 | `deployment/docker_compose/env.template` | Append | 30 | Niedrig |
 | `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
+
+**Hinweis:** #11 und #12 sind reserviert fuer Phase 4g (ext-access). Noch NICHT gepatcht.
+**Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.
 

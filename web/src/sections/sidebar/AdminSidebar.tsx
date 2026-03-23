@@ -127,12 +127,19 @@ function buildItems(
   // 5. Permissions
   // ext-branding: Groups + SCIM sind EE-Features — nur anzeigen wenn EE aktiv.
   // Ohne EE sind sie nur visueller Clutter (ausgegraut, nicht klickbar).
+  // ext-rbac: Eigener Gruppen-Link auf /admin/ext-groups (nicht /admin/groups wegen proxy.ts EE-Rewrite).
+  const extRbacEnabled = process.env.NEXT_PUBLIC_EXT_RBAC_ENABLED === "true";
   if (!isCurator) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.USERS);
+    if (extRbacEnabled) {
+      items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
+    }
     if (enableEnterprise) {
       add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
       add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM);
     }
+  } else if (extRbacEnabled) {
+    items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
   } else if (enableEnterprise) {
     add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
   }

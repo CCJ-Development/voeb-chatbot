@@ -77,8 +77,8 @@
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch auf main gemergt.
   - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
   - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
-  - 4f: ⏳ ext-rbac — Rollen + Gruppen. **BLOCKIERT** (Entra ID).
-  - 4g: ⏳ ext-access — Document Access Control. **BLOCKIERT** (braucht RBAC).
+  - 4f: ✅ ext-rbac — Gruppenverwaltung. **Implementiert (2026-03-23).** 7 Endpoints, eigene Frontend-Seite `/admin/ext-groups`, Core #10 gepatcht, 29 Tests. Core-Dateien 10→12 (#11 persona.py, #12 document_set.py reserviert Phase 4g). Persona/DocSet-Gruppen-Zuordnung offen (FOSS NotImplementedError, Phase 4g).
+  - 4g: ⏳ ext-access — Document Access Control. **Naechster Schritt** (braucht Core #3 access.py + #11 persona.py + #12 document_set.py).
   - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. **DEV + PROD deployed (2026-03-22).**
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
