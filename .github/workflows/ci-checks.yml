@@ -69,6 +69,7 @@ jobs:
             --set "auth.oauth.values.oauth_client_id=dummy" \
             --set "auth.oauth.values.oauth_client_secret=dummy" \
             --set "auth.userauth.values.user_auth_secret=dummy" \
+            --set "auth.opensearch.values.opensearch_admin_password=dummy" \
             > /dev/null
           echo "DEV values: OK"
 
@@ -82,6 +83,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=dummy" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=dummy" \
             --set "auth.dbreadonly.values.db_readonly_password=dummy" \
+            --set "auth.opensearch.values.opensearch_admin_password=dummy" \
             > /dev/null
           echo "TEST values: OK"
 
@@ -95,6 +97,7 @@ jobs:
             --set "auth.objectstorage.values.s3_aws_access_key_id=dummy" \
             --set "auth.objectstorage.values.s3_aws_secret_access_key=dummy" \
             --set "auth.dbreadonly.values.db_readonly_password=dummy" \
+            --set "auth.opensearch.values.opensearch_admin_password=dummy" \
             > /dev/null
           echo "PROD values: OK"
 
