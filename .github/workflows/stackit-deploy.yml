@@ -164,6 +164,7 @@ jobs:
           build-args: |
             NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true
             NEXT_PUBLIC_EXT_I18N_ENABLED=true
+            NEXT_PUBLIC_EXT_RBAC_ENABLED=true
           tags: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:${{ needs.prepare.outputs.image_tag }}
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:latest
