@@ -43,6 +43,18 @@ auth:
     values:
       db_readonly_user: "db_readonly_user"
       db_readonly_password: ""  # → GitHub Secret DB_READONLY_PASSWORD
+  # Entra ID (OIDC) — Phase 3 PROD Rollout (2026-03-23)
+  oauth:
+    enabled: true
+    secretName: "onyx-oauth"
+    values:
+      oauth_client_id: ""       # → GitHub Secret ENTRA_CLIENT_ID (Environment: prod)
+      oauth_client_secret: ""   # → GitHub Secret ENTRA_CLIENT_SECRET (Environment: prod)
+  userauth:
+    enabled: true
+    secretName: "onyx-userauth"
+    values:
+      user_auth_secret: ""      # → GitHub Secret USER_AUTH_SECRET (Environment: prod)
 
 configMap:
   # PostgreSQL (StackIT Managed Flex 4.8 Replica — PROD, HA 3-Node)
@@ -65,9 +77,10 @@ configMap:
   DOMAIN: "chatbot.voeb-service.de"
   WEB_DOMAIN: "https://chatbot.voeb-service.de"
 
-  # Auth: Temporaer "basic" bis Entra ID Zugangsdaten vorliegen (O3).
-  # Vor Go-Live auf "oidc" umstellen + OIDC-Secrets konfigurieren.
-  AUTH_TYPE: "basic"
+  # Auth: Entra ID (OIDC) — aktiviert 2026-03-23.
+  # PKCE deaktiviert (Cookie-Loss durch NGINX Proxy, Lesson Learned DEV).
+  AUTH_TYPE: "oidc"
+  OIDC_PKCE_ENABLED: "false"
   REQUIRE_EMAIL_VERIFICATION: "false"
 
   # Logging: PROD weniger verbose
