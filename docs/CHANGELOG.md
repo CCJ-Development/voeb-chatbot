@@ -17,7 +17,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Hartes DELETE mit Cascade (alle 7 M2M-Tabellen, FOSS-Cleanup ist EE-only)
   - Frontend: `/admin/ext-groups` mit Gruppenliste, Create-Modal, Detail-Seite
   - AdminSidebar (Core #10): "Gruppen"-Link bei `EXT_RBAC_ENABLED`
-  - Core-Dateien 10→12: `persona.py` (#11) + `document_set.py` (#12) reserviert fuer Phase 4g
+  - Core-Dateien 10→12: `persona.py` (#11) + `document_set.py` (#12) gepatcht — Persona + DocumentSet Gruppen-Zuordnung
   - 29 Unit Tests, Feature Flag `EXT_RBAC_ENABLED` + `NEXT_PUBLIC_EXT_RBAC_ENABLED`
   - Feinkonzept: `docs/technisches-feinkonzept/ext-rbac.md` (v0.7)
 

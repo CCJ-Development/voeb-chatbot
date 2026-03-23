@@ -398,7 +398,7 @@ Alle rufen `/api/manage/admin/user-group` bzw. `/api/manage/user-groups/minimal`
 - `document_set.py` als **Core #12** (Niedriges Risiko, 5 Commits/3 Mo, stabil)
 - **Aktivierung in Phase 4g (ext-access)**, nicht Phase 4f (ext-rbac)
 - Phase 4f liefert Gruppen-CRUD + LLM-Provider-Zuordnung (funktioniert in FOSS)
-- Phase 4g patcht #11 + #12 + #3 (access.py) fuer vollstaendige Zugriffskontrolle
+- #11 + #12 bereits gepatcht (ext-rbac). Phase 4g patcht #3 (access.py) fuer Document-Level ACLs
 
 ### Error Handling
 
@@ -977,7 +977,7 @@ Bei ~16 Gruppen und ~100 Usern sind keine speziellen Optimierungen noetig.
   - **Ergebnis (validiert 2026-03-23):** Group-Selektoren SIND bereits sichtbar auf DEV (ext-branding Seiteneffekt). Endpoints 404. Sobald ext-rbac Endpoints 1-7 live sind, funktionieren Selektoren. ABER: Persona/DocSet-Save wirft `NotImplementedError` in FOSS (siehe OPEN-7).
 
 - [x] **[OPEN-7]** ~~Persona + DocumentSet Gruppen-Zuordnung blockiert in FOSS~~
-  - **Entscheidung (Niko, 2026-03-23):** Core-Dateien-Liste auf 12 erweitert. `persona.py` (#11) und `document_set.py` (#12) reserviert fuer Phase 4g (ext-access). Phase 4f liefert Gruppen-CRUD + LLM-Provider-Zuordnung. Persona/DocSet-Hooks kommen mit ext-access.
+  - **Entscheidung (Niko, 2026-03-23):** Core-Dateien-Liste auf 12 erweitert. `persona.py` (#11) und `document_set.py` (#12) **gepatcht** (ext-rbac). Persona + DocumentSet Gruppen-Zuordnung funktioniert.
   - Dokumentiert in: `.claude/rules/core-dateien.md` und `.claude/rules/fork-management.md`
 
 ---
@@ -1000,4 +1000,5 @@ Bei ~16 Gruppen und ~100 Usern sind keine speziellen Optimierungen noetig.
 | 0.4 | 2026-03-23 | CCJ | Validierung Runde 3: (1) proxy.ts Blocker → Route `/admin/ext-groups`, (2) CURATOR-Rolle blockiert → `set-curator` setzt `user.role` direkt, (3) API-Prefix bestaetigt |
 | 0.5 | 2026-03-23 | CCJ | Validierung Runde 4: Endpoint 7 (`/manage/user-groups/minimal`) ergaenzt, UX-Problematik (Group-Selektoren auf DEV sichtbar aber 404), Connector-Limitation dokumentiert. OPEN-5 geloest. |
 | 0.6 | 2026-03-23 | CCJ | Validierung Runde 5: Persona/DocSet `NotImplementedError` in FOSS dokumentiert. LLM Provider funktioniert. Komplett-Matrix aller Ressourcen-Zuordnungen. |
-| 0.7 | 2026-03-23 | CCJ | **Entscheidung Niko:** Core-Dateien 10→12. `persona.py` (#11) + `document_set.py` (#12) reserviert fuer Phase 4g. `core-dateien.md` + `fork-management.md` aktualisiert. OPEN-7 geloest. Alle offenen Punkte geschlossen. |
+| 0.7 | 2026-03-23 | CCJ | Core-Dateien 10→12. OPEN-7 geloest. |
+| 0.8 | 2026-03-23 | CCJ | Core #11 (persona.py) + #12 (document_set.py) **aktiviert und gepatcht**. Persona + DocumentSet Gruppen-Zuordnung funktioniert. SQLAlchemy unique() Bugfix. |

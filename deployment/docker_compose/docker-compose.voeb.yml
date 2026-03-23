@@ -16,6 +16,7 @@ services:
       - ../../backend/onyx/llm/multi_llm.py:/app/onyx/llm/multi_llm.py:ro
       - ../../backend/onyx/chat/prompt_utils.py:/app/onyx/chat/prompt_utils.py:ro
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
+      - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
       - ../../backend/alembic:/app/alembic
     env_file:
       - path: .env
@@ -27,6 +28,7 @@ services:
       - ../../backend/onyx/llm/multi_llm.py:/app/onyx/llm/multi_llm.py:ro
       - ../../backend/onyx/chat/prompt_utils.py:/app/onyx/chat/prompt_utils.py:ro
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
+      - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
     env_file:
       - path: .env
         required: false

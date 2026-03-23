@@ -92,7 +92,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 8 von 12 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx — die 4 ungepatchten: access.py (#3), header/ (#5) werden mit ext-access gepatcht, persona.py (#11) und document_set.py (#12) sind reserviert fuer Phase 4g):
+Fuer JEDE gepatchte Core-Datei (aktuell 10 von 12 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx, persona.py, document_set.py — die 2 ungepatchten: access.py (#3), header/ (#5)):
 
 ```bash
 # Beispiel Backend-Datei:
@@ -278,7 +278,8 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
 
-**Hinweis:** #11 und #12 sind reserviert fuer Phase 4g (ext-access). Noch NICHT gepatcht.
+**Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
+**Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.

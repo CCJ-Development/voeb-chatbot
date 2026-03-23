@@ -9,8 +9,8 @@ paths:
 # Core-Dateien: Was darf geändert werden
 
 **NUR DIESE 12 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
-**#1-#10:** Aktiv gepatcht (8 von 10 haben Patches, #3 und #5 noch offen).
-**#11-#12:** Reserviert fuer Phase 4g (ext-access). Noch NICHT gepatcht.
+**#1-#10:** 8 von 10 gepatcht (#3 access.py und #5 header/ noch offen).
+**#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -67,18 +67,18 @@ paths:
 - MERGE: Settings-Section anpassen (Zeilen ~155-170), Import ergaenzen (SvgPaintBrush, SvgActivity, SvgFileText, SvgUsers), EE-Guards in Sections 5/6/7, Permissions-Section (Gruppen-Link bei EXT_RBAC)
 - HINWEIS: Freigabe durch Niko (2026-03-08) fuer ext-branding Whitelabel. Erweitert fuer ext-token (SvgActivity), ext-prompts (SvgFileText), EE-Cleanup (2026-03-19). ext-rbac (2026-03-23): "Gruppen"-Link auf `/admin/ext-groups` bei `EXT_RBAC_ENABLED`.
 
-## 11. `backend/onyx/db/persona.py` — Persona/Agent Gruppen-Zuordnung [RESERVIERT Phase 4g]
-- ERLAUBT: In `update_persona_access()` den `NotImplementedError`-Block durch ext-Hook ersetzen (hinter `EXT_DOC_ACCESS_ENABLED` Flag + try/except). Bestehende User-Sharing-Logik NICHT veraendern.
+## 11. `backend/onyx/db/persona.py` — Persona/Agent Gruppen-Zuordnung [AKTIV]
+- ERLAUBT: In `update_persona_access()` den `NotImplementedError`-Block durch ext-Hook ersetzen (hinter `EXT_RBAC_ENABLED` Flag + try/except). Bestehende User-Sharing-Logik NICHT veraendern.
 - VERBOTEN: Persona-CRUD, Sharing-Logik, User-Zuordnung veraendern
 - MERGE: Hook nach `if group_ids:` Guard einfuegen (~Zeile 244). Mittel-hohes Merge-Risiko (14 Commits/3 Monate, Sharing-Features aktiv upstream)
-- STATUS: Noch NICHT gepatcht. Wird in Phase 4g (ext-access) aktiviert.
+- STATUS: ✅ Gepatcht (ext-rbac, 2026-03-23). Hook inseriert Persona__UserGroup Eintraege wenn EXT_RBAC_ENABLED.
 - HINWEIS: `versioned_update_persona_access` nutzt `fetch_versioned_implementation` — EE-Override funktioniert NICHT (is_ee_version=false). Daher direkter Hook in FOSS-Funktion noetig.
 
-## 12. `backend/onyx/db/document_set.py` — DocumentSet Gruppen-Zuordnung [RESERVIERT Phase 4g]
-- ERLAUBT: In `make_doc_set_private()` den `NotImplementedError`-Block durch ext-Hook ersetzen (hinter `EXT_DOC_ACCESS_ENABLED` Flag + try/except). Bestehende Public/Private-Logik NICHT veraendern.
+## 12. `backend/onyx/db/document_set.py` — DocumentSet Gruppen-Zuordnung [AKTIV]
+- ERLAUBT: In `make_doc_set_private()` den `NotImplementedError`-Block durch ext-Hook ersetzen (hinter `EXT_RBAC_ENABLED` Flag + try/except). Bestehende Public/Private-Logik NICHT veraendern.
 - VERBOTEN: DocumentSet-CRUD, Filterung, Sync-Logik veraendern
 - MERGE: Hook vor `raise NotImplementedError` einfuegen (~Zeile 179). Niedriges Merge-Risiko (5 Commits/3 Monate, Funktion seit 2026-01-29 unveraendert)
-- STATUS: Noch NICHT gepatcht. Wird in Phase 4g (ext-access) aktiviert.
+- STATUS: ✅ Gepatcht (ext-rbac, 2026-03-23). Hook inseriert DocumentSet__UserGroup Eintraege wenn EXT_RBAC_ENABLED.
 - HINWEIS: Analog zu #11, gleicher Hook-Pattern.
 
 ## Absicherung

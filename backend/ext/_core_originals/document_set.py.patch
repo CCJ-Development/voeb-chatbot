@@ -1,0 +1,44 @@
+--- backend/ext/_core_originals/document_set.py.original	2026-03-23 22:03:35
++++ backend/onyx/db/document_set.py	2026-03-23 22:03:44
+@@ -171,14 +171,38 @@
+ 
+ 
+ def make_doc_set_private(
+-    document_set_id: int,  # noqa: ARG001
++    document_set_id: int,
+     user_ids: list[UUID] | None,
+     group_ids: list[int] | None,
+-    db_session: Session,  # noqa: ARG001
++    db_session: Session,
+ ) -> None:
+     # May cause error if someone switches down to MIT from EE
+     if user_ids or group_ids:
+-        raise NotImplementedError("Onyx MIT does not support private Document Sets")
++        # === VÖB ext-rbac: Private Document Sets (Core #12) ===
++        try:
++            from ext.config import EXT_RBAC_ENABLED
++
++            if EXT_RBAC_ENABLED:
++                if group_ids:
++                    db_session.query(DocumentSet__UserGroup).filter(
++                        DocumentSet__UserGroup.document_set_id == document_set_id
++                    ).delete(synchronize_session="fetch")
++                    for gid in group_ids:
++                        db_session.add(
++                            DocumentSet__UserGroup(
++                                document_set_id=document_set_id,
++                                user_group_id=gid,
++                            )
++                        )
++                return
++            else:
++                raise NotImplementedError(
++                    "Onyx MIT does not support private Document Sets"
++                )
++        except ImportError:
++            raise NotImplementedError(
++                "Onyx MIT does not support private Document Sets"
++            )
+ 
+ 
+ def _check_if_cc_pairs_are_owned_by_groups(
