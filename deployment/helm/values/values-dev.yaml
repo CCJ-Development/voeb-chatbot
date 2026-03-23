@@ -76,7 +76,7 @@ configMap:
   # OPENID_CONFIG_URL wird per --set im CI/CD konstruiert (enthält Tenant ID aus GitHub Secret).
   # Redirect URI: https://dev.chatbot.voeb-service.de/auth/oidc/callback
   AUTH_TYPE: "oidc"
-  OIDC_PKCE_ENABLED: "true"
+  OIDC_PKCE_ENABLED: "false"  # PKCE Cookie geht durch NGINX Proxy verloren, Client Secret reicht
   REQUIRE_EMAIL_VERIFICATION: "false"  # OIDC: Nicht relevant (Entra ID verifiziert)
 
   # VÖB Extension Framework (EXT_ENABLED + EXT_BRANDING_ENABLED in values-common.yaml)
