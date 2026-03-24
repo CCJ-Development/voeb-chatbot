@@ -4,13 +4,15 @@ paths:
   - "web/src/app/**"
   - "web/src/components/**"
   - "web/src/lib/**"
+  - "web/src/sections/**"
 ---
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 12 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 13 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 **#1-#10:** 8 von 10 gepatcht (#3 access.py und #5 header/ noch offen).
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
+**#13:** Gepatcht (LLM Custom Modal Fix, 2026-03-24). Upstream-Bug: onyx-dot-app/onyx#9592.
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -80,6 +82,13 @@ paths:
 - MERGE: Hook vor `raise NotImplementedError` einfuegen (~Zeile 179). Niedriges Merge-Risiko (5 Commits/3 Monate, Funktion seit 2026-01-29 unveraendert)
 - STATUS: ✅ Gepatcht (ext-rbac, 2026-03-23). Hook inseriert DocumentSet__UserGroup Eintraege wenn EXT_RBAC_ENABLED.
 - HINWEIS: Analog zu #11, gleicher Hook-Pattern.
+
+## 13. `web/src/sections/modals/llmConfig/CustomModal.tsx` — Custom LLM Modal [TEMPORAER]
+- ERLAUBT: `APIKeyField` Import + Rendering, `api_base` InputTypeInField, `api_key`/`api_base` in initialValues, `default_model_name` Fallback auf ersten Modellnamen
+- VERBOTEN: Modal-Struktur, Formik-Schema, Submit-Logik (svc.ts) veraendern
+- MERGE: 4 Stellen: Import (+1 Zeile), initialValues (+3 Zeilen), onSubmit default_model_name (+4 Zeilen), API Key/Base Felder (+17 Zeilen). Mittleres Merge-Risiko (Modal wurde in #9270 komplett refactored)
+- STATUS: ✅ Gepatcht (2026-03-24). Upstream-Bug gemeldet: onyx-dot-app/onyx#9592
+- HINWEIS: **TEMPORAER** — Patch kann entfernt werden sobald Upstream-Fix in onyx-dot-app/onyx#9592 gemergt und per Upstream-Sync uebernommen wird. Bei jedem Upstream-Sync Issue-Status pruefen.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

@@ -14,7 +14,6 @@ import {
   submitOnboardingProvider,
 } from "@/sections/modals/llmConfig/svc";
 import {
-  APIKeyField,
   DisplayNameField,
   FieldSeparator,
   ModelsAccessField,
@@ -213,9 +212,6 @@ export default function CustomModal({
     ...buildDefaultInitialValues(existingLlmProvider),
     ...(isOnboarding ? buildOnboardingInitialValues() : {}),
     provider: existingLlmProvider?.provider ?? "",
-    // VÖB fix: api_key + api_base für Edit-Modus vorausfüllen
-    api_key: existingLlmProvider?.api_key ?? "",
-    api_base: existingLlmProvider?.api_base ?? "",
     model_configurations: existingLlmProvider?.model_configurations.map(
       (mc) => ({
         name: mc.name,
@@ -284,17 +280,11 @@ export default function CustomModal({
           return;
         }
 
-        // VÖB fix: default_model_name auf ersten Modellnamen setzen
-        // (CustomModal hat kein ModelsField → default_model_name bleibt sonst "")
-        const defaultModelName =
-          values.default_model_name || modelConfigurations[0]?.name || "";
-
         if (isOnboarding && onboardingState && onboardingActions) {
           await submitOnboardingProvider({
             providerName: values.provider,
             payload: {
               ...values,
-              default_model_name: defaultModelName,
               model_configurations: modelConfigurations,
               custom_config: customConfigProcessing(values.custom_config_list),
             },
@@ -313,7 +303,6 @@ export default function CustomModal({
             providerName: values.provider,
             values: {
               ...values,
-              default_model_name: defaultModelName,
               selected_model_names: selectedModelNames,
               custom_config: customConfigProcessing(values.custom_config_list),
             },
@@ -363,26 +352,6 @@ export default function CustomModal({
               </FieldWrapper>
             </Section>
           )}
-
-          <FieldSeparator />
-
-          {/* VÖB: API Key + API Base fields restored (removed in upstream 7fbf6718c) */}
-          <APIKeyField providerName="Custom Provider" />
-
-          <FieldSeparator />
-
-          <FieldWrapper>
-            <InputLayouts.Vertical
-              name="api_base"
-              title="API Base URL"
-              subDescription="Base URL for the LLM API (e.g. https://api.example.com/v1)"
-            >
-              <InputTypeInField
-                name="api_base"
-                placeholder="https://api.example.com/v1"
-              />
-            </InputLayouts.Vertical>
-          </FieldWrapper>
 
           <FieldSeparator />
 
