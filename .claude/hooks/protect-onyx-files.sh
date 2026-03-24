@@ -22,7 +22,7 @@ if [[ "$FILE_PATH" == */backend/ext/* ]] || \
   exit 0  # Erlaubt
 fi
 
-# 12 erlaubte Core-Dateien (erweitert 2026-03-23, CORE #11-#12 fuer ext-rbac/ext-access)
+# 14 erlaubte Core-Dateien (erweitert 2026-03-24, CORE #13-#14)
 ALLOWED_CORE=(
   "backend/onyx/main.py"
   "backend/onyx/llm/multi_llm.py"
@@ -36,6 +36,8 @@ ALLOWED_CORE=(
   "web/src/sections/sidebar/AdminSidebar.tsx"
   "backend/onyx/db/persona.py"
   "backend/onyx/db/document_set.py"
+  "web/src/sections/modals/llmConfig/CustomModal.tsx"
+  "backend/onyx/natural_language_processing/search_nlp_models.py"
 )
 
 for allowed in "${ALLOWED_CORE[@]}"; do

@@ -9,7 +9,7 @@ paths:
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 13 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 14 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 **#1-#10:** 8 von 10 gepatcht (#3 access.py und #5 header/ noch offen).
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
 **#13:** Gepatcht (LLM Custom Modal Fix, 2026-03-24). Upstream-Bug: onyx-dot-app/onyx#9592.
@@ -89,6 +89,13 @@ paths:
 - MERGE: 4 Stellen: Import (+1 Zeile), initialValues (+3 Zeilen), onSubmit default_model_name (+4 Zeilen), API Key/Base Felder (+17 Zeilen). Mittleres Merge-Risiko (Modal wurde in #9270 komplett refactored)
 - STATUS: ✅ Gepatcht (2026-03-24). Upstream-Bug gemeldet: onyx-dot-app/onyx#9592
 - HINWEIS: **TEMPORAER** — Patch kann entfernt werden sobald Upstream-Fix in onyx-dot-app/onyx#9592 gemergt und per Upstream-Sync uebernommen wird. Bei jedem Upstream-Sync Issue-Status pruefen.
+
+## 14. `backend/onyx/natural_language_processing/search_nlp_models.py` — Index-Name lowercase [TEMPORAER]
+- ERLAUBT: `.lower()` an `clean_model_name()` Return-Value anhaengen
+- VERBOTEN: Alles andere in dieser Datei veraendern
+- MERGE: 1 Stelle, 1 Zeile. Niedriges Merge-Risiko (Funktion seit Monaten unveraendert)
+- STATUS: ✅ Gepatcht (2026-03-24). OpenSearch verlangt lowercase Index-Namen, `clean_model_name()` macht kein `.lower()`.
+- HINWEIS: **TEMPORAER** — Upstream-Bug. Bei Upstream-Sync pruefen ob gefixt. Betrifft jeden OpenSearch-User mit Modellnamen die Grossbuchstaben enthalten.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

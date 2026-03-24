@@ -180,8 +180,7 @@ WARM_UP_STRINGS = [
 
 
 def clean_model_name(model_str: str) -> str:
-    # VÖB fix: .lower() for OpenSearch index name compatibility (must be lowercase)
-    return model_str.replace("/", "_").replace("-", "_").replace(".", "_").lower()
+    return model_str.replace("/", "_").replace("-", "_").replace(".", "_")
 
 
 def build_model_server_url(
