@@ -14,6 +14,7 @@ import {
   submitOnboardingProvider,
 } from "@/sections/modals/llmConfig/svc";
 import {
+  APIKeyField,
   DisplayNameField,
   FieldSeparator,
   ModelsAccessField,
@@ -352,6 +353,11 @@ export default function CustomModal({
               </FieldWrapper>
             </Section>
           )}
+
+          <FieldSeparator />
+
+          {/* VÖB ext-rbac: API Key field restored (removed in upstream 7fbf6718c) */}
+          <APIKeyField providerName="Custom Provider" />
 
           <FieldSeparator />
 
