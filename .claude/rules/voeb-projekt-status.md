@@ -73,7 +73,7 @@
   - ✅ GitHub Environment `test` + 5 Secrets (PG, Redis, S3)
   - ✅ TLS/HTTPS TEST war LIVE (2026-03-09) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2
   - ✅ Alle historischen Meilensteine (Monitoring, Upstream-Merges, K8s-Upgrade, etc.) bleiben dokumentiert
-- **Phase 3 (Auth):** ✅ **DEV LOGIN FUNKTIONIERT** (2026-03-23) — Entra ID OIDC, n.ivanov@scale42.de als ADMIN. PROD offen.
+- **Phase 3 (Auth):** ✅ **DEV + PROD LIVE** (2026-03-24) — Entra ID OIDC.
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. Favicon offen.
@@ -87,7 +87,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. ✅ Entra ID DEV Login funktioniert (2026-03-23) → 2. ⏳ GitHub Secret ENTRA_CLIENT_SECRET aktualisieren → 3. Aenderungen committen → 4. OIDC Error-Logging + Alert (P1+P2) vor PROD → 5. PROD OIDC Rollout → 6. NetworkPolicies PROD → 7. M1-Abnahmeprotokoll.** PROD bleibt auf AUTH_TYPE=basic bis OIDC-Hardening erledigt.
+**1. ⏳ NetworkPolicies PROD → 2. M1-Abnahmeprotokoll (wartet auf VÖB-Termin).**
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

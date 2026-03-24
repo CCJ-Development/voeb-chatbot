@@ -53,12 +53,12 @@
 | Llama 3.3 70B | `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
 | Llama 3.1 8B | `neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8` | 128K | ✅ | ✅ Verifiziert (TEST, 2026-03-08) |
 
-#### Chat-Modelle — Noch nicht verifiziert (nach Upstream-Sync #4)
+#### Chat-Modelle — Nicht kompatibel (entfernt)
 
-| Modell | Model ID | Kontext | Tool Calling | Status |
-|--------|----------|---------|-------------|--------|
-| Gemma 3 27B | `google/gemma-3-27b-it` | 37K | ❌ (StackIT) | Neu testen — tool_choice-Fix in #9224 koennte Blockierung aufheben |
-| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | 128K | ❌ (StackIT) | Neu testen — tool_choice-Fix in #9224 koennte Blockierung aufheben |
+| Modell | Model ID | Status |
+|--------|----------|--------|
+| Gemma 3 27B | `google/gemma-3-27b-it` | ❌ Raus — nicht brauchbar auf StackIT |
+| Mistral-Nemo 12B | `neuralmagic/Mistral-Nemo-Instruct-2407-FP8` | ❌ Raus — nicht brauchbar auf StackIT |
 
 > **Hintergrund:** Onyx sendete bisher bei jedem Chat-Request `tool_choice: "auto"`, was auf StackIT-Instanzen ohne `--enable-auto-tool-choice` zu HTTP 400 fuehrte. Upstream-Sync #4 (2026-03-22) enthaelt `fix(llm): tool_choice wird nicht mehr gesendet wenn keine Tools vorhanden (#9224)`. Ob dieser Fix die Modelle vollstaendig kompatibel macht, muss getestet werden.
 
