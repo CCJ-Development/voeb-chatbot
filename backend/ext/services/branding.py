@@ -173,3 +173,16 @@ def update_logo(
         "Logo uploaded: %s, %s, %d bytes", filename, detected_mime, len(file_data)
     )
     return None
+
+
+def delete_logo(db_session: Session) -> None:
+    """Remove logo and reset use_custom_logo flag."""
+    row = db_session.get(ExtBrandingConfig, _SINGLETON_ID)
+    if row is None:
+        return
+    row.logo_data = None
+    row.logo_content_type = None
+    row.logo_filename = None
+    row.use_custom_logo = False
+    db_session.commit()
+    logger.info("Logo deleted")

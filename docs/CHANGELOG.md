@@ -9,6 +9,14 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-branding] **Logo-Editor mit Crop/Zoom** (2026-03-24)
+  - Interaktives Crop/Zoom-Tool auf Admin Branding-Seite (Canvas API, keine npm-Dependency)
+  - Live-Vorschau in Sidebar (24px), Login (44px), Favicon (32px)
+  - Transparenter Hintergrund als Option (Checkbox)
+  - Output: 256x256 PNG (3x Retina, < 300 KB)
+  - DELETE Endpoint: Logo entfernen + auf OnyxIcon zuruecksetzen
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-branding-logo-editor.md`
+
 - [ext-rbac] **Gruppenverwaltung** (2026-03-23)
   - 7 Backend-Endpoints: CRUD + User-Zuordnung + Curator + Minimal-Liste
   - API-Pfad `/manage/admin/user-group` (kompatibel mit bestehendem Frontend)

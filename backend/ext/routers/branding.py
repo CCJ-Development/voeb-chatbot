@@ -23,6 +23,7 @@ from ext.schemas.branding import BrandingConfigUpdate
 from ext.services.branding import get_branding_config
 from ext.services.branding import get_logo
 from ext.services.branding import update_branding_config
+from ext.services.branding import delete_logo
 from ext.services.branding import update_logo
 
 logger = logging.getLogger("ext.branding")
@@ -95,3 +96,11 @@ async def admin_put_enterprise_logo(
     error = update_logo(db_session, file_data, file.filename or "logo")
     if error:
         raise HTTPException(status_code=400, detail=error)
+
+
+@admin_router.delete("/logo")
+def admin_delete_enterprise_logo(
+    _: User = Depends(current_admin_user),
+    db_session: Session = Depends(get_session),
+) -> None:
+    delete_logo(db_session)

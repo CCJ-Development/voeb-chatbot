@@ -5,6 +5,7 @@ import Text from "@/refresh-components/texts/Text";
 import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
 import InputTextArea from "@/refresh-components/inputs/InputTextArea";
 import Button from "@/refresh-components/buttons/Button";
+import LogoCropModal from "@/ext/components/LogoCropModal";
 import { useRouter } from "next/navigation";
 
 interface BrandingConfig {
@@ -49,6 +50,8 @@ export default function ExtBrandingAdminPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [logoVersion, setLogoVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -95,12 +98,17 @@ export default function ExtBrandingAdminPage() {
     }
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCropFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
+  const handleCropComplete = async (blob: Blob) => {
+    setCropFile(null);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", new File([blob], "logo.png", { type: "image/png" }));
 
     try {
       const res = await fetch("/api/admin/enterprise-settings/logo", {
@@ -110,6 +118,8 @@ export default function ExtBrandingAdminPage() {
       if (res.ok) {
         setMessage({ type: "success", text: "Logo uploaded" });
         setConfig((prev) => ({ ...prev, use_custom_logo: true }));
+        setLogoVersion((v) => v + 1);
+        router.refresh();
       } else {
         const err = await res.json();
         setMessage({
@@ -120,7 +130,24 @@ export default function ExtBrandingAdminPage() {
     } catch {
       setMessage({ type: "error", text: "Network error" });
     }
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleLogoDelete = async () => {
+    try {
+      const res = await fetch("/api/admin/enterprise-settings/logo", {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "Logo removed" });
+        setConfig((prev) => ({ ...prev, use_custom_logo: false }));
+        setLogoVersion((v) => v + 1);
+        router.refresh();
+      } else {
+        setMessage({ type: "error", text: "Failed to remove logo" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Network error" });
+    }
   };
 
   const update = <K extends keyof BrandingConfig>(
@@ -186,7 +213,7 @@ export default function ExtBrandingAdminPage() {
         <div className="flex items-center gap-4">
           {config.use_custom_logo && (
             <img
-              src="/api/enterprise-settings/logo"
+              src={`/api/enterprise-settings/logo?v=${logoVersion}`}
               alt="Current logo"
               className="w-10 h-10 rounded-full object-cover"
             />
@@ -195,14 +222,28 @@ export default function ExtBrandingAdminPage() {
             ref={fileInputRef}
             type="file"
             accept="image/png,image/jpeg"
-            onChange={handleLogoUpload}
+            onChange={handleFileSelect}
             className="text-sm text-text-03"
           />
+          {config.use_custom_logo && (
+            <Button secondary action onClick={handleLogoDelete}>
+              Logo entfernen
+            </Button>
+          )}
         </div>
         <Text text03 className="pt-1">
           PNG or JPEG, max 2 MB
         </Text>
       </div>
+
+      {/* Crop Modal */}
+      {cropFile && (
+        <LogoCropModal
+          imageFile={cropFile}
+          onCrop={handleCropComplete}
+          onCancel={() => setCropFile(null)}
+        />
+      )}
 
       {/* Logo Display Style */}
       <div className="pb-6">
