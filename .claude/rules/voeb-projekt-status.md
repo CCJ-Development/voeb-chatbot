@@ -61,7 +61,7 @@
   - ⏳ NetworkPolicies onyx-prod: DNS/TLS erledigt, NetworkPolicies als naechstes (vollstaendiges Set inkl. Basis-Policies)
   - ✅ CI/CD: `--set opensearch_admin_password` ergaenzt (2026-03-22), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
   - ✅ **Embedding PROD: Qwen3-VL-Embedding 8B** (2026-03-24) — LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen
-  - ✅ **LLM Custom Modal Fix** (2026-03-24) — Core #13 (api_key + api_base + default_model_name), Upstream-Bug onyx-dot-app/onyx#9592
+  - ✅ **LLM PROD konfiguriert** (2026-03-24) — 4 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Core #13 Fix (api_key + api_base + default_model_name), Upstream-Bug onyx-dot-app/onyx#9592
   - ✅ **OpenSearch lowercase Fix** (2026-03-24) — Core #14 (clean_model_name .lower()), Upstream-Bug. DB manuell korrigiert nach CrashLoop.
 - **Phase 2 TEST:** **DAUERHAFT HERUNTERGEFAHREN** (seit 2026-03-19)
   - ⏸️ **Status:** 0 Pods. Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht. Helm Release + PVCs + Secrets bleiben erhalten. Reaktivierung jederzeit moeglich (`kubectl scale` oder `helm upgrade`).
