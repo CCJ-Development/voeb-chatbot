@@ -98,6 +98,8 @@ Der StackIT AI Model Serving Token wird im StackIT Portal erstellt:
 | API Key | StackIT AI Model Serving Token |
 | API Base URL | `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1` |
 
+> **Hinweis:** Die Felder API Key und API Base URL wurden in Upstream-Commit 7fbf6718c versehentlich entfernt. Unser Core #13 Patch stellt sie wieder her. Upstream-Bug: onyx-dot-app/onyx#9592.
+
 4. Unter **Model Configurations** alle kompatiblen Modelle hinzufuegen ("+ Add New"):
 
 | Model Name | Max Input Tokens |
@@ -271,6 +273,26 @@ Diese Fehlermeldung tritt auf, wenn ein aelteres Onyx-Release verwendet wird, da
 
 **Status nach Upstream-Sync #4 (2026-03-22):** Onyx sendet `tool_choice` nicht mehr wenn keine Tools vorhanden sind (`fix(llm): #9224`). Dieser Fix koennte Gemma 3 und Mistral-Nemo auf StackIT freischalten. **Beide Modelle muessen neu getestet werden** — bis dahin als "nicht verifiziert" behandeln (nicht automatisch als kompatibel einstufen).
 
+### OpenSearch: "invalid_index_name_exception, must be lowercase"
+
+**Ursache:** `clean_model_name()` in Onyx macht kein `.lower()`. Modellnamen mit Grossbuchstaben (z.B. `Qwen/Qwen3-VL-Embedding-8B`) erzeugen Index-Namen die OpenSearch ablehnt.
+
+**Fix:** Core #14 — `.lower()` an `clean_model_name()` angehaengt (2026-03-24). Falls der Fehler trotzdem auftritt (z.B. alter Index-Name in DB):
+
+```bash
+# Index-Name in DB korrigieren:
+kubectl exec <celery-beat-pod> -n onyx-prod -- python3 -c "
+import psycopg2
+conn = psycopg2.connect(host='...', port=5432, dbname='onyx', user='...', password='...')
+cur = conn.cursor()
+cur.execute('SELECT id, index_name FROM search_settings WHERE status = \'PRESENT\'')
+print(cur.fetchall())
+# Falls Grossbuchstaben: UPDATE search_settings SET index_name = lower(index_name) WHERE id = <ID>
+conn.close()
+"
+# Danach API-Server Pods neu starten
+```
+
 ### Rate Limits (StackIT)
 
 | Limit | Wert |
@@ -292,7 +314,7 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 | Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | HTTPS LIVE. LLM/Embedding-Konfiguration per Admin UI. |
 | Chat Default | GPT-OSS 120B | GPT-OSS 120B | Per Admin UI konfiguriert |
 | Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | Per Admin UI konfiguriert |
-| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | Per Admin UI konfiguriert |
+| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ (2026-03-24) |
 
 > **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
 

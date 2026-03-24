@@ -45,7 +45,7 @@
   - ✅ cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY
   - ✅ Redis Operator + Image Pull Secret in `onyx-prod`
   - ✅ GitHub Environment `prod` + Required Reviewer + 7 Secrets (inkl. OPENSEARCH_PASSWORD)
-  - ✅ Helm Release `onyx-prod`: **20 Pods Running** (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa Zombie, **OpenSearch**, Redis, 2×Model, NGINX). Chart 0.4.36, Image `df049fa`.
+  - ✅ Helm Release `onyx-prod`: **20 Pods Running** (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa Zombie, **OpenSearch**, Redis, 2×Model, NGINX). Chart 0.4.36, Image `4337b8a`.
   - ✅ **OpenSearch PROD: LIVE** (2026-03-22) — Primary Document Index, Retrieval aktiviert, Cluster yellow (erwartet bei Single-Node), sicheres Passwort (nicht Chart-Default)
   - ✅ **Vespa: Zombie-Mode** (2026-03-22) — 100m/512Mi Requests, 4Gi Limit. Nur fuer Celery Readiness Check.
   - ✅ **ext-i18n PROD: LIVE** (2026-03-22) — ~250 Strings Deutsch, ~95% user-facing UI
@@ -60,6 +60,9 @@
   - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
   - ⏳ NetworkPolicies onyx-prod: DNS/TLS erledigt, NetworkPolicies als naechstes (vollstaendiges Set inkl. Basis-Policies)
   - ✅ CI/CD: `--set opensearch_admin_password` ergaenzt (2026-03-22), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
+  - ✅ **Embedding PROD: Qwen3-VL-Embedding 8B** (2026-03-24) — LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen
+  - ✅ **LLM Custom Modal Fix** (2026-03-24) — Core #13 (api_key + api_base + default_model_name), Upstream-Bug onyx-dot-app/onyx#9592
+  - ✅ **OpenSearch lowercase Fix** (2026-03-24) — Core #14 (clean_model_name .lower()), Upstream-Bug. DB manuell korrigiert nach CrashLoop.
 - **Phase 2 TEST:** **DAUERHAFT HERUNTERGEFAHREN** (seit 2026-03-19)
   - ⏸️ **Status:** 0 Pods. Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht. Helm Release + PVCs + Secrets bleiben erhalten. Reaktivierung jederzeit moeglich (`kubectl scale` oder `helm upgrade`).
   - ⏸️ Scale-to-Zero CronJobs + RBAC entfernt (nicht mehr noetig). `deployment/k8s/cost-optimization/` geloescht.
