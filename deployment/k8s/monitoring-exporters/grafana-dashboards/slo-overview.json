@@ -1,0 +1,207 @@
+{
+  "id": null,
+  "uid": "voeb-slo-overview",
+  "title": "VÖB PROD — SLA/SLO Übersicht",
+  "description": "Verfügbarkeit, Latenz, Error Rate und Error Budget für M1-Abnahme",
+  "tags": ["voeb", "slo", "prod"],
+  "timezone": "Europe/Berlin",
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Verfügbarkeit (30d rollierend)",
+      "description": "SLO-Ziel: 99.5%",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "targets": [{ "expr": "voeb:api_availability:ratio_rate30d", "legendFormat": "Availability" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0.99,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.995 },
+              { "color": "green", "value": 0.999 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Error Budget verbleibend (30d)",
+      "description": "100% = volles Budget, 0% = SLO verletzt",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "targets": [{ "expr": "voeb:api_error_budget:remaining", "legendFormat": "Error Budget" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 0.25 },
+              { "color": "green", "value": 0.5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "P95 Latenz (5m)",
+      "description": "SLO-Ziel: < 5s",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "voeb:api_latency_p95:seconds", "legendFormat": "P95" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "max": 10,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 2 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Error Rate (5m, nur 5xx)",
+      "description": "SLO-Ziel: < 1%",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "voeb:api_error_rate:ratio_rate5m", "legendFormat": "Error Rate" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 0.1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.005 },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Verfügbarkeit Timeline",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "voeb:api_availability:ratio_rate5m", "legendFormat": "5m" },
+        { "expr": "voeb:api_availability:ratio_rate24h", "legendFormat": "24h" },
+        { "expr": "voeb:api_availability:ratio_rate30d", "legendFormat": "30d" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0.98,
+          "max": 1,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "30d" }, "properties": [{ "id": "custom.lineWidth", "value": 3 }] }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "Latenz Timeline (P50 / P95 / P99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "voeb:api_latency_p50:seconds", "legendFormat": "P50" },
+        { "expr": "voeb:api_latency_p95:seconds", "legendFormat": "P95" },
+        { "expr": "voeb:api_latency_p99:seconds", "legendFormat": "P99" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "voeb:api_request_rate:per_second", "legendFormat": "Requests/s" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "scheme" }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Error Rate Timeline (5m / 24h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        { "expr": "voeb:api_error_rate:ratio_rate5m", "legendFormat": "5m" },
+        { "expr": "voeb:api_error_rate:ratio_rate24h", "legendFormat": "24h" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "HTTP Status Codes (Top 10)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "topk(10, sum by (status) (rate(http_requests_total{job=\"onyx-api-prod\"}[5m])))", "legendFormat": "{{status}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 1, "fillOpacity": 30, "stacking": { "mode": "normal" } }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "DB Connection Pool",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        { "expr": "onyx_db_pool_size{job=\"onyx-api-prod\"}", "legendFormat": "Pool Size" },
+        { "expr": "onyx_db_pool_checked_out{job=\"onyx-api-prod\"}", "legendFormat": "Checked Out" },
+        { "expr": "onyx_db_pool_overflow{job=\"onyx-api-prod\"}", "legendFormat": "Overflow" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

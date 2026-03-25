@@ -1,0 +1,37 @@
+# ServiceMonitor: cert-manager → Prometheus
+#
+# Ermoeglicht Prometheus das Scrapen von cert-manager Metriken (Port 9402).
+# Kritisch fuer CertExpiringSoon Alert (certmanager_certificate_expiration_timestamp_seconds).
+#
+# Ohne diesen ServiceMonitor ist der Alert WIRKUNGSLOS — cert-manager Metriken
+# landen nicht in Prometheus und der Alert kann nie feuern.
+#
+# Alle 3 cert-manager Komponenten exportieren Metriken:
+# - cert-manager (controller): Cert-Lifecycle, ACME, Renewal-Status
+# - cainjector: CA-Bundle-Injection
+# - webhook: Admission-Webhook-Metriken
+#
+# Anwendung: kubectl apply -f cert-manager-servicemonitor.yaml
+# Verifikation: In Prometheus pruefen ob certmanager_certificate_expiration_timestamp_seconds existiert.
+#
+# Referenz: audit-output/monitoring-validierung-2026-03-25.md (S1)
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: cert-manager
+  endpoints:
+    - port: tcp-prometheus-servicemonitor
+      interval: 60s
+      path: /metrics

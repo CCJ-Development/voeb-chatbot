@@ -1,0 +1,145 @@
+# Blackbox Exporter — PROD Monitoring
+#
+# End-to-End HTTP(S) Probes fuer:
+# - chatbot.voeb-service.de (eigene PROD-Instanz)
+# - StackIT Model Serving API (LLM-Backend)
+# - Microsoft Entra ID (OIDC-Authentifizierung)
+# - StackIT Object Storage (Datei-Uploads)
+#
+# Referenz: audit-output/monitoring-erweiterungsplan-2026-03-25.md (H3+H4)
+# Anwendung: kubectl apply -f blackbox-exporter-prod.yaml -n monitoring
+#
+# WICHTIG: NetworkPolicy 10-allow-blackbox-egress.yaml muss VORHER angewendet werden,
+# damit der Exporter die externen Endpoints erreichen kann.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: monitoring
+  labels:
+    app: blackbox-exporter
+    app.kubernetes.io/part-of: voeb-chatbot
+data:
+  blackbox.yml: |
+    modules:
+      # PROD Health-Check: Erwartet HTTP 200
+      http_2xx:
+        prober: http
+        timeout: 10s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200]
+          method: GET
+          follow_redirects: true
+          preferred_ip_protocol: ip4
+          tls_config:
+            insecure_skip_verify: false
+
+      # Externe Deps: Jede HTTP-Antwort = lebendig (auch 400/403)
+      # Nur Timeout oder Connection-Refused = down
+      http_any_response:
+        prober: http
+        timeout: 10s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          # Explizit alle gaengigen Status Codes akzeptieren (nicht leer = Default 2xx!)
+      # 400=S3 ohne Bucket, 403=LLM ohne API Key — beides "lebendig"
+      valid_status_codes: [200, 201, 301, 302, 400, 401, 403, 404, 405]
+          method: GET
+          follow_redirects: false
+          preferred_ip_protocol: ip4
+          tls_config:
+            insecure_skip_verify: false
+
+      # TLS-Zertifikat-Pruefung (Bonus: prueft Cert-Ablauf von aussen)
+      tls_connect:
+        prober: tcp
+        timeout: 10s
+        tcp:
+          tls: true
+          tls_config:
+            insecure_skip_verify: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter-prod
+  namespace: monitoring
+  labels:
+    app: blackbox-exporter
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.25.0
+          args:
+            - --config.file=/config/blackbox.yml
+            - --log.level=info
+          ports:
+            - containerPort: 9115
+              name: http-probe
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 150m
+              memory: 64Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9115
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9115
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter-prod
+  namespace: monitoring
+  labels:
+    app: blackbox-exporter
+    app.kubernetes.io/part-of: voeb-chatbot
+spec:
+  selector:
+    app: blackbox-exporter
+  ports:
+    - port: 9115
+      targetPort: 9115
+      name: http-probe
+      protocol: TCP

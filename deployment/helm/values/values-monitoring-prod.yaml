@@ -73,6 +73,59 @@ prometheus:
             labels:
               environment: "prod"
               service: "redis"
+      # Blackbox Exporter: PROD Health-Check (End-to-End, inkl. NGINX + TLS)
+      - job_name: "blackbox-prod-health"
+        metrics_path: "/probe"
+        scrape_interval: "60s"
+        scrape_timeout: "15s"
+        params:
+          module: ["http_2xx"]
+        static_configs:
+          - targets:
+              - "https://chatbot.voeb-service.de/api/health"
+            labels:
+              environment: "prod"
+              probe_type: "health"
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: "blackbox-exporter-prod.monitoring.svc.cluster.local:9115"
+      # Blackbox Exporter: Externe Abhaengigkeiten
+      - job_name: "blackbox-external-deps"
+        metrics_path: "/probe"
+        scrape_interval: "60s"
+        scrape_timeout: "15s"
+        params:
+          module: ["http_any_response"]
+        static_configs:
+          - targets:
+              - "https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1/models"
+            labels:
+              environment: "prod"
+              probe_type: "external"
+              dependency: "stackit-llm"
+          - targets:
+              - "https://login.microsoftonline.com/8eac48f3-ba48-439b-b481-996c53f2cd1b/v2.0/.well-known/openid-configuration"
+            labels:
+              environment: "prod"
+              probe_type: "external"
+              dependency: "entra-id"
+          - targets:
+              - "https://object.storage.eu01.onstackit.cloud"
+            labels:
+              environment: "prod"
+              probe_type: "external"
+              dependency: "stackit-s3"
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: "blackbox-exporter-prod.monitoring.svc.cluster.local:9115"
     # ServiceMonitor Namespace Selector (alle Namespaces)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -203,13 +256,152 @@ kubeProxy:
 coreDns:
   enabled: false
 
-# --- Alert Rules ---
-# 22 Regeln: 20 Basis (wie DEV/TEST) + 2 Backup-Check (PROD-only).
-# Backup-Check Alerts erfordern den pg-backup-check CronJob
-# (deployment/k8s/monitoring-exporters/pg-backup-check-prod.yaml).
+# --- Alert Rules + Recording Rules ---
+# Recording Rules: SLA/SLO Metriken fuer M1-Abnahme (2026-03-25).
+# Alert Rules: 22 VÖB custom + 2 Backup-Check (PROD-only) + 1 SLO.
 additionalPrometheusRulesMap:
   voeb-chatbot-alerts:
     groups:
+      # --- SLA/SLO Recording Rules (M1-Abnahme) ---
+      # Vorberechnete Metriken fuer Verfuegbarkeit, Latenz und Error Rate.
+      # SLO-Ziele (mit VÖB abzustimmen):
+      #   - Availability: 99.5% (monatlich, 3.6h Downtime erlaubt)
+      #   - Latency P95: < 5s (API Response)
+      #   - Error Rate: < 1% 5xx Responses
+      - name: voeb-slo.rules
+        rules:
+          # Availability (5m Fenster, Probe-basiert)
+          - record: voeb:api_availability:ratio_rate5m
+            expr: avg_over_time(up{job="onyx-api-prod"}[5m])
+
+          # Availability (24h rollierend)
+          - record: voeb:api_availability:ratio_rate24h
+            expr: avg_over_time(up{job="onyx-api-prod"}[24h])
+
+          # Availability (30d rollierend — Haupt-SLO)
+          - record: voeb:api_availability:ratio_rate30d
+            expr: avg_over_time(up{job="onyx-api-prod"}[30d])
+
+          # Error Rate (5m Fenster, nur 5xx)
+          - record: voeb:api_error_rate:ratio_rate5m
+            expr: |
+              (
+                sum(rate(http_requests_total{job="onyx-api-prod", status=~"5.."}[5m]))
+                / sum(rate(http_requests_total{job="onyx-api-prod"}[5m]))
+              ) or vector(0)
+
+          # Error Rate (24h rollierend)
+          - record: voeb:api_error_rate:ratio_rate24h
+            expr: |
+              (
+                sum(rate(http_requests_total{job="onyx-api-prod", status=~"5.."}[24h]))
+                / sum(rate(http_requests_total{job="onyx-api-prod"}[24h]))
+              ) or vector(0)
+
+          # Latency P50 (5m Fenster)
+          - record: voeb:api_latency_p50:seconds
+            expr: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job="onyx-api-prod"}[5m])) by (le))
+
+          # Latency P95 (5m Fenster)
+          - record: voeb:api_latency_p95:seconds
+            expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="onyx-api-prod"}[5m])) by (le))
+
+          # Latency P99 (5m Fenster)
+          - record: voeb:api_latency_p99:seconds
+            expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="onyx-api-prod"}[5m])) by (le))
+
+          # Request Rate (5m Fenster)
+          - record: voeb:api_request_rate:per_second
+            expr: sum(rate(http_requests_total{job="onyx-api-prod"}[5m]))
+
+          # Error Budget verbleibend (30d, Ziel 99.5%)
+          # 1.0 = volles Budget, 0.0 = Budget aufgebraucht, negativ = SLO verletzt
+          - record: voeb:api_error_budget:remaining
+            expr: 1 - ((1 - avg_over_time(up{job="onyx-api-prod"}[30d])) / (1 - 0.995))
+
+      # --- SLO Alert ---
+      - name: voeb-slo-alerts.rules
+        rules:
+          - alert: SLOAvailabilityBudgetLow
+            expr: voeb:api_error_budget:remaining < 0.25
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "SLO Error Budget unter 25% ({{ $value | humanizePercentage }} verbleibend)"
+              description: >-
+                Die 30-Tage-Verfuegbarkeit naehert sich dem SLO-Ziel von 99.5%.
+                Verbleibendes Error Budget: {{ $value | humanizePercentage }}.
+                Bei 0% ist das SLO verletzt.
+
+          - alert: SLOAvailabilityBreach
+            expr: voeb:api_availability:ratio_rate30d < 0.995
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              summary: "SLO verletzt: Verfuegbarkeit unter 99.5% ({{ $value | humanizePercentage }})"
+              description: >-
+                Die 30-Tage-Verfuegbarkeit liegt bei {{ $value | humanizePercentage }},
+                unter dem SLO-Ziel von 99.5%. Ursachenanalyse erforderlich.
+
+          - alert: SLOLatencyBreach
+            expr: voeb:api_latency_p95:seconds > 5
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "SLO verletzt: P95 Latenz ueber 5s ({{ $value | printf \"%.2f\" }}s)"
+              description: "API P95 Antwortzeit ueberschreitet das SLO-Ziel von 5 Sekunden."
+
+      # --- Blackbox Probe Alerts (H3+H4, externe Abhaengigkeiten) ---
+      - name: voeb-blackbox.rules
+        rules:
+          # PROD Health-Check (End-to-End)
+          - alert: PRODHealthCheckFailed
+            expr: probe_success{job="blackbox-prod-health"} == 0
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PROD Health-Check fehlgeschlagen ({{ $labels.instance }})"
+              description: >-
+                End-to-End Health-Check auf {{ $labels.instance }} schlaegt fehl.
+                Pruefe NGINX, API, DNS und TLS.
+
+          # Externe Abhaengigkeit nicht erreichbar
+          - alert: ExternalDependencyDown
+            expr: probe_success{job="blackbox-external-deps"} == 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Externer Dienst nicht erreichbar: {{ $labels.dependency }}"
+              description: >-
+                Der externe Dienst {{ $labels.dependency }} ({{ $labels.instance }})
+                antwortet seit 5 Minuten nicht. Bei LLM: Chat-Funktion betroffen.
+                Bei Entra ID: Login betroffen. Bei S3: Datei-Uploads betroffen.
+
+          # PROD TLS-Cert von aussen pruefen (Bonus zu S1 cert-manager)
+          - alert: PRODCertExpiringSoonExternal
+            expr: probe_ssl_earliest_cert_expiry{job="blackbox-prod-health"} - time() < 14 * 24 * 3600
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "PROD TLS-Cert laeuft in weniger als 14 Tagen ab (extern geprueft)"
+              description: "Verbleibend: {{ $value | humanizeDuration }}. Auto-Renewal pruefen."
+
+          # Hohe Probe-Latenz (End-to-End langsam)
+          - alert: PRODHighProbeLatency
+            expr: probe_duration_seconds{job="blackbox-prod-health"} > 5
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PROD End-to-End Latenz ueber 5s ({{ $value | printf \"%.2f\" }}s)"
+              description: "Die gesamte Request-Dauer (DNS + TLS + HTTP) ist ungewoehnlich hoch."
+
       - name: voeb-chatbot.rules
         rules:
           # 1. API nicht erreichbar
@@ -435,12 +627,17 @@ additionalPrometheusRulesMap:
       - name: voeb-backup-check.rules
         rules:
           # 21. Backup Check CronJob fehlgeschlagen
-          # Feuert wenn der pg-backup-check CronJob fehlschlaegt (Exit Code != 0).
+          # Feuert wenn ein AKTUELLER pg-backup-check CronJob fehlschlaegt (< 8h alt).
+          # Fix 2026-03-25: Zeitfenster (28800s = 8h = 2 CronJob-Zyklen) eingefuehrt,
+          # damit alte Failed-Jobs die in kube-state-metrics sichtbar bleiben nicht
+          # dauerhaft feuern (vorher: 7x Critical/h Alert-Spam in Teams).
           # Ursachen: Backup zu alt, Backup-Fehler, API nicht erreichbar, Auth-Fehler.
           # Runbook: docs/runbooks/stackit-postgresql.md#pgbackupcheckfailed-alert
           - alert: PGBackupCheckFailed
             expr: |
               kube_job_status_failed{namespace="monitoring", job_name=~"pg-backup-check-.*"} > 0
+              and on(job_name)
+              kube_job_status_start_time{namespace="monitoring", job_name=~"pg-backup-check-.*"} > (time() - 28800)
             for: 5m
             labels:
               severity: critical

@@ -2,11 +2,13 @@
 #
 # Erlaubt Prometheus Egress zu:
 # - onyx-dev, onyx-test und onyx-prod Namespaces (Port 8080 fuer /metrics)
+# - cert-manager Namespace (Port 9402 fuer cert-manager Metriken)
 # - Kubelet Metrics (Port 10250 fuer cAdvisor)
 # - node-exporter (Port 9100)
 # - kube-state-metrics + AlertManager + Grafana im eigenen Namespace
 #
 # Referenz: docs/referenz/monitoring-konzept.md (Phase 2.3)
+# Aenderung 2026-03-25: cert-manager Egress hinzugefuegt (S1, CertExpiringSoon Alert)
 # Anwendung: kubectl apply -f 03-allow-scrape-egress.yaml -n monitoring
 
 apiVersion: networking.k8s.io/v1
@@ -47,6 +49,14 @@ spec:
     # Kubelet Metrics (cAdvisor) — auf allen Nodes
     - ports:
         - port: 10250
+          protocol: TCP
+    # cert-manager Metriken (Port 9402) — fuer CertExpiringSoon Alert
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cert-manager
+      ports:
+        - port: 9402
           protocol: TCP
     # node-exporter — DaemonSet auf allen Nodes
     - ports:
