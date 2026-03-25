@@ -6,6 +6,11 @@ Core functions:
 - get_usage_summary(): Aggregated stats for dashboard
 - get_usage_timeseries(): Time-bucketed data for charts
 - CRUD for per-user limits
+
+Prometheus-Metriken (automatisch via /metrics Endpoint exponiert):
+- ext_token_prompt_total: Prompt-Tokens Counter (Label: model)
+- ext_token_completion_total: Completion-Tokens Counter (Label: model)
+- ext_token_requests_total: LLM-Request Counter (Label: model)
 """
 
 import logging
@@ -15,6 +20,7 @@ from datetime import timezone
 from uuid import UUID
 
 from fastapi import HTTPException
+from prometheus_client import Counter
 from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import select
@@ -27,6 +33,26 @@ from ext.models.token_usage import ExtTokenUsage
 from ext.models.token_usage import ExtTokenUserLimit
 
 logger = logging.getLogger("ext.token")
+
+# ---------------------------------------------------------------------------
+# Prometheus Counters (exponiert via /metrics, gescrapt von Prometheus)
+# ---------------------------------------------------------------------------
+
+_prompt_tokens_counter = Counter(
+    "ext_token_prompt_total",
+    "Total prompt (input) tokens consumed",
+    ["model"],
+)
+_completion_tokens_counter = Counter(
+    "ext_token_completion_total",
+    "Total completion (output) tokens consumed",
+    ["model"],
+)
+_requests_counter = Counter(
+    "ext_token_requests_total",
+    "Total LLM requests",
+    ["model"],
+)
 
 # Consistent with FOSS TOKEN_BUDGET_UNIT (token_limit.py:28)
 TOKEN_BUDGET_UNIT = 1_000
@@ -70,6 +96,14 @@ def log_token_usage(
     """Insert a single token usage row. Must never raise — all exceptions caught by caller."""
     if total_tokens <= 0:
         return
+
+    # Prometheus Counter inkrementieren (in-memory, unabhaengig von DB)
+    try:
+        _prompt_tokens_counter.labels(model=model_name).inc(prompt_tokens)
+        _completion_tokens_counter.labels(model=model_name).inc(completion_tokens)
+        _requests_counter.labels(model=model_name).inc()
+    except Exception:
+        pass  # Prometheus-Fehler nie propagieren
 
     try:
         engine = get_sqlalchemy_engine()

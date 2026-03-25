@@ -1,0 +1,75 @@
+{
+  "id": null,
+  "uid": "voeb-token-usage",
+  "title": "VÖB PROD — Token/LLM Usage",
+  "description": "LLM Token-Verbrauch, Modell-Nutzung, Request-Rate",
+  "tags": ["voeb", "token", "llm", "prod"],
+  "timezone": "Europe/Berlin",
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Token-Verbrauch (Prompt + Completion)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(ext_token_prompt_total{job=\"onyx-api-prod\"}[5m])) * 60", "legendFormat": "Prompt Tokens/min" },
+        { "expr": "sum(rate(ext_token_completion_total{job=\"onyx-api-prod\"}[5m])) * 60", "legendFormat": "Completion Tokens/min" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "lineWidth": 2, "fillOpacity": 20 } } }
+    },
+    {
+      "id": 2,
+      "title": "LLM Requests/min",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "sum(rate(ext_token_requests_total{job=\"onyx-api-prod\"}[5m])) by (model) * 60", "legendFormat": "{{model}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 15 } } }
+    },
+    {
+      "id": 3,
+      "title": "Tokens gesamt (24h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(ext_token_prompt_total{job=\"onyx-api-prod\"}[24h])) + sum(increase(ext_token_completion_total{job=\"onyx-api-prod\"}[24h]))", "legendFormat": "Total" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "title": "Requests gesamt (24h)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(ext_token_requests_total{job=\"onyx-api-prod\"}[24h]))", "legendFormat": "Requests" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 5,
+      "title": "Top-Modelle (Token-Verteilung)",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "sum(increase(ext_token_prompt_total{job=\"onyx-api-prod\"}[$__range])) by (model) + sum(increase(ext_token_completion_total{job=\"onyx-api-prod\"}[$__range])) by (model)", "legendFormat": "{{model}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Prompt vs. Completion Ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        { "expr": "sum(rate(ext_token_prompt_total{job=\"onyx-api-prod\"}[5m]))", "legendFormat": "Prompt" },
+        { "expr": "sum(rate(ext_token_completion_total{job=\"onyx-api-prod\"}[5m]))", "legendFormat": "Completion" }
+      ],
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 30, "stacking": { "mode": "percent" } } } }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

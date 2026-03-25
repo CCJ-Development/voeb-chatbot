@@ -112,9 +112,10 @@ deployment/k8s/monitoring-exporters/   ← Exporter + Dashboards + Datasources
   cert-manager-servicemonitor.yaml     ← ServiceMonitor fuer cert-manager Metriken
   pg-backup-check-prod.yaml            ← CronJob: PG Backup-Validierung (alle 4h)
   grafana-datasource-loki.yaml         ← Grafana Loki Datasource (automatisch provisioniert)
-  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed, 4 Stueck)
+  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed, 5 Stueck)
     postgresql-14114.json              ← PG Dashboard (gnetId 14114)
     audit-log.json                     ← Audit-Log Dashboard (Loki-basiert, EXT-AUDIT Events)
+    token-usage.json                   ← Token/LLM Usage Dashboard (Prometheus Counter)
     redis-763.json                     ← Redis Dashboard (gnetId 763)
     slo-overview.json                  ← SLA/SLO Dashboard (Availability, Latenz, Error Budget)
   apply.sh                             ← Deploy-Script mit Auto-Detection DEV/TEST/PROD

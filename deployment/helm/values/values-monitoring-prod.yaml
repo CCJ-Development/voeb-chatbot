@@ -471,6 +471,27 @@ additionalPrometheusRulesMap:
               summary: "OIDC Callback Fehler (>0.1/s)"
               description: "Entra ID Callback schlaegt fehl. Token abgelaufen? Redirect URI?"
 
+      # --- Token/Usage Alerts (ext-token Prometheus Counter) ---
+      - name: voeb-token.rules
+        rules:
+          - alert: NoLLMTokenUsage
+            expr: sum(rate(ext_token_requests_total[1h])) == 0
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kein LLM-Token-Verbrauch seit 30min"
+              description: "Kein einziger LLM-Request in der letzten Stunde. Modelle moeglicherweise nicht erreichbar."
+
+          - alert: HighTokenUsageSpike
+            expr: sum(rate(ext_token_prompt_total[5m])) > 1000
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Ungewoehnlich hoher Token-Verbrauch (>1000 Tokens/s)"
+              description: "Prompt-Token-Rate deutlich ueber Normal. Moeglicherweise Loop oder Missbrauch."
+
       - name: voeb-chatbot.rules
         rules:
           # 1. API nicht erreichbar

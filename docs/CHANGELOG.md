@@ -9,6 +9,12 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-token] **Prometheus Counter fuer Token-Metriken** (2026-03-25)
+  - 3 Counter: `ext_token_prompt_total`, `ext_token_completion_total`, `ext_token_requests_total` (Label: model)
+  - Inkrementiert in `log_token_usage()` (gleicher Hook wie DB-Insert, kein neuer Code-Pfad)
+  - 2 Alerts: `NoLLMTokenUsage` (kein Verbrauch 30min), `HighTokenUsageSpike` (>1000 Tokens/s)
+  - Grafana Dashboard: Token-Verbrauch Timeline, Requests/min pro Modell, Top-Modelle Pie, Prompt/Completion Ratio
+
 - [ext-audit] **Audit-Logging fuer Admin-Aktionen** (2026-03-25)
   - DB-Tabelle `ext_audit_log` (PostgreSQL, DSGVO-konform, IP-Anonymisierung nach 90d)
   - 15 Audit-Hooks in 5 ext-Routern (rbac, branding, prompts, token, doc-access)
