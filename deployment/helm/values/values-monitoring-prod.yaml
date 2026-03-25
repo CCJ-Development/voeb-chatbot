@@ -155,9 +155,11 @@ grafana:
     enabled: false
   persistence:
     enabled: false
-  # Dashboard-Provisioning via Sidecar (PROD: persistent, kein manueller Import)
-  # Grafana Sidecar laedt Dashboards automatisch von grafana.com per gnetId.
-  # Gleiche Dashboards wie DEV/TEST (dort manuell importiert: ID 14114 + 763).
+  # Dashboard-Provisioning via Sidecar (ConfigMap-basiert, NICHT gnetId).
+  # Dashboards werden als ConfigMaps mit Label grafana_dashboard=1 deployed.
+  # Siehe: deployment/k8s/monitoring-exporters/grafana-dashboards/
+  # 4 Dashboards: PG (14114), Redis (763), SLO, Audit-Log.
+  # gnetId-Approach funktioniert NICHT (Sidecar kann grafana.com nicht erreichen).
   sidecar:
     dashboards:
       enabled: true
@@ -175,18 +177,6 @@ grafana:
           editable: false
           options:
             path: /var/lib/grafana/dashboards
-  dashboards:
-    default:
-      # PostgreSQL Dashboard (gleich wie DEV/TEST manuell importiert)
-      postgresql:
-        gnetId: 14114
-        revision: 3
-        datasource: Prometheus
-      # Redis Dashboard (gleich wie DEV/TEST manuell importiert)
-      redis:
-        gnetId: 763
-        revision: 5
-        datasource: Prometheus
 
 # --- AlertManager ---
 alertmanager:
@@ -717,6 +707,8 @@ additionalPrometheusRulesMap:
               kube_job_status_failed{namespace="monitoring", job_name=~"pg-backup-check-.*"} > 0
               and on(job_name)
               kube_job_status_start_time{namespace="monitoring", job_name=~"pg-backup-check-.*"} > (time() - 28800)
+              unless on(job_name)
+              kube_job_status_succeeded{namespace="monitoring", job_name=~"pg-backup-check-.*"} > 0
             for: 5m
             labels:
               severity: critical

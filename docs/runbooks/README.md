@@ -20,6 +20,10 @@ Verifizierte Step-by-Step-Anleitungen für Setup, Deployment und Betrieb der Sta
 | 10 | [ip-schutz-helm.md](./ip-schutz-helm.md) | ✅ Neu (2026-03-22) | LB-IP bei Helm-Neuinstallation schuetzen |
 | 11 | [alert-antwort.md](./alert-antwort.md) | ✅ Neu (2026-03-22) | Was tun bei Alert? Diagnose + Loesung pro Alert |
 | 12 | [secret-rotation.md](./secret-rotation.md) | ✅ Neu (2026-03-22) | Rotation aller PROD Secrets + Kubeconfig + Certs |
+| 13 | [entra-id-setup.md](./entra-id-setup.md) | ✅ Verifiziert (2026-03-23) | Entra ID OIDC: App Registration, Secrets, Redirect URIs, Lessons Learned |
+| 14 | [ext-access-aktivierung.md](./ext-access-aktivierung.md) | ✅ Neu (2026-03-25) | ext-access: Flag, Deploy, Resync, Funktionstest, Rollback |
+| 15 | [loki-troubleshooting.md](./loki-troubleshooting.md) | ✅ Neu (2026-03-25) | Loki: Log-Suche, Promtail, Retention, Troubleshooting |
+| 16 | [llm-provider-management.md](./llm-provider-management.md) | ✅ Neu (2026-03-24) | LLM-Provider Verwaltung: Hinzufuegen, Entfernen, Troubleshooting |
 
 ## Konventionen
 

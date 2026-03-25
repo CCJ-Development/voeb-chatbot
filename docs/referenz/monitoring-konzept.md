@@ -55,7 +55,7 @@ Onyx hat ein produktives Prometheus-Monitoring. Der API-Server exponiert `/metri
 | Prometheus-Server (Scraping) | ✅ Deployed (2026-03-10) | 20 Targets, 30s Intervall |
 | Grafana (Dashboards) | ✅ Deployed (2026-03-10) | Zugang via port-forward |
 | AlertManager (Alerting) | ✅ Deployed (2026-03-10), Teams Webhook (2026-03-11) | 20 Alert-Rules, Microsoft Teams Webhook aktiv |
-| Log-Aggregation | Nicht vorhanden | Pod-Logs gehen bei Restart verloren (Loki evaluieren) |
+| Log-Aggregation | ✅ Loki deployed (2026-03-25) | loki-stack 2.10.3, Promtail DaemonSet, 30d Retention, 20Gi PVC |
 | Health Probes in Helm Values | ✅ Konfiguriert (2026-03-10) | API: httpGet /health, Webserver: tcpSocket 3000 |
 | kube-state-metrics | ✅ Deployed (2026-03-10) | Pod/Node/Deployment-Level-Metriken |
 | node-exporter | ✅ Deployed (2026-03-10) | 2× DaemonSet (je Node) |
@@ -535,7 +535,15 @@ spec:
 
 **Alerting-Kanal:** Microsoft Teams Webhook (konfiguriert 2026-03-11).
 
-### Phase 4: Grafana Dashboards (0,25 PT) — ⏳ OFFEN
+### Phase 4: Grafana Dashboards — ✅ ERLEDIGT (2026-03-25, ConfigMap-Approach)
+
+4 Custom Dashboards als ConfigMaps deployed (gnetId funktionierte nicht, Sidecar kann grafana.com nicht erreichen):
+- PostgreSQL (gnetId 14114) — PG Connections, Cache Hit, Locks, DB-Groesse
+- Redis (gnetId 763) — Memory, Evictions, Hit Rate, Ops/sec
+- SLO Overview — Availability, Latenz P95, Error Budget, Request Rate
+- Audit-Log — Loki-basiert, EXT-AUDIT Events Timeline + Pie Charts + Live-Log
+
+Zusaetzlich 23 Standard-Dashboards via kube-prometheus-stack (automatisch provisioniert).
 
 **Standard-Dashboards (Import via ID):**
 
@@ -670,7 +678,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | 1 | ~~Alerting-Kanal: Email, Slack, oder Webhook?~~ | Niko | ✅ Microsoft Teams Webhook konfiguriert (2026-03-11). Alerts werden an Teams-Kanal zugestellt. |
 | 2 | ~~Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?)~~ | Niko | ✅ Entscheidung (2026-03-12): Nur `kubectl port-forward` fuer alle Environments (DEV/TEST/PROD). Kein Ingress, kein externer Zugang. Zugriff nur mit Kubeconfig. |
 | 3 | ~~Grafana Admin-Passwort: Wie verwalten?~~ | Niko | ✅ Per `--set grafana.adminPassword=<SECRET>` beim Install. Passwort liegt in K8s Secret `monitoring-grafana`. |
-| 4 | Log-Aggregation (Loki) in Phase 2 oder später? | Niko | Offen |
+| 4 | ~~Log-Aggregation (Loki) in Phase 2 oder später?~~ | Niko | ✅ Erledigt (2026-03-25, loki-stack 2.10.3 deployed) |
 | 5 | ~~SMTP-Server für AlertManager (Email-Versand)?~~ | Niko | ✅ Entfällt — Teams Webhook statt Email gewählt (2026-03-10). Kein SMTP nötig. |
 
 ---
