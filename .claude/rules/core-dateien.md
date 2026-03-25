@@ -10,7 +10,8 @@ paths:
 # Core-Dateien: Was darf geändert werden
 
 **NUR DIESE 14 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
-**#1-#10:** 8 von 10 gepatcht (#3 access.py und #5 header/ noch offen).
+**#1-#10:** 9 von 10 gepatcht (#5 header/ noch offen).
+**#3:** Gepatcht (ext-access, 2026-03-25). 3 Hooks fuer gruppen-basierte Dokumentzugriffskontrolle.
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
 **#13:** Gepatcht (LLM Custom Modal Fix, 2026-03-24). Upstream-Bug: onyx-dot-app/onyx#9592.
 
@@ -26,9 +27,10 @@ paths:
 - MERGE: Hook-Insertion-Point finden, Zeilen einfügen
 
 ## 3. `backend/onyx/access/access.py` — Access Control
-- ERLAUBT: Additiver Permission-Check NACH bestehenden Checks
-- VERBOTEN: Bestehende Checks verändern/entfernen
-- MERGE: Additiv, einfach einfügen
+- ERLAUBT: Additiver Permission-Check NACH bestehenden Checks, ext-Hooks fuer UserGroup-ACLs hinter Feature Flag
+- VERBOTEN: Bestehende Checks veraendern/entfernen
+- MERGE: Additiv, einfach einfuegen. Mittleres Merge-Risiko (access.py wird gelegentlich upstream geaendert)
+- STATUS: ✅ Gepatcht (ext-access, 2026-03-25). 3 Hooks: `_get_access_for_document` + `_get_access_for_documents` (user_groups befuellen) + `_get_acl_for_user` (group: ACLs hinzufuegen). Alle hinter `EXT_DOC_ACCESS_ENABLED` + try/except.
 
 ## 4. `web/src/app/layout.tsx` — Navigation + i18n
 - ERLAUBT: Nav-Items für ext/-Seiten, Conditional Rendering, Import ext/-Komponenten, TranslationProvider Wrapper, `lang="de"`

@@ -9,6 +9,22 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-access] **Document Access Control via UserGroups** (2026-03-25)
+  - Gruppen-basierte Dokumentzugriffskontrolle: Dokumente nur fuer zugewiesene Gruppen sichtbar
+  - Core #3 (access.py): 3 Hooks — `_get_access_for_document`, `_get_access_for_documents`, `_get_acl_for_user`
+  - Architektur Ansatz C: Eigener Celery-Task (60s), umgeht 6 EE-Guards in Onyx-Sync-Pipeline
+  - 2 Admin-Endpoints: POST `/ext/doc-access/resync` + GET `/ext/doc-access/status`
+  - 11 Unit Tests, Feature Flag `EXT_DOC_ACCESS_ENABLED`
+  - Keine neuen DB-Tabellen (nutzt bestehende FOSS M2M-Tabellen)
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-access.md`
+
+- [Monitoring] **PROD Monitoring Audit + 3 Sprints + Loki** (2026-03-25)
+  - Sprint 1: cert-manager ServiceMonitor (CertExpiringSoon Alert funktionsfaehig), PGBackupCheck Alert-Noise (7→1), Grafana Dashboards (PG + Redis als ConfigMap)
+  - Sprint 2: SLO Dashboard (Availability, Latenz P95, Error Budget, 10 Recording Rules), Blackbox Exporter (4 Probes: PROD Health, StackIT LLM, Entra ID, S3)
+  - Sprint 3: OpenSearch Exporter (elasticsearch-exporter v1.9.0, 4 Alerts), Security Alerts (Auth-Failure, 403-Rate, OIDC-Callback), cert-manager NetworkPolicies (6, Zero-Trust), Helm Cleanup (Rev 8→9)
+  - Loki Log-Aggregation: loki-stack 2.10.3, Promtail DaemonSet, 30d Retention, 20Gi PVC
+  - Ergebnis: 25 Targets (alle UP), 46 VÖB Rules, 3 Dashboards, 5/5 externe Deps, Zero-Trust auf 3 Namespaces
+
 - [ext-branding] **Logo-Editor mit Crop/Zoom** (2026-03-24)
   - Interaktives Crop/Zoom-Tool auf Admin Branding-Seite (Canvas API, keine npm-Dependency)
   - Live-Vorschau in Sidebar (24px), Login (44px), Favicon (32px)

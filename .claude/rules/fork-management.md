@@ -92,7 +92,7 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 10 von 12 gepatcht: main.py, multi_llm.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx, persona.py, document_set.py — die 2 ungepatchten: access.py (#3), header/ (#5)):
+Fuer JEDE gepatchte Core-Datei (aktuell 11 von 12 gepatcht: main.py, multi_llm.py, access.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx, persona.py, document_set.py — die 1 ungepatchte: header/ (#5)):
 
 ```bash
 # Beispiel Backend-Datei:
