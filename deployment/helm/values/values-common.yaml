@@ -210,6 +210,8 @@ configMap:
   EXT_RBAC_ENABLED: "true"
   EXT_TOKEN_LIMITS_ENABLED: "true"
   EXT_CUSTOM_PROMPTS_ENABLED: "true"
+  EXT_DOC_ACCESS_ENABLED: "true"
+  EXT_AUDIT_ENABLED: "true"
   # OpenSearch: AKTIVIERT (Upstream-Default seit v3.0.0).
   # OPENSEARCH_HOST, ENABLE_OPENSEARCH_INDEXING_FOR_ONYX etc. werden automatisch
   # vom Chart-Template gesetzt wenn opensearch.enabled=true (configmap.yaml:15-20).

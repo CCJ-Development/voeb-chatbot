@@ -93,6 +93,8 @@ configMap:
   # Environments sind ein Deployment-Antipattern und fuehren zu "works on TEST"-Fehlern.
   EXT_TOKEN_LIMITS_ENABLED: "true"
   EXT_CUSTOM_PROMPTS_ENABLED: "true"
+  EXT_DOC_ACCESS_ENABLED: "true"
+  EXT_AUDIT_ENABLED: "true"
 
 # --- Celery Worker: PROD-Konfiguration (Standard Mode) ---
 # Alle Worker aktiv (replicaCount: 1). Worker-Isolation ist Onyx Best Practice
