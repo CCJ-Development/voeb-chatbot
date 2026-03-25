@@ -1,0 +1,78 @@
+{
+  "id": null,
+  "uid": "voeb-audit-log",
+  "title": "VÖB PROD — Audit-Log",
+  "description": "Admin-Aktionen: Wer hat wann was geaendert",
+  "tags": ["voeb", "audit", "prod"],
+  "timezone": "Europe/Berlin",
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Audit-Events Timeline",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" [5m])",
+        "legendFormat": "Events / 5min"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 20, "gradientMode": "scheme" }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Events nach Aktion",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"CREATE\" [$__range])", "legendFormat": "CREATE" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"UPDATE\" [$__range])", "legendFormat": "UPDATE" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"DELETE\" [$__range])", "legendFormat": "DELETE" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"RESYNC\" [$__range])", "legendFormat": "RESYNC" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Events nach Ressource",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"GROUP\" [$__range])", "legendFormat": "GROUP" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"BRANDING\" [$__range])", "legendFormat": "BRANDING" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"PROMPT\" [$__range])", "legendFormat": "PROMPT" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"TOKEN_LIMIT\" [$__range])", "legendFormat": "TOKEN_LIMIT" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"DOC_ACCESS\" [$__range])", "legendFormat": "DOC_ACCESS" },
+        { "expr": "count_over_time({namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\" |= \"LOGO\" [$__range])", "legendFormat": "LOGO" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Letzte Events (Live-Log)",
+      "type": "logs",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [{
+        "expr": "{namespace=~\"onyx-.*\"} |= \"EXT-AUDIT\"",
+        "maxLines": 100
+      }],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
