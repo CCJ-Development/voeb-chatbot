@@ -36,7 +36,7 @@ def ext_doc_access_sync_task(self) -> None:  # type: ignore[no-untyped-def]
     except ImportError:
         return
 
-    from onyx.db.engine import get_session_with_current_tenant
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
 
     try:
         with get_session_with_current_tenant() as db_session:

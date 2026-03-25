@@ -129,7 +129,7 @@ def sync_usergroup_acls(db_session: Session) -> dict:
     neu und aktualisiert den OpenSearch-Index.
     """
     from onyx.access.access import get_access_for_document
-    from onyx.db.engine import get_session_with_current_tenant
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
     from onyx.document_index.factory import get_default_document_index
     from onyx.document_index.interfaces import UpdateRequest
 
