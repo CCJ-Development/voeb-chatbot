@@ -37,6 +37,7 @@ backend/ext/                 ← Backend-Extensions
   schemas/                   ← Pydantic Schemas
   services/                  ← Business Logic
   tests/                     ← Backend-Tests
+  tasks/                     ← Celery-Tasks (ext-access Sync)
   _core_originals/           ← Backups vor Core-Änderungen
 web/src/ext/                 ← Frontend-Extensions
   components/                ← React-Komponenten
@@ -110,8 +111,9 @@ deployment/k8s/monitoring-exporters/   ← Exporter + Dashboards + Datasources
   cert-manager-servicemonitor.yaml     ← ServiceMonitor fuer cert-manager Metriken
   pg-backup-check-prod.yaml            ← CronJob: PG Backup-Validierung (alle 4h)
   grafana-datasource-loki.yaml         ← Grafana Loki Datasource (automatisch provisioniert)
-  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed)
+  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed, 4 Stueck)
     postgresql-14114.json              ← PG Dashboard (gnetId 14114)
+    audit-log.json                     ← Audit-Log Dashboard (Loki-basiert, EXT-AUDIT Events)
     redis-763.json                     ← Redis Dashboard (gnetId 763)
     slo-overview.json                  ← SLA/SLO Dashboard (Availability, Latenz, Error Budget)
   apply.sh                             ← Deploy-Script mit Auto-Detection DEV/TEST/PROD
