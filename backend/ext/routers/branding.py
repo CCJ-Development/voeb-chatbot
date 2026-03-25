@@ -18,6 +18,9 @@ from onyx.auth.users import current_admin_user
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.models import User
 
+from ext.routers.audit import get_audit_context
+from ext.services.audit import log_audit_event
+
 from ext.schemas.branding import BrandingConfigResponse
 from ext.schemas.branding import BrandingConfigUpdate
 from ext.services.branding import get_branding_config
@@ -60,7 +63,7 @@ def get_enterprise_logo(
         content=data,
         media_type=content_type,
         headers={
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": "no-cache",
             "Content-Disposition": "inline",
         },
     )
@@ -80,27 +83,34 @@ def admin_get_enterprise_settings(
 @admin_router.put("")
 def admin_put_enterprise_settings(
     data: BrandingConfigUpdate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
     update_branding_config(db_session, data)
+    log_audit_event(db_session, user, "UPDATE", "BRANDING", audit_ctx=audit_ctx)
 
 
 @admin_router.put("/logo")
 async def admin_put_enterprise_logo(
     file: UploadFile,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
     file_data = await file.read()
     error = update_logo(db_session, file_data, file.filename or "logo")
     if error:
         raise HTTPException(status_code=400, detail=error)
+    log_audit_event(db_session, user, "UPDATE", "LOGO",
+                    resource_name=file.filename, audit_ctx=audit_ctx)
 
 
 @admin_router.delete("/logo")
 def admin_delete_enterprise_logo(
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
     delete_logo(db_session)
+    log_audit_event(db_session, user, "DELETE", "LOGO", audit_ctx=audit_ctx)

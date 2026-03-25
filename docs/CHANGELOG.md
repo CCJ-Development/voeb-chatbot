@@ -9,6 +9,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-audit] **Audit-Logging fuer Admin-Aktionen** (2026-03-25)
+  - DB-Tabelle `ext_audit_log` (PostgreSQL, DSGVO-konform, IP-Anonymisierung nach 90d)
+  - 15 Audit-Hooks in 5 ext-Routern (rbac, branding, prompts, token, doc-access)
+  - 2 Admin-Endpoints: GET `/ext/audit/events` (Browser + Filter) + GET `/ext/audit/export` (CSV)
+  - `get_audit_context` FastAPI Dependency (Client-IP via X-Forwarded-For + User-Agent)
+  - `log_audit_event()` best-effort (bricht nie den Request ab)
+  - Feature Flag `EXT_AUDIT_ENABLED`, 13 Unit Tests
+  - Alembic-Migration `d8a1b2c3e4f5` (auto-run bei Deploy)
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-audit.md`
+
 - [ext-access] **Document Access Control via UserGroups** (2026-03-25)
   - Gruppen-basierte Dokumentzugriffskontrolle: Dokumente nur fuer zugewiesene Gruppen sichtbar
   - Core #3 (access.py): 3 Hooks — `_get_access_for_document`, `_get_access_for_documents`, `_get_acl_for_user`

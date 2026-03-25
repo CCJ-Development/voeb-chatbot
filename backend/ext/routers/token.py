@@ -15,6 +15,9 @@ from onyx.auth.users import current_admin_user
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.models import User
 
+from ext.routers.audit import get_audit_context
+from ext.services.audit import log_audit_event
+
 from ext.schemas.token import UsageSummaryResponse
 from ext.schemas.token import UsageTimeseriesResponse
 from ext.schemas.token import UserLimitCreate
@@ -86,8 +89,9 @@ def api_get_user_limits(
 @router.post("/limits/users", status_code=201)
 def api_create_user_limit(
     body: UserLimitCreate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> UserLimitResponse:
     limit = create_user_limit(
         db_session,
@@ -96,6 +100,10 @@ def api_create_user_limit(
         period_hours=body.period_hours,
         enabled=body.enabled,
     )
+    log_audit_event(db_session, user, "CREATE", "TOKEN_LIMIT",
+                    resource_id=str(limit.id),
+                    details={"token_budget": body.token_budget},
+                    audit_ctx=audit_ctx)
     return UserLimitResponse(
         id=limit.id,
         user_id=limit.user_id,
@@ -111,8 +119,9 @@ def api_create_user_limit(
 def api_update_user_limit(
     limit_id: int,
     body: UserLimitUpdate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> UserLimitResponse:
     limit = update_user_limit(
         db_session,
@@ -121,6 +130,8 @@ def api_update_user_limit(
         period_hours=body.period_hours,
         enabled=body.enabled,
     )
+    log_audit_event(db_session, user, "UPDATE", "TOKEN_LIMIT",
+                    resource_id=str(limit_id), audit_ctx=audit_ctx)
     return UserLimitResponse(
         id=limit.id,
         user_id=limit.user_id,
@@ -135,7 +146,10 @@ def api_update_user_limit(
 @router.delete("/limits/users/{limit_id}", status_code=204)
 def api_delete_user_limit(
     limit_id: int,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
+    log_audit_event(db_session, user, "DELETE", "TOKEN_LIMIT",
+                    resource_id=str(limit_id), audit_ctx=audit_ctx)
     delete_user_limit(db_session, limit_id)

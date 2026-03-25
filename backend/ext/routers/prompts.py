@@ -14,6 +14,9 @@ from onyx.auth.users import current_admin_user
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.models import User
 
+from ext.routers.audit import get_audit_context
+from ext.services.audit import log_audit_event
+
 from ext.schemas.prompts import PromptCreate
 from ext.schemas.prompts import PromptPreviewResponse
 from ext.schemas.prompts import PromptResponse
@@ -68,10 +71,14 @@ def api_list_prompts(
 @router.post("", status_code=201)
 def api_create_prompt(
     body: PromptCreate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> PromptResponse:
     row = create_prompt(db_session, body)
+    log_audit_event(db_session, user, "CREATE", "PROMPT",
+                    resource_id=str(row.id), resource_name=body.name,
+                    audit_ctx=audit_ctx)
     return _to_response(row)
 
 
@@ -79,21 +86,27 @@ def api_create_prompt(
 def api_update_prompt(
     prompt_id: int,
     body: PromptUpdate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> PromptResponse:
     row = update_prompt(db_session, prompt_id, body)
     if row is None:
         raise HTTPException(status_code=404, detail="Prompt not found")
+    log_audit_event(db_session, user, "UPDATE", "PROMPT",
+                    resource_id=str(prompt_id), audit_ctx=audit_ctx)
     return _to_response(row)
 
 
 @router.delete("/{prompt_id}", status_code=204)
 def api_delete_prompt(
     prompt_id: int,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
+    log_audit_event(db_session, user, "DELETE", "PROMPT",
+                    resource_id=str(prompt_id), audit_ctx=audit_ctx)
     deleted = delete_prompt(db_session, prompt_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Prompt not found")

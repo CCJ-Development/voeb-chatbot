@@ -29,6 +29,9 @@ from ext.services.rbac import set_curator_status
 from ext.services.rbac import update_user_group
 from ext.services.rbac import validate_curator_for_group
 
+from ext.routers.audit import get_audit_context
+from ext.services.audit import log_audit_event
+
 logger = logging.getLogger("ext.rbac")
 
 # Admin router — full CRUD, compatible with GroupsPage frontend
@@ -61,15 +64,20 @@ def api_list_user_groups(
 @admin_router.post("", status_code=201)
 def api_create_user_group(
     request: UserGroupCreate,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> dict:
-    return create_user_group(
+    result = create_user_group(
         db_session,
         name=request.name,
         user_ids=request.user_ids,
         cc_pair_ids=request.cc_pair_ids,
     )
+    log_audit_event(db_session, user, "CREATE", "GROUP",
+                    resource_id=str(result.get("id", "")),
+                    resource_name=request.name, audit_ctx=audit_ctx)
+    return result
 
 
 # --- Endpoint 3: Update group ---
@@ -81,14 +89,18 @@ def api_update_user_group(
     request: UserGroupUpdate,
     user: User = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> dict:
     validate_curator_for_group(db_session, user, user_group_id)
-    return update_user_group(
+    result = update_user_group(
         db_session,
         user_group_id=user_group_id,
         user_ids=request.user_ids,
         cc_pair_ids=request.cc_pair_ids,
     )
+    log_audit_event(db_session, user, "UPDATE", "GROUP",
+                    resource_id=str(user_group_id), audit_ctx=audit_ctx)
+    return result
 
 
 # --- Endpoint 4: Delete group ---
@@ -97,9 +109,12 @@ def api_update_user_group(
 @admin_router.delete("/{user_group_id}", status_code=204)
 def api_delete_user_group(
     user_group_id: int,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
+    log_audit_event(db_session, user, "DELETE", "GROUP",
+                    resource_id=str(user_group_id), audit_ctx=audit_ctx)
     delete_user_group(db_session, user_group_id)
 
 
@@ -112,9 +127,14 @@ def api_add_users_to_group(
     request: AddUsersRequest,
     user: User = Depends(current_curator_or_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
     validate_curator_for_group(db_session, user, user_group_id)
     add_users_to_group(db_session, user_group_id, request.user_ids)
+    log_audit_event(db_session, user, "UPDATE", "GROUP_MEMBERS",
+                    resource_id=str(user_group_id),
+                    details={"users_added": len(request.user_ids)},
+                    audit_ctx=audit_ctx)
 
 
 # --- Endpoint 6: Set curator status ---
@@ -124,8 +144,9 @@ def api_add_users_to_group(
 def api_set_curator(
     user_group_id: int,
     request: SetCuratorRequest,
-    _: User = Depends(current_admin_user),
+    user: User = Depends(current_admin_user),
     db_session: Session = Depends(get_session),
+    audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
     set_curator_status(
         db_session,
@@ -133,6 +154,11 @@ def api_set_curator(
         user_id=request.user_id,
         is_curator=request.is_curator,
     )
+    log_audit_event(db_session, user, "UPDATE", "GROUP_CURATOR",
+                    resource_id=str(user_group_id),
+                    details={"user_id": str(request.user_id),
+                             "is_curator": request.is_curator},
+                    audit_ctx=audit_ctx)
 
 
 # --- Endpoint 7: Minimal group list ---

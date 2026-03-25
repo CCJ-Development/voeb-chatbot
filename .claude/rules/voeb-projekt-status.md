@@ -83,6 +83,7 @@
   - 4f: ✅ ext-rbac — Gruppenverwaltung. **Implementiert (2026-03-23).** 7 Endpoints, eigene Frontend-Seite `/admin/ext-groups`, Core #10 + #11 gepatcht, 29 Tests. Persona + DocumentSet Gruppen-Zuordnung funktioniert (Core #11 + #12 gepatcht).
   - 4g: ✅ ext-access — Document Access Control. **Implementiert (2026-03-25).** Core #3 gepatcht (3 Hooks: user_groups + ACLs). Eigener Celery-Task (Ansatz C, umgeht EE-Guards). 2 Admin-Endpoints (resync, status). 11 Tests. Feature Flag `EXT_DOC_ACCESS_ENABLED`. Aktivierung: Flag + Resync.
   - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. **DEV + PROD deployed (2026-03-22).**
+  - 4i: ✅ ext-audit — **Audit-Logging.** Implementiert (2026-03-25). DB-Tabelle `ext_audit_log`, 15 Hooks in 5 ext-Routern, 2 Admin-Endpoints (Events + CSV-Export), DSGVO IP-Anonymisierung (90d). 13 Tests. Feature Flag `EXT_AUDIT_ENABLED`. Alembic `d8a1b2c3e4f5`.
   - **Hinweis**: Alle EE-Features werden custom nachgebaut (keine Onyx Enterprise-Lizenz vorhanden).
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 

@@ -98,3 +98,12 @@ def register_ext_routers(application: FastAPI) -> None:
         import ext.tasks.doc_access_sync  # noqa: F401
 
         logger.info("Extension doc-access router + sync task registered")
+
+    # ext-audit: Audit-Logging
+    from ext.config import EXT_AUDIT_ENABLED
+
+    if EXT_AUDIT_ENABLED:
+        from ext.routers.audit import router as audit_router
+
+        include_router_with_global_prefix_prepended(application, audit_router)
+        logger.info("Extension audit router registered")

@@ -38,3 +38,7 @@ EXT_I18N_ENABLED: bool = (
     EXT_ENABLED
     and os.getenv("EXT_I18N_ENABLED", "false").lower() == "true"
 )
+EXT_AUDIT_ENABLED: bool = (
+    EXT_ENABLED
+    and os.getenv("EXT_AUDIT_ENABLED", "false").lower() == "true"
+)
