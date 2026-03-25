@@ -88,7 +88,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**1. ext-access auf PROD aktivieren (Flag + Deploy + Resync) → 2. M1-Abnahmeprotokoll (wartet auf VÖB-Termin).**
+**M1-Abnahmeprotokoll (wartet auf VÖB-Termin).** ext-access + ext-audit PROD LIVE (2026-03-25). Alle 9 ext-Module aktiv.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

@@ -20,7 +20,7 @@
 | Namespaces | `onyx-dev`, `onyx-test` (shared Cluster), `onyx-prod` (eigener Cluster) |
 | Ingress Controller | NGINX via Essential Network Load Balancer (NLB-10) |
 | TLS | Let's Encrypt via cert-manager (v1.19.4), LIVE seit 2026-03-09. ECDSA P-384, TLSv1.3, HTTP/2. DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill |
-| Network Policies | IMPLEMENTIERT (SEC-03, 2026-03-05): 5 Policies (Default-Deny, DNS, Intra-NS, Ingress, Egress) auf DEV+TEST. PROD: zusätzlich granulare per-Pod-Rules geplant |
+| Network Policies | IMPLEMENTIERT (SEC-03): DEV 7 Policies, PROD 7 Policies (Zero-Trust, seit 2026-03-24), Monitoring 13 Policies, cert-manager 6 Policies |
 
 ### Worker Nodes (Compute Engine g1a-Serie, AMD, kein Overprovisioning)
 
@@ -147,7 +147,7 @@
 | LLM | StackIT AI Serving | gleich | gleich + Monitoring |
 | Backups | PG PITR (auto) | PG PITR (auto) | PG PITR + ObjStore Versioning |
 | Resource Quotas | Entfernt (DEV) | Entfernt (TEST) | CPU: 12, RAM: 20 Gi (berechnet: 8.75 CPU Requests + 37% Buffer, 15.25 Gi RAM Requests + 31% Buffer) |
-| Network Policy | Implementiert (SEC-03, 2026-03-05) | Implementiert (SEC-03, 2026-03-05) | monitoring-NS: 7 Policies (2026-03-12). onyx-prod: offen (kommt mit DNS/TLS) |
+| Network Policy | Implementiert (SEC-03, 7 Policies) | Implementiert (SEC-03) | monitoring-NS: 13 Policies (2026-03-24). onyx-prod: 7 Policies (Zero-Trust, seit 2026-03-24) |
 
 ### DNS
 

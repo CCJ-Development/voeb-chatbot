@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-24
+> Letzte Aktualisierung: 2026-03-25
 
 ---
 
@@ -60,8 +60,8 @@
 | HSTS PROD | max-age=31536000; includeSubDomains |
 | HTTP-zu-HTTPS Redirect | 308 Permanent Redirect |
 | NetworkPolicies DEV | 7 Policies in onyx-dev (SEC-03 + Monitoring-Scrape + Redis-Exporter, seit 2026-03-10) |
-| NetworkPolicies PROD | **Offen** — naechster Schritt (vollstaendiges Set inkl. Default-Deny) |
-| NetworkPolicies Monitoring DEV | 7 von 9 Policies applied (08-AlertManager-Webhook + 09-Backup-Check fehlen) |
+| NetworkPolicies PROD | **7 Policies** (Zero-Trust: Default-Deny, DNS, Intra-NS, NGINX Ingress, External Egress, Monitoring Scrape, Redis Exporter. Seit 2026-03-24) |
+| NetworkPolicies Monitoring | 13 Policies (Zero-Trust, alle applied. Seit 2026-03-24 vollstaendig) |
 | SKE Cluster API ACL | 0.0.0.0/0 (Kubeconfig mit Client-Zertifikat als Schutz) |
 | PG ACL DEV+TEST | 188.34.93.194/32 + Admin (SEC-01) |
 | PG ACL PROD | 188.34.73.72/32 + Admin (SEC-01) |
@@ -111,10 +111,10 @@
 
 | Parameter | DEV | TEST | PROD |
 |-----------|-----|------|------|
-| Provider | openai-compat (StackIT AI Model Serving) | (identisch) | [Noch nicht konfiguriert] |
+| Provider | openai-compat (StackIT AI Model Serving) | (identisch) | openai-compat (StackIT AI Model Serving, seit 2026-03-24) |
 | API Base | https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1 | (identisch) | (identisch) |
-| Chat-Modelle | 4 Modelle (seit 2026-03-08) | 4 Modelle (identisch) | [Ausstehend] |
-| Embedding | Qwen3-VL-Embedding 8B (4096 Dim) | Qwen3-VL-Embedding 8B | [Ausstehend] |
+| Chat-Modelle | 4 Modelle (seit 2026-03-08) | 4 Modelle (identisch) | 3 Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, seit 2026-03-24) |
+| Embedding | Qwen3-VL-Embedding 8B (4096 Dim) | Qwen3-VL-Embedding 8B | Qwen3-VL-Embedding 8B (4096 Dim, seit 2026-03-24) |
 
 ### Chat-Modelle (DEV + TEST)
 
@@ -414,7 +414,7 @@
 |----|-----------|--------|
 | SEC-01 | PG ACL (IP-Allowlisting) | Umgesetzt (DEV+TEST+PROD) |
 | SEC-02 | Dedicated Node Affinity | Zurueckgestellt (P3, ADR-004: nicht noetig) |
-| SEC-03 | NetworkPolicies | Umgesetzt (DEV+TEST, 5 Policies). PROD offen. |
+| SEC-03 | NetworkPolicies | Umgesetzt (alle Environments). DEV: 7, PROD: 7, Monitoring: 13, cert-manager: 6. |
 | SEC-04 | Sealed Secrets | Zurueckgestellt (P3, Solo-Dev, chmod 600) |
 | SEC-05 | Kubeconfig-Trennung | Zurueckgestellt (P3, PROD = eigener Cluster) |
 | SEC-06 | runAsNonRoot | Phase 2 ERLEDIGT (PROD, Vespa = Ausnahme — braucht Root fuer vm.max_map_count) |
@@ -432,12 +432,13 @@
 | ext-prompts | EXT_CUSTOM_PROMPTS_ENABLED | Deployed (DEV+TEST, 2026-03-09) | /admin/ext/system-prompts |
 | ext-i18n | EXT_I18N_ENABLED + NEXT_PUBLIC_EXT_I18N_ENABLED | Deployed (DEV, 2026-03-22) | -- (Frontend-only) |
 | ext-analytics | EXT_ANALYTICS_ENABLED | UEBERSPRUNGEN (in ext-token enthalten) | -- |
-| ext-rbac | EXT_RBAC_ENABLED | BLOCKIERT (Entra ID) | -- |
-| ext-access | EXT_DOC_ACCESS_ENABLED | BLOCKIERT (braucht RBAC) | -- |
+| ext-rbac | EXT_RBAC_ENABLED | Implementiert (2026-03-23) | /admin/ext-groups |
+| ext-access | EXT_DOC_ACCESS_ENABLED | Implementiert (2026-03-25) | /admin/ext/access (resync, status) |
+| ext-audit | EXT_AUDIT_ENABLED | Implementiert (2026-03-25) | /admin/ext/audit (events, CSV-export) |
 
-**Alembic-Chain:** a3b8d9e2f1c4 -> ff7273065d0d (branding) -> b3e4a7d91f08 (token) -> c7f2e8a3d105 (prompts)
+**Alembic-Chain:** a3b8d9e2f1c4 -> ff7273065d0d (branding) -> b3e4a7d91f08 (token) -> c7f2e8a3d105 (prompts) -> d8a1b2c3e4f5 (audit)
 
-**DB-Tabellen:** ext_branding_config, ext_token_usage, ext_prompt_templates (alle mit ext_-Prefix)
+**DB-Tabellen:** ext_branding_config, ext_token_usage, ext_prompt_templates, ext_audit_log (alle mit ext_-Prefix)
 
 ---
 

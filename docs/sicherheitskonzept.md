@@ -176,8 +176,8 @@ Erweitertes RBAC ueber `ext-rbac` (`EXT_RBAC_ENABLED=true`, seit 2026-03-23):
 - Persona- und DocumentSet-Zuordnung pro Gruppe (Core #11 + #12 gepatcht)
 - Entra ID Gruppen-Sync: Aktuell manuell, automatischer Sync geplant
 
-**GEPLANT (Phase 4g)**:
-- `ext-access`: Document Access Control pro Gruppe (braucht Core #3 access.py)
+**IMPLEMENTIERT (Extension Layer, Phase 4g)**:
+`ext-access`: Document Access Control pro Gruppe (`EXT_DOC_ACCESS_ENABLED=true`, seit 2026-03-25). Core #3 access.py gepatcht (3 Hooks). Eigener Celery-Task (Ansatz C, umgeht EE-Guards).
 
 Details: [Rollenmodell](referenz/rbac-rollenmodell.md) | [Entwicklungsplan](referenz/ext-entwicklungsplan.md)
 
@@ -263,7 +263,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 | Cloudflare DNS (`voeb-service.de`) | VÖB IT (Leif Rasch) | Zone Admin | DNS-Records und API Token für cert-manager |
 | cert-manager (K8s) | ClusterIssuer | Cloudflare API Token (K8s Secret in NS `cert-manager`) | Für Let's Encrypt DNS-01 Challenge |
 | Docker Hub | Anwendung (public) | Pull (kein Auth) | Model Server `onyxdotapp/onyx-model-server:v2.9.8` |
-| Microsoft Entra ID | VÖB IT (geplant) | OIDC Provider | Phase 3, Zugangsdaten ausstehend |
+| Microsoft Entra ID | VÖB IT | OIDC Provider | ✅ Phase 3 LIVE (DEV seit 2026-03-23, PROD seit 2026-03-24) |
 
 #### Geplante Änderungen
 
@@ -834,8 +834,8 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | EU AI Act | Direkt anwendbar | KI-Kompetenz (Art. 4) — seit 02.02.2025 in Kraft | OFFEN (mit VÖB klären) |
 | EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
 | BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST+PROD, alle Environments HTTPS LIVE) |
-| BAIT | Freiwillig | Zugangskontrolle | TEILWEISE (Basic Auth auf DEV/TEST/PROD, Entra ID geplant) |
-| BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 8 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress, App-NS PROD ausstehend) |
+| BAIT | Freiwillig | Zugangskontrolle | UMGESETZT (Entra ID OIDC auf DEV + PROD seit 2026-03-24, TEST heruntergefahren) |
+| BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 7 Policies onyx-prod seit 2026-03-24, 13 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress) |
 | BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
 | BSI-Grundschutz | Freiwillig | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
 

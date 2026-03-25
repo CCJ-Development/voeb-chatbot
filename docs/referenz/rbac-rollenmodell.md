@@ -1,7 +1,7 @@
 # RBAC-Rollenmodell — VÖB Service Chatbot
 
-**Stand:** 2026-03-07
-**Status:** Entwurf — wartet auf Abstimmung mit VÖB
+**Stand:** 2026-03-25
+**Status:** Entwurf — ext-rbac implementiert (2026-03-23), VÖB-Abstimmung zur Gruppenstruktur ausstehend
 **Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
 **Quelle:** Notizen aus dem Kickoff-Meeting + Sicherheitskonzept + Onyx-Analyse
 
@@ -169,9 +169,9 @@ Onyx unterstuetzt **genau einen** `AUTH_TYPE` pro Instanz (`basic`, `google_oaut
 
 | Environment | AUTH_TYPE | Begruendung |
 |-------------|-----------|-------------|
-| **DEV** | `basic` | Entwicklung ohne Entra-ID-Abhaengigkeit. CCJ arbeitet unabhaengig. |
-| **TEST** | `oidc` | Auth-Flow testen. CCJ als Entra ID B2B-Gastbenutzer eingeladen. |
-| **PROD** | `oidc` | Pflicht fuer VoeB-Nutzer. CCJ als Entra ID B2B-Gastbenutzer eingeladen. |
+| **DEV** | `oidc` | Entra ID OIDC seit 2026-03-23. CCJ als Entra ID B2B-Gastbenutzer. |
+| **TEST** | `oidc` | Heruntergefahren seit 2026-03-19. War OIDC-Zielkonfiguration. |
+| **PROD** | `oidc` | Entra ID OIDC seit 2026-03-24. Pflicht fuer VoeB-Nutzer. CCJ als B2B-Gastbenutzer. |
 
 ### Externer Dienstleister-Zugang (CCJ)
 
@@ -194,11 +194,11 @@ Da CCJ (Nikolaj Ivanov) nicht Teil des VoeB-Tenants ist, wird der Zugang ueber *
 
 | Was | Beschreibung | Status |
 |-----|-------------|--------|
-| App-Registrierung in Entra ID | Client ID, Tenant ID, Client Secret | Blockiert |
+| App-Registrierung in Entra ID | Client ID, Tenant ID, Client Secret | ✅ Erhalten (2026-03-22) |
 | `groups` Claim im OIDC Token | Damit der Chatbot weiss, in welcher Abteilung ein User ist | Zu klaeren |
-| Redirect URI | `https://dev.chatbot.voeb-service.de/auth/oidc/callback` (nach TLS) | Wartet auf TLS |
+| Redirect URI | `https://dev.chatbot.voeb-service.de/auth/oidc/callback` (nach TLS) | ✅ Konfiguriert (DEV + PROD) |
 | User Assignment Required | Nur Mitarbeiter mit Chatbot-Zugang koennen sich anmelden | Zu klaeren |
-| B2B-Gastbenutzer fuer CCJ | `n.ivanov@scale42.de` als Gast einladen | Offen |
+| B2B-Gastbenutzer fuer CCJ | `n.ivanov@scale42.de` als Gast einladen | ✅ Erledigt (2026-03-22) |
 
 ---
 

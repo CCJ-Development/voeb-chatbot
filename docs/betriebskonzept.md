@@ -257,13 +257,13 @@ Aktivierung in `deployment/helm/values/values-{env}.yaml` oder `deployment/docke
 
 ### Datenbank
 
-Alle Extension-Tabellen nutzen das Prefix `ext_` (z.B. `ext_branding_config`, `ext_token_usage`, `ext_prompt_templates`). Migrationen liegen in `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt). Alembic-Chain: `a3b8d9e2f1c4` → `ff7273065d0d` (branding) → `b3e4a7d91f08` (token) → `c7f2e8a3d105` (prompts).
+Alle Extension-Tabellen nutzen das Prefix `ext_` (z.B. `ext_branding_config`, `ext_token_usage`, `ext_prompt_templates`, `ext_audit_log`). Migrationen liegen in `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt). Alembic-Chain: `a3b8d9e2f1c4` → `ff7273065d0d` (branding) → `b3e4a7d91f08` (token) → `c7f2e8a3d105` (prompts) → `d8a1b2c3e4f5` (audit).
 
-### Geplante / Blockierte Extensions
+### Weitere Extensions
 
 - **ext-analytics** — ⏭️ ÜBERSPRUNGEN (Funktionalität bereits in ext-token enthalten)
-- **ext-rbac** — ⏳ BLOCKIERT (wartet auf Entra ID von VÖB IT)
-- **ext-access** — ⏳ BLOCKIERT (benötigt ext-rbac)
+- **ext-rbac** — ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests)
+- **ext-access** — ✅ Implementiert (2026-03-25, Core #3 gepatcht, eigener Celery-Task, 11 Tests)
 
 ### Referenzen
 
@@ -806,7 +806,7 @@ Für dringende Fixes auf einer bereits released Version:
 **Strategie**: Alembic-Migrationen werden beim API-Server-Start automatisch ausgeführt.
 
 - **Onyx-Migrationen**: `backend/alembic/` (READ-ONLY, kommen mit Upstream-Merges)
-- **Extension-Migrationen**: `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt, ext_-Prefix). Chain: a3b8d9e2f1c4 → ff7273065d0d (branding) → b3e4a7d91f08 (token) → c7f2e8a3d105 (prompts)
+- **Extension-Migrationen**: `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt, ext_-Prefix). Chain: a3b8d9e2f1c4 → ff7273065d0d (branding) → b3e4a7d91f08 (token) → c7f2e8a3d105 (prompts) → d8a1b2c3e4f5 (audit)
 - **Managed-PG-Einschränkung**: StackIT Flex erlaubt kein `CREATEROLE` -- spezielle User (z.B. `db_readonly_user`) werden per Terraform angelegt
 
 ---

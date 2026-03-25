@@ -1,8 +1,8 @@
 # PROD-Bereitstellung — Planungsdokument
 
-**Status:** Phase A-F abgeschlossen, **PROD HTTPS LIVE** (20 Pods, Health OK, TLS ECDSA P-384). NetworkPolicies + Auth offen.
+**Status:** Phase A-G abgeschlossen, **PROD HTTPS LIVE** (20 Pods, Health OK, TLS ECDSA P-384, Entra ID OIDC). NetworkPolicies LIVE.
 **Erstellt:** 2026-03-11
-**Letzte Aktualisierung:** 2026-03-22 — Pod-Zaehlung auf 20 aktualisiert (OpenSearch), Vespa-Resources korrigiert
+**Letzte Aktualisierung:** 2026-03-25 — Auth auf Entra ID OIDC aktualisiert, Go-Live Checkliste aktualisiert
 **Autor:** CCJ / Coffee Studios (Nikolaj Ivanov)
 **Ziel-URL:** `https://chatbot.voeb-service.de`
 
@@ -24,8 +24,8 @@ Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem get
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
 | Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`) |
 | TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | **HTTPS LIVE** (2026-03-17, Let's Encrypt ECDSA P-384) |
-| Auth | Basic (kein OIDC) | Basic (kein OIDC) | Basic (temporaer, Entra ID blockiert) |
-| Monitoring | kube-prometheus-stack | (shared mit DEV) | ✅ Deployed (2026-03-12, 9 Pods, 3 Targets UP) |
+| Auth | oidc (Entra ID, seit 2026-03-23) | Basic (heruntergefahren) | oidc (Entra ID, seit 2026-03-24) |
+| Monitoring | kube-prometheus-stack | (shared mit DEV) | ✅ Deployed (14 Pods, 25 Targets UP, 50 VoEB Rules, Loki, seit 2026-03-25) |
 | CI/CD Job | `deploy-dev` (auto) | `deploy-test` (manuell) | `deploy-prod` (manuell, Review) |
 | Helm Values | `values-dev.yaml` | `values-test.yaml` | `values-prod.yaml` (deployed 2026-03-11) |
 | Terraform | `environments/dev/` | `environments/test/` | `environments/prod/` (erstellt 2026-03-11) |
@@ -93,10 +93,10 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Parameter | Wert | Status |
 |-----------|------|--------|
-| AUTH_TYPE | `oidc` | **Blockiert — wartet auf Entra ID von VoEB IT** |
-| Fallback | `basic` (temporaer, bis Entra ID bereit) | Entscheidung offen |
-| Provider | Microsoft Entra ID | — |
-| Protokoll | OpenID Connect (OIDC) | — |
+| AUTH_TYPE | `oidc` | ✅ **LIVE seit 2026-03-24** |
+| Fallback | — | Nicht mehr relevant (OIDC aktiv) |
+| Provider | Microsoft Entra ID | ✅ App Registration + B2B-Gast konfiguriert |
+| Protokoll | OpenID Connect (OIDC) | ✅ Login-Flow verifiziert |
 
 ### 2.6 Replicas / HA (Zielzustand)
 
@@ -252,17 +252,15 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| G1 | Entra ID Zugangsdaten von VoEB erhalten | [B] | VoEB IT | **Blocker seit Projektstart.** Tenant ID, Client ID, Client Secret noetig |
-| G2 | App-Registrierung in Entra ID | [B] | G1 | Redirect URI: `https://chatbot.voeb-service.de/auth/oauth/callback`. Anleitung: `docs/referenz/anleitung-entra-id-app-registration.docx` |
-| G3 | OIDC-Secrets in GitHub Environment anlegen | [B] | G1, G2 | `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, etc. |
-| G4 | `values-prod.yaml` Auth-Section befuellen | [B] | G1-G3 | `AUTH_TYPE: "oidc"`, Tenant ID, Discovery URL |
-| G5 | Login-Flow testen | [B] | G4 | Redirect → Entra ID → Callback → Session |
-| G6 | B2B-Gastzugang fuer CCJ | [B] | G1 | `n.ivanov@scale42.de` als Gastbenutzer in VoEB Tenant. Fuer Admin-Zugang nach Auth-Umstellung |
-| G7 | Groups Claim konfigurieren | [B] | G1, ext-rbac | Fuer spaetere Gruppen-/Rollenzuordnung (Phase 4f) |
+| G1 | Entra ID Zugangsdaten von VoEB erhalten | [x] | VoEB IT | ✅ Erhalten (2026-03-22). Tenant ID, Client ID, Client Secret |
+| G2 | App-Registrierung in Entra ID | [x] | G1 | ✅ Redirect URI konfiguriert. DEV Login verifiziert (2026-03-23) |
+| G3 | OIDC-Secrets in GitHub Environment anlegen | [x] | G1, G2 | ✅ `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, etc. in Environment `prod` |
+| G4 | `values-prod.yaml` Auth-Section befuellen | [x] | G1-G3 | ✅ `AUTH_TYPE: "oidc"`, Tenant ID, Discovery URL |
+| G5 | Login-Flow testen | [x] | G4 | ✅ DEV (2026-03-23) + PROD (2026-03-24) verifiziert |
+| G6 | B2B-Gastzugang fuer CCJ | [x] | G1 | ✅ `n.ivanov@scale42.de` als B2B-Gast in VoEB Tenant aufgenommen (2026-03-22) |
+| G7 | Groups Claim konfigurieren | [ ] | G1, ext-rbac | Fuer spaetere Gruppen-/Rollenzuordnung. Abstimmung mit VoEB ausstehend |
 
-**Status:** Komplett blockiert durch fehlende Entra ID Zugangsdaten von VoEB IT.
-
-**Fallback-Option:** PROD initial mit `AUTH_TYPE: "basic"` deployen (wie DEV/TEST), spaeter auf OIDC umstellen. **Entscheidung noetig.**
+**Status:** ✅ **ABGESCHLOSSEN** (2026-03-24). Entra ID OIDC auf DEV (seit 2026-03-23) und PROD (seit 2026-03-24) LIVE.
 
 ---
 
@@ -270,10 +268,10 @@ PROD laeuft auf einem **separaten SKE-Cluster** (nicht shared mit DEV/TEST). Beg
 
 | Nr | Aufgabe | Status | Abhaengigkeit | Detail |
 |----|---------|--------|---------------|--------|
-| H1 | Chat-Modelle in PROD konfigurieren | [ ] | D8 | 4 Modelle: GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B. Ueber Admin UI |
-| H2 | Embedding-Modell konfigurieren | [ ] | D8 | Qwen3-VL-Embedding 8B (wie TEST). Ueber Admin UI |
-| H3 | LLM API Key als Secret | [ ] | D6 | StackIT AI Model Serving Token. In `env-configmap` oder als Kubernetes Secret |
-| H4 | Default-Modell festlegen | [K] | H1 | Welches Modell soll Default sein? GPT-OSS 120B (groesstes) oder Llama 3.3 70B (bestes Preis-Leistung)? |
+| H1 | Chat-Modelle in PROD konfigurieren | [x] | D8 | ✅ 3 Modelle (2026-03-24): GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B. Core #13 Fix (api_key + api_base + default_model_name) |
+| H2 | Embedding-Modell konfigurieren | [x] | D8 | ✅ Qwen3-VL-Embedding 8B (2026-03-24). LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen |
+| H3 | LLM API Key als Secret | [x] | D6 | ✅ StackIT AI Model Serving Token konfiguriert |
+| H4 | Default-Modell festlegen | [K] | H1 | VoEB-Praeferenz ausstehend |
 
 ---
 
@@ -323,9 +321,9 @@ Phase F: Monitoring (nach B1) ────────────────�
   F2-F3: Exporter                                                    │
   F4-F7: Dashboards + Alerting                                       │
                                                                      │
-Phase G: Auth (blockiert) ──────────────────────────────────────────┤
-  G1: Entra ID Zugangsdaten (VoEB IT)                                │
-  G2-G7: App-Registrierung + OIDC                                   │
+Phase G: Auth (LIVE) ──────────────────────────────────────────────┤
+  G1-G6: ✅ Entra ID OIDC (DEV 2026-03-23, PROD 2026-03-24)         │
+  G7: Groups Claim (ausstehend, VoEB Abstimmung)                    │
                                                                      │
 Phase H+I: LLM + Content (nach D8) ────────────────────────────────┘
   H1-H4: Modelle
@@ -345,7 +343,7 @@ Phase H+I: LLM + Content (nach D8) ───────────────
 |----|-------|----------|------------|-------------|
 | K1 | PROD im gleichen StackIT-Projekt oder separates Projekt? | (a) Gleich — einfacher, shared Registry (b) Separat — maximale Isolation | (a) Gleich — Container Registry wird geteilt, Kosten-Trennung nicht noetig | [ ] |
 | K2 | Cluster-Name | `vob-prod` (7 Zeichen) | `vob-prod` | [ ] |
-| K3 | Auth bei erstem Deploy | (a) Basic (temporaer) (b) Warten auf Entra ID | (a) Basic — ermoeglicht fruehes Setup + Testing | [ ] |
+| K3 | Auth bei erstem Deploy | (a) Basic (temporaer) (b) Warten auf Entra ID | (a) Basic initial → ✅ Entra ID OIDC LIVE (2026-03-24) | [x] Geloest |
 | K4 | Kubeconfig-Strategie im CI/CD | (a) Environment-Secret (b) Separates `_PROD` Secret | (a) Environment-Secret — GitHub resolved automatisch, kein Code-Aenderung noetig | [x] Geloest: Option (a) |
 
 ### 5.2 Security
@@ -369,9 +367,9 @@ Phase H+I: LLM + Content (nach D8) ───────────────
 
 | Nr | Was | Wer | Status |
 |----|-----|-----|--------|
-| E-1 | Entra ID Zugangsdaten (Tenant ID, Client ID, Secret) | VoEB IT | **Blockiert** |
-| E-2 | ACME-Challenge CNAME fuer `chatbot.voeb-service.de` | Leif (GlobVill) | **Angefragt (2026-03-11)** |
-| E-3 | DNS A-Record `chatbot.voeb-service.de` → `188.34.92.162` | Leif (GlobVill) / Cloudflare | **Angefragt (2026-03-11)** |
+| E-1 | Entra ID Zugangsdaten (Tenant ID, Client ID, Secret) | VoEB IT | ✅ **Erhalten (2026-03-22)** |
+| E-2 | ACME-Challenge CNAME fuer `chatbot.voeb-service.de` | Leif (GlobVill) | ✅ **Erledigt (2026-03-17)** |
+| E-3 | DNS A-Record `chatbot.voeb-service.de` → `188.34.92.162` | Leif (GlobVill) / Cloudflare | ✅ **Erledigt (2026-03-17)** |
 | E-4 | Datenquellen-Liste fuer Connectors | VoEB Fachbereich | **Noch nicht angefragt** |
 | E-5 | Personas / Use Cases fuer PROD | VoEB Fachbereich | **Noch nicht angefragt** |
 | E-6 | Token-/Request-Limits fuer PROD | VoEB Fachbereich | **Noch nicht geklaert** |
@@ -448,42 +446,42 @@ deployment/terraform/environments/prod/
 
 ### Infrastruktur
 
-- [ ] SKE Cluster `vob-prod` provisioniert und gesund
-- [ ] Alle Pods Running (erwartet: 20 Pods: 2×API, 2×Web, 2×Celery-Primary, 1×Beat, 6×Celery-Worker, 1×Vespa, 1×OpenSearch, 1×Redis, 2×Model)
-- [ ] `/api/health` erreichbar und OK
-- [ ] HTTPS aktiv, TLSv1.3, ECDSA P-384 (BSI TR-02102)
-- [ ] DNS `chatbot.voeb-service.de` aufloesbar und korrekt
+- [x] SKE Cluster `vob-prod` provisioniert und gesund (seit 2026-03-11)
+- [x] Alle Pods Running (20 Pods: 2×API, 2×Web, 2×Celery-Primary, 1×Beat, 6×Celery-Worker, 1×Vespa, 1×OpenSearch, 1×Redis, 2×Model)
+- [x] `/api/health` erreichbar und OK
+- [x] HTTPS aktiv, TLSv1.3, ECDSA P-384 (BSI TR-02102) — seit 2026-03-17
+- [x] DNS `chatbot.voeb-service.de` aufloesbar und korrekt
 
 ### Datenbank
 
-- [ ] PG Flex 4.8 Replica (3 Nodes) gesund
-- [ ] Datenbank `onyx` erstellt
-- [ ] Alembic-Migrationen erfolgreich (inkl. ext_-Tabellen)
-- [ ] PG ACL auf Cluster-Egress + Admin eingeschraenkt
-- [ ] Backup-Schedule aktiv und erster Backup verifiziert
+- [x] PG Flex 4.8 Replica (3 Nodes) gesund
+- [x] Datenbank `onyx` erstellt
+- [x] Alembic-Migrationen erfolgreich (inkl. ext_-Tabellen)
+- [x] PG ACL auf Cluster-Egress + Admin eingeschraenkt
+- [x] Backup-Schedule aktiv und erster Backup verifiziert
 
 ### Security
 
-- [ ] SEC-06 Phase 2: `runAsNonRoot: true` aktiv (ausser Vespa)
-- [ ] NetworkPolicies applied (Default-Deny + Allow-Rules)
-- [ ] Image Pull Secret konfiguriert
-- [ ] Keine Default-Credentials (Redis-Passwort, PG-Passwort individuell)
-- [ ] HSTS Header auf `max-age=31536000` (1 Jahr)
+- [x] SEC-06 Phase 2: `runAsNonRoot: true` aktiv (ausser Vespa)
+- [x] NetworkPolicies applied (7 Policies onyx-prod, Default-Deny + Allow-Rules, seit 2026-03-24)
+- [x] Image Pull Secret konfiguriert
+- [x] Keine Default-Credentials (Redis-Passwort, PG-Passwort individuell)
+- [x] HSTS Header auf `max-age=31536000` (1 Jahr)
 - [ ] Security Headers verifiziert (X-Content-Type-Options, X-Frame-Options, etc.)
 
 ### Auth
 
-- [ ] Entra ID OIDC konfiguriert und getestet — **ODER** bewusste Entscheidung fuer temporaeres Basic Auth dokumentiert
-- [ ] Admin-Account erstellt
-- [ ] B2B-Gastzugang fuer CCJ funktioniert (falls OIDC)
+- [x] Entra ID OIDC konfiguriert und getestet (DEV 2026-03-23, PROD 2026-03-24)
+- [x] Admin-Account erstellt
+- [x] B2B-Gastzugang fuer CCJ funktioniert (n.ivanov@scale42.de als Gast seit 2026-03-22)
 
 ### Monitoring + Alerting
 
-- [ ] Prometheus scrapet alle Targets
-- [ ] Grafana erreichbar (PG + Redis Dashboards importiert)
-- [ ] AlertManager → Teams-Kanal konfiguriert
-- [ ] Alert-Rules aktiv (mind. 20 Rules)
-- [ ] postgres_exporter + redis_exporter laufen
+- [x] Prometheus scrapet alle Targets (25 Targets, alle UP, seit 2026-03-25)
+- [x] Grafana erreichbar (5 Custom Dashboards: PG, Redis, SLO, Audit-Log, Token-Usage)
+- [x] AlertManager → Teams-Kanal konfiguriert (separater PROD-Kanal)
+- [x] Alert-Rules aktiv (50 VoEB Rules: 10 Recording + 40 Alerting)
+- [x] postgres_exporter + redis_exporter laufen
 
 ### Applikation
 
@@ -566,7 +564,7 @@ Alle Entscheidungen, die waehrend der PROD-Bereitstellungsplanung getroffen wurd
 |----|-------|------------|--------|
 | O1 | PROD im gleichen StackIT-Projekt? | **Ja** (shared Registry, einfacher) | ✅ Entschieden |
 | O2 | Cluster-Name | **`vob-prod`** | ✅ Entschieden |
-| O3 | Auth bei erstem Deploy | **Basic temporaer** (Entra ID blockiert) | ✅ Entschieden |
+| O3 | Auth bei erstem Deploy | **Basic temporaer** → ✅ Entra ID OIDC LIVE (2026-03-24) | ✅ Abgeschlossen |
 | O4 | K8s API ACL | **Eingeschraenkt** (BSI APP.4.4.A7) | ✅ Entschieden |
 | O5 | SEC-06 Phase 2 Zeitpunkt | **Vor erstem Deploy** (BSI SYS.1.6.A10) | ✅ Entschieden |
 | O6 | Eigener Teams-Kanal fuer PROD | **Ja** (ITIL Incident Management) | ✅ Entschieden |

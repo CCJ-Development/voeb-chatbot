@@ -125,7 +125,7 @@ Benutzer (Browser)
 | **Empfänger** | (1) Onyx Model Server (Embedding-Berechnung, in-cluster). (2) Vespa (Vektor-Speicherung und -Suche, in-cluster). (3) StackIT Object Storage (Originaldateien, S3-Buckets: vob-dev, vob-test, vob-prod). (4) PostgreSQL (Dokument-Metadaten). |
 | **Drittlandübermittlung** | **NEIN.** Embedding-Berechnung erfolgt durch den Onyx Model Server (in-cluster auf StackIT EU01). Vespa läuft in-cluster. Object Storage bei StackIT (EU01 Frankfurt). Kein externer Embedding-Service. |
 | **Löschfristen** | `[LÖSCHKONZEPT -- VÖB-DSB]` Empfehlung: Quelldokument-Lebensdauer + 30 Tage (dann Löschung aus Vespa, Object Storage und PostgreSQL). Embedding + Quelldokument = eine Löscheinheit. Keine Re-Indexierung mit gelöschten Dokumenten. Gesetzliche Aufbewahrungspflichten (HGB Paragraph 257, AO Paragraph 147) gelten für Chatbot-Dokumente im Regelfall NICHT (kein Buchungsbeleg, kein Handelsbrief) -- Originale verbleiben im DMS. |
-| **TOMs** | Zugriffssteuerung über Onyx-native Berechtigungen (Dokument-Sichtbarkeit), Verschlüsselung at Rest (StackIT AES-256 für Object Storage und PersistentVolumes), NetworkPolicies (Vespa nur cluster-intern erreichbar), Input-Validierung (Pydantic). Geplant: ext-access Modul für dokumentenbasierte Zugriffskontrolle (Phase 4g, blockiert durch Entra ID). Siehe Sicherheitskonzept v0.6. |
+| **TOMs** | Zugriffssteuerung über Onyx-native Berechtigungen (Dokument-Sichtbarkeit), Verschlüsselung at Rest (StackIT AES-256 für Object Storage und PersistentVolumes), NetworkPolicies (Vespa nur cluster-intern erreichbar), Input-Validierung (Pydantic). ext-access Modul für dokumentenbasierte Zugriffskontrolle implementiert (2026-03-25). Siehe Sicherheitskonzept v0.6. |
 
 **Datenfluss (Indexierung):**
 ```
@@ -195,10 +195,10 @@ Die vollständige TOM-Dokumentation befindet sich im **Sicherheitskonzept v0.6**
 
 | Maßnahme | Status | Details |
 |----------|--------|---------|
-| Verschlüsselung in Transit | IMPLEMENTIERT (DEV+TEST), AUSSTEHEND (PROD) | TLSv1.3, ECDSA P-384, HTTP/2 (BSI TR-02102-2 konform). PROD wartet auf DNS-Einträge. |
+| Verschlüsselung in Transit | IMPLEMENTIERT (alle Environments) | TLSv1.3, ECDSA P-384, HTTP/2 (BSI TR-02102-2 konform). PROD HTTPS LIVE seit 2026-03-17. |
 | Verschlüsselung at Rest | IMPLEMENTIERT | StackIT Default AES-256 für PostgreSQL, Object Storage und PersistentVolumes (SEC-07 verifiziert). |
-| Zugriffskontrolle (Authentifizierung) | TEILWEISE | Onyx Basic Auth aktiv (DEV/TEST/PROD temporär). Entra ID OIDC geplant (Phase 3). |
-| Netzwerk-Isolation | IMPLEMENTIERT (DEV+TEST), AUSSTEHEND (PROD) | Kubernetes NetworkPolicies (Zero-Trust): 5 Policies in App-NS, 8 Policies in Monitoring-NS. PROD App-NS ausstehend. |
+| Zugriffskontrolle (Authentifizierung) | UMGESETZT | Entra ID OIDC auf DEV + PROD (seit 2026-03-24). TEST heruntergefahren. |
+| Netzwerk-Isolation | IMPLEMENTIERT (alle Environments) | Kubernetes NetworkPolicies (Zero-Trust): 7 Policies in onyx-dev, 7 Policies in onyx-prod (seit 2026-03-24), 13 Policies in monitoring-NS, 6 Policies in cert-manager-NS. |
 | Datenbank-ACL | IMPLEMENTIERT | PostgreSQL-Zugriff auf Cluster-Egress-IP eingeschränkt (SEC-01). |
 | Geheimnismanagement | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt). |
 | Container-Härtung | IMPLEMENTIERT | `runAsNonRoot: true` auf allen Environments (SEC-06 Phase 2). Vespa = dokumentierte Ausnahme. |

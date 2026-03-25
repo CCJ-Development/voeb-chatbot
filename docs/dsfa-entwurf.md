@@ -180,7 +180,7 @@ NGINX Ingress Controller (StackIT SKE Cluster, EU01 Frankfurt)
 |-------------|---------|--------|-----|
 | DEV | `vob-chatbot` (Shared) | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` |
 | TEST | `vob-chatbot` (Shared) | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` |
-| PROD | `vob-prod` (Eigener Cluster) | DEPLOYED seit 2026-03-11 | DNS/TLS ausstehend (LB: `188.34.92.162`) |
+| PROD | `vob-prod` (Eigener Cluster) | **HTTPS LIVE** seit 2026-03-17 | `https://chatbot.voeb-service.de` |
 
 ---
 
@@ -311,7 +311,7 @@ Die Risikobewertung folgt dem **Standard-Datenschutzmodell (SDM V3.1)** der Date
 | **Risikostufe** | **Mittel** |
 | **Bestehende Maßnahmen** | Authentifizierung (Basic Auth, geplant: Entra ID OIDC + MFA); PostgreSQL ACL auf Cluster-Egress-IP beschränkt (SEC-01); NetworkPolicies mit Default-Deny (SEC-03 DEV/TEST); Encryption-at-Rest AES-256 (SEC-07); TLS 1.3 für Datenübertragung; Kubernetes Namespace-Isolation |
 | **Restrisiko** | **Niedrig** -- Zugriffskontrolle mehrschichtig implementiert. Erhöhtes Risiko in PROD bis Entra ID aktiviert (Basic Auth bietet kein MFA). |
-| **Offene Maßnahmen** | Entra ID OIDC mit MFA (Phase 3, blockiert); NetworkPolicies PROD (ausstehend); CORS-Einschränkung (SEC-08) |
+| **Offene Maßnahmen** | CORS-Einschränkung (SEC-08) |
 
 #### R2 -- LLM-Halluzination / falsche Informationen
 
@@ -363,7 +363,7 @@ Die Risikobewertung folgt dem **Standard-Datenschutzmodell (SDM V3.1)** der Date
 | **Risikostufe** | **Hoch** (aktuell) / **Mittel** (nach Entra ID) |
 | **Bestehende Maßnahmen** | Session-basierte Authentifizierung (Cookie); SameSite-Cookie-Attribut (CSRF-Schutz); TLS 1.3 (Session-Cookie-Schutz im Transit); Security-Header (X-Frame-Options: DENY, Clickjacking-Schutz) |
 | **Restrisiko** | **Hoch** (aktuell) -- Basic Auth ohne MFA ist unzureichend für ein System mit potenziell sensiblen Banking-Informationen. Das Risiko sinkt signifikant mit Entra ID + MFA. |
-| **Offene Maßnahmen** | **KRITISCH:** Entra ID OIDC mit MFA aktivieren (Phase 3, blockiert durch VÖB IT); CORS-Einschränkung auf Produktions-Domain (SEC-08) |
+| **Offene Maßnahmen** | Entra ID OIDC mit MFA: ✅ IMPLEMENTIERT (DEV + PROD seit 2026-03-24); CORS-Einschränkung auf Produktions-Domain (SEC-08) |
 
 #### R6 -- Profilbildung durch Nutzungsmetriken
 
@@ -414,8 +414,8 @@ Die Risikobewertung folgt dem **Standard-Datenschutzmodell (SDM V3.1)** der Date
 | **Schwere** | Hoch |
 | **Risikostufe** | **Hoch** |
 | **Bestehende Maßnahmen** | Onyx Access Control (nativ): Dokumenten-Zugriff pro User/Gruppe steuerbar; ext-prompts: VÖB-spezifische Guardrails |
-| **Restrisiko** | **Hoch** -- Onyx Access Control ist aktuell nur auf FOSS-Niveau (Basic Auth, keine Gruppen). ext-rbac und ext-access (Phase 4f/4g) sind noch blockiert. Ohne granulare Zugriffskontrolle besteht das Risiko, dass RAG-Ergebnisse Dokumente enthalten, die nicht für den jeweiligen Nutzer bestimmt sind. |
-| **Offene Maßnahmen** | **KRITISCH:** ext-rbac (Phase 4f) + ext-access (Phase 4g) implementieren (blockiert durch Entra ID); Dokument-Level Access Control konfigurieren; [KLÄRUNG] -- VÖB muss Zugriffsmatrix für Dokumentkategorien definieren |
+| **Restrisiko** | **Mittel** -- ext-rbac (Phase 4f, 2026-03-23) und ext-access (Phase 4g, 2026-03-25) sind implementiert. Granulare Zugriffskontrolle pro Gruppe ist technisch verfuegbar. Restrisiko bleibt bis VÖB Zugriffsmatrix fuer Dokumentkategorien definiert. |
+| **Offene Maßnahmen** | Dokument-Level Access Control konfigurieren (ext-access auf PROD aktivieren); [KLÄRUNG] -- VÖB muss Zugriffsmatrix für Dokumentkategorien definieren |
 
 #### R10 -- Diskriminierung / Bias
 
@@ -523,7 +523,7 @@ Die Risikobewertung identifiziert:
 - **5 "Mittel"-Risiken** (R1, R3, R8, R11, R14)
 - **4 "Niedrig"-Risiken** (R4, R10, R13, R15)
 
-Die hohen Restrisiken bei R5 (Identitätsdiebstahl) und R9 (Cross-Context Leakage) sind direkt mit dem blockierten Entra ID (Phase 3) und den blockierten Extensions ext-rbac/ext-access (Phase 4f/4g) verknüpft. Diese Risiken sinken signifikant, sobald die VÖB IT die Entra ID Zugangsdaten bereitstellt.
+Das hohe Restrisiko bei R5 (Identitätsdiebstahl) wurde durch Entra ID OIDC (Phase 3, live seit 2026-03-24) signifikant gesenkt. R9 (Cross-Context Leakage) wurde durch ext-rbac (2026-03-23) und ext-access (2026-03-25) auf Mittel gesenkt -- granulare Zugriffskontrolle ist technisch verfuegbar, Aktivierung auf PROD steht aus.
 
 Das hohe Restrisiko bei R12 (Betroffenenrechte) erfordert die zeitnahe Erstellung eines Löschkonzepts und eines Prozesses für Betroffenenanfragen -- beides ist unabhängig von Entra ID umsetzbar.
 
@@ -539,7 +539,7 @@ Die nachfolgende Tabelle fasst die im Sicherheitskonzept (v0.6) dokumentierten u
 
 | Maßnahme | Status | Referenz |
 |----------|--------|----------|
-| TLS 1.3 (ECDSA P-384) für Datenübertragung | IMPLEMENTIERT (DEV+TEST), AUSSTEHEND (PROD) | Sicherheitskonzept: Datenverschlüsselung |
+| TLS 1.3 (ECDSA P-384) für Datenübertragung | IMPLEMENTIERT (alle Environments) | Sicherheitskonzept: Datenverschlüsselung. PROD HTTPS LIVE seit 2026-03-17. |
 | Encryption-at-Rest AES-256 (PostgreSQL, Vespa, S3) | IMPLEMENTIERT | SEC-07, StackIT Default |
 | HSTS (HTTP Strict Transport Security) | IMPLEMENTIERT | DEV/TEST: max-age=3600, PROD: max-age=31536000 |
 | LLM-API über HTTPS | IMPLEMENTIERT | StackIT AI Model Serving |
@@ -549,7 +549,7 @@ Die nachfolgende Tabelle fasst die im Sicherheitskonzept (v0.6) dokumentierten u
 | Maßnahme | Status | Referenz |
 |----------|--------|----------|
 | Authentifizierung (Basic Auth) | IMPLEMENTIERT (temporär) | Sicherheitskonzept: Auth |
-| Entra ID OIDC mit MFA | BLOCKIERT (Phase 3) | Wartet auf VÖB IT |
+| Entra ID OIDC mit MFA | IMPLEMENTIERT (DEV + PROD, seit 2026-03-24) | Phase 3 abgeschlossen |
 | PostgreSQL ACL (Netzwerk-Einschränkung) | IMPLEMENTIERT (SEC-01) | Alle Environments |
 | Kubernetes Namespace-Isolation | IMPLEMENTIERT | Separate Namespaces pro Environment |
 | RBAC-Rollen (Onyx-nativ) | IMPLEMENTIERT (Basic) | admin, basic, curator, limited |
@@ -562,7 +562,7 @@ Die nachfolgende Tabelle fasst die im Sicherheitskonzept (v0.6) dokumentierten u
 |----------|--------|----------|
 | NetworkPolicies (Default-Deny) | IMPLEMENTIERT (DEV+TEST App-NS) | SEC-03, 5 Policies pro Namespace |
 | NetworkPolicies (Monitoring-NS) | IMPLEMENTIERT (alle Cluster) | 8 Policies inkl. AlertManager-Webhook-Egress |
-| NetworkPolicies (PROD App-NS) | AUSSTEHEND | Kommt mit DNS/TLS-Hardening |
+| NetworkPolicies (PROD App-NS) | IMPLEMENTIERT (seit 2026-03-24) | 7 Policies (Zero-Trust: Default-Deny + explizite Allow-Rules) |
 | Security-Header (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) | IMPLEMENTIERT | H8 |
 | SSL-Redirect | IMPLEMENTIERT (DEV+TEST) | NGINX Ingress |
 
@@ -604,7 +604,7 @@ Die nachfolgende Tabelle fasst die im Sicherheitskonzept (v0.6) dokumentierten u
 | M3 | **Prozess für Betroffenenrechte definieren** (Art. 15-22) | R12 | HOCH | CCJ + VÖB-DSB | Löschkonzept |
 | M4 | **VVT erstellen** (Art. 30 DSGVO) | R7 | HOCH | CCJ (Entwurf) + VÖB | Keine |
 | M5 | **AVV(s) abschließen** (VÖB-StackIT, VÖB-CCJ) | R13 | HOCH | VÖB + StackIT / CCJ | [AVV] VÖB Recht |
-| M6 | **ext-rbac + ext-access implementieren** | R9 | HOCH | CCJ | Entra ID (M1) |
+| M6 | **ext-rbac + ext-access implementieren** | R9 | HOCH | CCJ | ✅ IMPLEMENTIERT (ext-rbac 2026-03-23, ext-access 2026-03-25) |
 | M7 | **NetworkPolicies PROD (App-NS)** | R1 | HOCH | CCJ | DNS/TLS PROD |
 | M8 | **Datenschutzerklärung erstellen** | R8 | HOCH | VÖB Recht | Keine |
 | M9 | **KI-Nutzungsrichtlinie erstellen** | R11, R7 | MITTEL | VÖB | Keine |
@@ -621,16 +621,16 @@ Die nachfolgende Tabelle fasst die im Sicherheitskonzept (v0.6) dokumentierten u
 ### 5.3 Maßnahmenpriorisierung
 
 **Vor PROD Go-Live (Pflicht):**
-- M1: Entra ID (blockiert durch VÖB)
+- M1: Entra ID — ✅ IMPLEMENTIERT (DEV + PROD seit 2026-03-24)
 - M5: AVVs (blockiert durch VÖB Recht)
-- M7: NetworkPolicies PROD
-- M12: TLS PROD
+- M7: NetworkPolicies PROD — ✅ IMPLEMENTIERT (7 Policies onyx-prod seit 2026-03-24)
+- M12: TLS PROD — ✅ IMPLEMENTIERT (HTTPS LIVE seit 2026-03-17)
 
 **Innerhalb 3 Monaten nach PROD Go-Live:**
 - M2: Löschkonzept
 - M3: Prozess Betroffenenrechte
 - M4: VVT
-- M6: ext-rbac + ext-access (nach Entra ID)
+- M6: ext-rbac + ext-access — ✅ IMPLEMENTIERT (ext-rbac 2026-03-23, ext-access 2026-03-25)
 - M8: Datenschutzerklärung
 
 **Innerhalb 6 Monaten:**
@@ -705,11 +705,11 @@ Aus datenschutzrechtlicher Sicht sollten folgende Maßnahmen **vor** dem produkt
 
 | # | Maßnahme | Status |
 |---|----------|--------|
-| 1 | Entra ID OIDC + MFA (R5) | Blockiert (VÖB IT) |
+| 1 | Entra ID OIDC + MFA (R5) | ✅ IMPLEMENTIERT (DEV + PROD seit 2026-03-24) |
 | 2 | AVV VÖB-StackIT (Art. 28) | [AVV] |
 | 3 | AVV VÖB-CCJ (Art. 28) | [AVV] |
-| 4 | TLS PROD (Verschlüsselung im Transit) | Blockiert (DNS) |
-| 5 | NetworkPolicies PROD (App-NS) | Geplant |
+| 4 | TLS PROD (Verschlüsselung im Transit) | ✅ IMPLEMENTIERT (HTTPS LIVE seit 2026-03-17) |
+| 5 | NetworkPolicies PROD (App-NS) | ✅ IMPLEMENTIERT (7 Policies onyx-prod seit 2026-03-24) |
 | 6 | Löschkonzept (Entwurf, VÖB-Bestätigung) | [LÖSCHKONZEPT] |
 | 7 | Datenschutzerklärung (Informationspflichten Art. 13) | VÖB Recht |
 | 8 | Freigabe dieser DSFA durch VÖB-DSB | [VÖB-DSB] |

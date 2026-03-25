@@ -88,8 +88,10 @@ ENABLE_PAID_ENTERPRISE_EDITION_FEATURES: "false"  # EE deaktiviert
 | 2 | **Token Limits / Usage Tracking** | — (existiert auch in EE nicht als Modul) | `ext-token` | 4c | ✅ Deployed (2026-03-09) |
 | 3 | **Custom System Prompts** | `ee.onyx.chat` (teilweise) | `ext-prompts` | 4d | ✅ Implementiert (2026-03-09) |
 | 4 | **Analytics / Monitoring** | `ee.onyx.server.monitoring` | `ext-analytics` | 4e | ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten |
-| 5 | **RBAC / User Groups** | `ee.onyx.db.user_group`, `ee.onyx.access` | `ext-rbac` | 4f | Blockiert (Entra ID) |
-| 6 | **Document Access Control** | `ee.onyx.external_permissions` | `ext-access` | 4g | Blockiert (RBAC) |
+| 5 | **RBAC / User Groups** | `ee.onyx.db.user_group`, `ee.onyx.access` | `ext-rbac` | 4f | ✅ Implementiert (2026-03-23) |
+| 6 | **Document Access Control** | `ee.onyx.external_permissions` | `ext-access` | 4g | ✅ Implementiert (2026-03-25) |
+| 7 | **Deutsche Lokalisierung** | — (existiert auch in EE nicht) | `ext-i18n` | 4h | ✅ Deployed (2026-03-22) |
+| 8 | **Audit-Logging** | — (existiert auch in EE nicht) | `ext-audit` | 4i | ✅ Implementiert (2026-03-25) |
 
 ### Features die wir NICHT nachbauen
 
@@ -147,7 +149,7 @@ Onyx FOSS (MIT, READ-ONLY)          Unsere Extensions (MIT, eigener Code)
 └─────────────────────────┘         └──────────────────────────┘
 ```
 
-- **10 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except)
+- **14 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except)
 - **Patches** werden als `.original` + `.patch` in `backend/ext/_core_originals/` gesichert
 - **Upstream-Merges** sind konfliktfrei fuer ext_-Code (Ordner existiert nicht in Upstream)
 - **Feature Flags** steuern alles: `EXT_ENABLED` (Master) + `EXT_{MODUL}_ENABLED` (pro Modul)

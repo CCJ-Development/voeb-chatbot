@@ -24,9 +24,9 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 | Meilenstein | Titel | Phasen | Termin | Status |
 |-------------|-------|--------|--------|--------|
 | **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen. Hinweis: PROD-Cluster wurde vor M1-Abnahme deployed (2026-03-11). PROD-Infrastruktur ist faktisch Teil des M1-Nachweises. |
-| **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | [TBD] | Blockiert (Entra ID) |
+| **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | 2026-03-24 | ✅ Abgeschlossen (Entra ID OIDC DEV 2026-03-23, PROD 2026-03-24; Phase 4a seit 2026-02-12) |
 | **M3** | Token Limits + Custom Prompts | Phase 4c, 4d | [TBD] | ✅ Beide deployed (Token 2026-03-09, Prompts 2026-03-09) |
-| **M4** | Branding + RBAC | Phase 4b, 4e, 4f, 4g | [TBD] | Teilweise (ext-branding ✅ deployed 2026-03-08, ext-analytics ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten, ext-rbac ⏳ blockiert Entra ID, ext-access ⏳ blockiert RBAC) |
+| **M4** | Branding + RBAC | Phase 4b, 4e, 4f, 4g | 2026-03-25 | ✅ Abgeschlossen (ext-branding ✅ deployed 2026-03-08, ext-analytics ⏭️ ÜBERSPRUNGEN, ext-rbac ✅ implementiert 2026-03-23, ext-access ✅ implementiert 2026-03-25) |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
 
@@ -150,9 +150,9 @@ Keine (Projekt Start)
 
 Entra ID / OIDC Integration ist funktionsfaehig. Das Extension Framework ist implementiert und getestet (Phase 4a bereits abgeschlossen).
 
-### Status: Blockiert
+### Status: Abgeschlossen
 
-Phase 4a (Extension Framework Basis) ist bereits abgeschlossen. Die Entra ID Integration wartet auf Zugangsdaten von VÖB.
+Phase 4a (Extension Framework Basis) abgeschlossen seit 2026-02-12. Entra ID OIDC live auf DEV (2026-03-23) und PROD (2026-03-24).
 
 ### Liefergegenstände
 
@@ -192,8 +192,8 @@ Phase 4a (Extension Framework Basis) ist bereits abgeschlossen. Die Entra ID Int
 
 | Nr. | Kriterium | Erfuellt? |
 |-----|-----------|---------|
-| M2-1 | Benutzer koennen sich mit Entra ID anmelden | [ ] Ja [ ] Nein |
-| M2-2 | Session Management funktioniert (Timeout) | [ ] Ja [ ] Nein |
+| M2-1 | Benutzer koennen sich mit Entra ID anmelden | [x] Ja (DEV 2026-03-23, PROD 2026-03-24) |
+| M2-2 | Session Management funktioniert (Timeout) | [x] Ja |
 | M2-3 | Extension Framework: Feature Flags funktionieren | [x] Ja (Phase 4a) |
 | M2-4 | Extension Framework: Neue Extension kann hinzugefuegt werden ohne weitere Core-Aenderungen | [x] Ja (Phase 4a) |
 | M2-5 | API Routes mit `/api/ext/*` Prefix funktionieren | [x] Ja (Phase 4a) |
@@ -211,17 +211,16 @@ Phase 4a (Extension Framework Basis) ist bereits abgeschlossen. Die Entra ID Int
 ### Termine
 
 **Extension Framework (Phase 4a)**: Abgeschlossen (2026-02-12)
-**Entra ID Integration**: [TBD] -- blockiert durch fehlende Zugangsdaten von VÖB
+**Entra ID Integration**: Abgeschlossen (DEV 2026-03-23, PROD 2026-03-24)
 
 ### Dependencies
 
 - M1: Infrastruktur funktionsfaehig -- erfuellt
-- Entra ID: VÖB muss Zugangsdaten bereitstellen -- **Blocker**
+- Entra ID: ✅ Zugangsdaten erhalten, OIDC live
 
 ### Risiken
 
-- Entra ID Zugangsdaten verzoegern sich weiter
-  - Mitigation: System laeuft mit `AUTH_TYPE: basic` bis Entra ID verfuegbar
+- ~~Entra ID Zugangsdaten verzoegern sich weiter~~ — Erledigt (2026-03-23)
 - Onyx OIDC-Integration erfordert Anpassungen
   - Mitigation: Onyx unterstuetzt OIDC nativ, Spike-Story vor vollstaendiger Konfiguration
 
@@ -303,14 +302,14 @@ Token Limits Management und Custom System Prompts sind implementiert und geteste
 
 ### Beschreibung
 
-Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding ist bereits deployed (2026-03-08). RBAC ist blockiert durch fehlende Entra ID Zugangsdaten. ext-analytics wurde uebersprungen (Funktionalitaet in ext-token enthalten). ext-access ist blockiert (braucht RBAC).
+Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding deployed (2026-03-08). RBAC implementiert (2026-03-23). ext-analytics uebersprungen (Funktionalitaet in ext-token enthalten). ext-access implementiert (2026-03-25).
 
-### Status: Teilweise
+### Status: Abgeschlossen
 
 - **ext-branding deployed**: 2026-03-08 (DEV + TEST)
 - **ext-analytics**: ÜBERSPRUNGEN (Funktionalitaet in ext-token/M3)
-- **ext-rbac**: Blockiert (Entra ID)
-- **ext-access**: Blockiert (braucht RBAC)
+- **ext-rbac**: ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests)
+- **ext-access**: ✅ Implementiert (2026-03-25, Core #3 gepatcht, 11 Tests)
 
 ### Liefergegenstände
 
@@ -322,7 +321,7 @@ Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding
   - Greeting, Disclaimer, Popup, Consent
   - DB-Tabelle: `ext_branding_config`
 
-- **RBAC Modul (`ext-rbac`)** — ⏳ blockiert (Entra ID)
+- **RBAC Modul (`ext-rbac`)** — ✅ implementiert (2026-03-23)
   - Additiver Permission-Check in `backend/onyx/access/access.py` (Core-Datei #3)
   - DB-Tabellen: `ext_rbac_groups`, `ext_rbac_roles`, `ext_rbac_permissions`
   - Rollen- und Gruppenverwaltung (Mapping auf Entra ID Abteilungen)
@@ -332,7 +331,7 @@ Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding
   - Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model)
   - Kein Mehrwert als eigenes Modul
 
-- **Document Access Control (`ext-access`)** — ⏳ blockiert (braucht RBAC)
+- **Document Access Control (`ext-access`)** — ✅ implementiert (2026-03-25)
   - Additiver Permission-Check in `backend/onyx/access/access.py` (Core-Datei #3)
 
 - **Testing**
@@ -352,8 +351,8 @@ Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding
 | M4-3 | Login-Tagline, Login-Logo und Admin-Sidebar angepasst | [x] Ja |
 | M4-4 | Greeting, Disclaimer, Popup und Consent konfigurierbar | [x] Ja |
 | M4-5 | ~~Analytics~~ Entfaellt (Funktionalitaet in ext-token/M3 enthalten) | N/A |
-| M4-6 | User-Gruppen koennen erstellt und Benutzer zugewiesen werden | [ ] Ja (blockiert, Entra ID) |
-| M4-7 | Berechtigungen werden basierend auf Gruppen durchgesetzt | [ ] Ja (blockiert, Entra ID) |
+| M4-6 | User-Gruppen koennen erstellt und Benutzer zugewiesen werden | [x] Ja (ext-rbac, 2026-03-23) |
+| M4-7 | Berechtigungen werden basierend auf Gruppen durchgesetzt | [x] Ja (ext-access, 2026-03-25) |
 | M4-8 | Alle Module hinter Feature Flags (`EXT_BRANDING_ENABLED`, `EXT_RBAC_ENABLED`, etc.) | [x] Ja |
 | M4-9 | Hook-Pattern: Fehler in ext bricht Onyx nie | [x] Ja |
 | M4-10 | Unit Tests bestanden (ext-branding) | [x] Ja |
@@ -368,7 +367,8 @@ Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding
 ### Termine
 
 **ext-branding deployed**: 2026-03-08
-**ext-rbac / ext-access**: [TBD] — blockiert durch Entra ID
+**ext-rbac**: Implementiert (2026-03-23)
+**ext-access**: Implementiert (2026-03-25)
 **Abnahme**: [TBD]
 
 ### Dependencies
@@ -529,8 +529,9 @@ System ist produktiv deployed, validiert und an VÖB uebergeben.
 
 | Blocker | Wartet auf | Impact |
 |---------|-----------|--------|
-| Entra ID Zugangsdaten | VÖB IT | Blockiert M2 (Auth) |
-| DNS PROD (A-Record + ACME-CNAME) | Leif (GlobVill), angefragt 2026-03-11 | Blockiert HTTPS PROD |
+| — | Keine aktiven Blocker | — |
+| ~~Entra ID Zugangsdaten~~ | ~~VÖB IT~~ | ✅ Erledigt — Entra ID OIDC live DEV (2026-03-23) + PROD (2026-03-24) |
+| ~~DNS PROD (A-Record + ACME-CNAME)~~ | ~~Leif (GlobVill)~~ | ✅ Erledigt — HTTPS PROD LIVE (2026-03-17) |
 | ~~DNS-Eintraege DEV/TEST~~ | ~~VÖB IT~~ | ✅ Erledigt — A-Records (2026-03-05) + ACME-Challenge CNAMEs (2026-03-09) + TLS LIVE |
 
 ---

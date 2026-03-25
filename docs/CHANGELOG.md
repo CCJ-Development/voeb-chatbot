@@ -533,8 +533,8 @@ Beispiel: `1.2.3`
 - [x] Token Limits Release (DEV+TEST deployed 2026-03-09)
 - [x] Custom Prompts Release (DEV + TEST deployed + abgenommen 2026-03-09)
 - [x] ~~Analytics Release~~ — UEBERSPRUNGEN (Funktionalitaet in ext-token enthalten, 2026-03-09)
-- [ ] RBAC Release (blockiert: Entra ID)
-- [ ] Access Control Release (blockiert: RBAC)
+- [x] RBAC Release (ext-rbac implementiert 2026-03-23, 7 Endpoints, 29 Tests)
+- [x] Access Control Release (ext-access implementiert 2026-03-25, Core #3 gepatcht, 11 Tests)
 
 ### Phase 5 – Go-Live Readiness (M5)
 - [ ] Final Testing Release Notes

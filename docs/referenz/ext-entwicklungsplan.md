@@ -28,14 +28,17 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           ├── Phase 4e: ⏭️ ext-analytics — ÜBERSPRUNGEN
           │     Funktionalität bereits in ext-token enthalten
           │
-          ├── Phase 4f: ext-rbac ← BLOCKIERT (Entra ID)
-          │     Rollen, Gruppen, Zugriffssteuerung
+          ├── Phase 4f: ✅ ext-rbac (implementiert 2026-03-23)
+          │     Gruppenverwaltung, 7 Endpoints, Core #10/#11/#12 gepatcht
           │
-          ├── Phase 4g: ext-access ← BLOCKIERT (RBAC)
-          │     Document Access Control pro Gruppe
+          ├── Phase 4g: ✅ ext-access (implementiert 2026-03-25)
+          │     Document Access Control pro Gruppe, Core #3 gepatcht, eigener Celery-Task
           │
-          └── Phase 4h: ✅ ext-i18n (DEV deployed 2026-03-22)
-                Deutsche Lokalisierung (~250 Strings), TranslationProvider + t()-Calls
+          ├── Phase 4h: ✅ ext-i18n (DEV + PROD deployed 2026-03-22)
+          │     Deutsche Lokalisierung (~250 Strings), TranslationProvider + t()-Calls
+          │
+          └── Phase 4i: ✅ ext-audit (implementiert 2026-03-25)
+                Audit-Logging, 15 Hooks, DB-Tabelle ext_audit_log, CSV-Export
 ```
 
 ---
@@ -60,16 +63,15 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
                         │      ┌──────────┐         │
                         └─────►│ext-rbac  │◄────────┘
                                │ Phase 4f │
-                               │ BLOCKIERT│
-                               │(Entra ID)│
+                               │ ✅ ERLED.│
+                               │(2026-3-23)│
                                └─────┬────┘
                                      │
                                ┌─────▼─────┐
                                │ext-access  │
                                │ Phase 4g   │
-                               │ BLOCKIERT  │
-                               │(braucht    │
-                               │ RBAC)      │
+                               │ ✅ ERLED.  │
+                               │(2026-3-25) │
                                └────────────┘
 ```
 
@@ -83,8 +85,8 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | ext-token | **Keiner** | — | — |
 | ext-prompts | **Keiner** | — | — |
 | ext-analytics | **UEBERSPRUNGEN** | — | Funktionalitaet in ext-token enthalten |
-| ext-rbac | **Entra ID Zugangsdaten** | VoeB IT | Kein sinnvoller Workaround — Auth ist Voraussetzung |
-| ext-access | **ext-rbac** | ext-rbac muss fertig sein | — |
+| ext-rbac | **Keiner** | — | ✅ Implementiert (2026-03-23) |
+| ext-access | **Keiner** | — | ✅ Implementiert (2026-03-25) |
 
 ---
 
@@ -151,9 +153,9 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 
 **Entscheidung (2026-03-09):** ext-token liefert bereits Usage Dashboard (Overview, Timeline, Per-User, Per-Model, User Limits). Ein eigenes Analytics-Modul haette keinen Mehrwert. Falls spaeter CSV-Export gewuenscht, wird er direkt in ext-token ergaenzt.
 
-### Prioritaet 5: ext-rbac (Phase 4f) — BLOCKIERT
+### Prioritaet 5: ext-rbac (Phase 4f) — IMPLEMENTIERT
 
-**Blockiert durch**: Entra ID Zugangsdaten von VoeB IT
+**Implementiert**: 2026-03-23 (7 Endpoints, 29 Tests, Core #10/#11/#12 gepatcht)
 
 | Aspekt | Detail |
 |--------|--------|
@@ -169,9 +171,9 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | **Abhaengigkeit** | Phase 3 (Entra ID Auth) muss abgeschlossen sein |
 | **Vorarbeit** | Rollenmodell-Entwurf existiert (docs/referenz/rbac-rollenmodell.md), 10 Fragen an VoeB offen |
 
-### Prioritaet 6: ext-access (Phase 4g) — BLOCKIERT
+### Prioritaet 6: ext-access (Phase 4g) — IMPLEMENTIERT
 
-**Blockiert durch**: ext-rbac muss fertig sein
+**Implementiert**: 2026-03-25 (Core #3 gepatcht, eigener Celery-Task, 11 Tests)
 
 | Aspekt | Detail |
 |--------|--------|
@@ -260,11 +262,15 @@ alembic upgrade head
 | #7 | `prompt_utils.py` | — | — | ✅ | — | — | — |
 | #8 | `LoginText.tsx` | ✅ | — | — | — | — | — |
 | #9 | `AuthFlowContainer.tsx` | ✅ | — | — | — | — | — |
-| #10 | `AdminSidebar.tsx` | ✅ | ✅ | ✅ | — | — | — |
+| #10 | `AdminSidebar.tsx` | ✅ | ✅ | ✅ | ✅ | — | — |
+| #11 | `persona.py` | — | — | — | ✅ | — | — |
+| #12 | `document_set.py` | — | — | — | ✅ | — | — |
+| #13 | `CustomModal.tsx` | — | — | — | — | — | — |
+| #14 | `search_nlp_models.py` | — | — | — | — | — | — |
 
 > CORE #1 (`main.py`) ist bereits gepatcht (Extension Framework Hook, Phase 4a).
 > Alle Patches folgen dem try/except-Pattern aus `.claude/rules/core-dateien.md`.
-> **8 von 10 Core-Dateien sind gepatcht** (Stand 2026-03-22). Ungepatcht: access.py (#3, wartet auf ext-rbac), header/ (#5, wartet auf ext-rbac).
+> **13 von 14 Core-Dateien sind gepatcht** (Stand 2026-03-25). Ungepatcht: header/ (#5, offen).
 
 ---
 
@@ -281,6 +287,8 @@ Alle Flags existieren bereits in `backend/ext/config.py`:
 | `EXT_ANALYTICS_ENABLED` | ext-analytics | `false` | UEBERSPRUNGEN (2026-03-09) — Funktionalitaet bereits in ext-token enthalten. Flag existiert noch in config.py (Default false), wird in Zukunft entfernt. |
 | `EXT_RBAC_ENABLED` | ext-rbac | `false` | |
 | `EXT_DOC_ACCESS_ENABLED` | ext-access | `false` | |
+| `EXT_I18N_ENABLED` | ext-i18n | `false` | + `NEXT_PUBLIC_EXT_I18N_ENABLED` (Frontend Build-Arg) |
+| `EXT_AUDIT_ENABLED` | ext-audit | `false` | |
 
 Aktivierung in `deployment/docker_compose/.env` oder `deployment/helm/values/values-{env}.yaml`.
 

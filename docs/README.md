@@ -76,7 +76,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 |-------------|--------|----------|---------|
 | **DEV** | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | SKE `vob-chatbot`, NS `onyx-dev` |
 | **TEST** | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | SKE `vob-chatbot`, NS `onyx-test` |
-| **PROD** | Deployed seit 2026-03-11 (DNS/TLS pending) | LB `188.34.92.162` | SKE `vob-prod`, NS `onyx-prod` |
+| **PROD** | **HTTPS LIVE** seit 2026-03-17 | `https://chatbot.voeb-service.de` | SKE `vob-prod`, NS `onyx-prod` |
 
 ## Kontakt
 
@@ -86,4 +86,4 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | Projektmanagement | CCJ / Coffee Studios | Benito-Miguel Schwankhart |
 | Auftraggeber | VÖB | Luca Koenes |
 
-Letzte Aktualisierung: 2026-03-12
+Letzte Aktualisierung: 2026-03-25

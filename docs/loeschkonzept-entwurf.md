@@ -33,7 +33,7 @@ Dieses Loeschkonzept gilt fuer alle personenbezogenen und personenbeziehbaren Da
 **Umgebungen:**
 - DEV (`https://dev.chatbot.voeb-service.de`)
 - TEST (`https://test.chatbot.voeb-service.de`)
-- PROD (deployed, DNS/TLS ausstehend)
+- PROD (`https://chatbot.voeb-service.de`, HTTPS LIVE seit 2026-03-17)
 
 **Betroffene Personen:**
 - VoeB-Mitarbeiter (Chat-Nutzer)
@@ -233,7 +233,7 @@ WHERE created_at < NOW() - INTERVAL '24 months';
 
 ```
 1. Trigger: User-Account in Entra ID deaktiviert
-   └→ [NICHT IMPLEMENTIERT] -- Erkennung ueber ext-rbac Modul (Phase 4f, blockiert durch Entra ID)
+   └→ [NICHT IMPLEMENTIERT] -- Erkennung ueber ext-rbac Modul (implementiert 2026-03-23, Deprovisioning-Automatik ausstehend)
 
 2. Sofort-Massnahmen:
    ├→ Auth-Sessions invalidieren (Redis + Cookie)

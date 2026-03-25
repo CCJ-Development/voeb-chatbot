@@ -32,7 +32,7 @@
 | Intended Purpose | Interne Wissenssuche und Fragebeantwortung für VÖB-Mitarbeiter auf Basis organisationsinterner Dokumente |
 | Betroffene Personen | ~150 VÖB-Mitarbeiter (Endnutzer), VÖB-Administratoren |
 | Einsatzumgebung | Internes Tool -- kein Einsatz gegenüber Externen, keine Kundeninteraktion, keine öffentliche Zugänglichkeit |
-| Betrieb seit | DEV: 2026-02-27, TEST: 2026-03-03, PROD: 2026-03-11 (DNS/TLS ausstehend) |
+| Betrieb seit | DEV: 2026-02-27, TEST: 2026-03-03, PROD: HTTPS LIVE seit 2026-03-17 (`https://chatbot.voeb-service.de`) |
 
 ### 1.1 KI-Modelle im Einsatz
 
@@ -216,7 +216,7 @@ Obwohl das System als Limited Risk eingestuft wird, ist eine Risikobewertung aus
 | T1 | **Halluzinationen / falsche Antworten** | LLM generiert plausibel klingende, aber inhaltlich falsche Informationen | HOCH (inhärent bei LLMs) | HOCH (besonders im Banking-Kontext: falsche regulatorische Auskünfte) | RAG mit Quellenangaben (Nutzer kann Quellen prüfen), System-Prompt-Guardrails via ext-prompts, Disclaimer im UI (ext-branding) | MITTEL -- Halluzinationen sind bei aktuellen LLMs nicht vollständig eliminierbar |
 | T2 | **Bias in LLM-Antworten** | Modelle reproduzieren oder verstärken gesellschaftliche Vorurteile (Gender, Herkunft etc.) | MITTEL | MITTEL (internes Tool, keine Kundeninteraktion, keine Entscheidungsautomatisierung) | Kein automatisiertes Entscheidungssystem; Antworten sind informativ, nicht handlungsanweisend. System-Prompts können Anti-Bias-Anweisungen enthalten (ext-prompts). Mehrere Modelle zur Auswahl. | NIEDRIG -- Risiko durch internen Einsatz und menschliche Aufsicht begrenzt |
 | T3 | **Prompt Injection** | Angreifer manipuliert über speziell gestaltete Eingaben das Systemverhalten, z.B. Exfiltration von Dokumenten oder Umgehung von Guardrails | MITTEL | HOCH (potenziell meldepflichtige Datenschutzverletzung Art. 33 DSGVO) | System-Prompt vor User-Input (Onyx-Standard), Input-Validierung (Pydantic, Längenbegrenzung), ext-prompts Custom Guardrails, NetworkPolicies (Daten-Egress eingeschränkt) | MITTEL -- Prompt Injection ist ein aktives Forschungsgebiet; vollständiger Schutz nicht möglich |
-| T4 | **Datenleck über LLM-Kontext** | LLM gibt in Antworten Informationen preis, auf die der Nutzer keinen Zugriff haben sollte (Cross-Context Leakage) | MITTEL (abhängig von Dokumenten-Zugriffssteuerung) | HOCH | Namespace-basierte Dokumenten-Isolation (geplant: ext-access, Phase 4g), RAG beschränkt Kontext auf relevante Dokumente, kein globaler Zugriff auf alle Dokumente | MITTEL -- ext-access (Zugriffssteuerung) ist noch blockiert (Entra ID ausstehend) |
+| T4 | **Datenleck über LLM-Kontext** | LLM gibt in Antworten Informationen preis, auf die der Nutzer keinen Zugriff haben sollte (Cross-Context Leakage) | MITTEL (abhängig von Dokumenten-Zugriffssteuerung) | HOCH | Namespace-basierte Dokumenten-Isolation (geplant: ext-access, Phase 4g), RAG beschränkt Kontext auf relevante Dokumente, kein globaler Zugriff auf alle Dokumente | NIEDRIG -- ext-access implementiert (2026-03-25), dokumentenbasierte Zugriffskontrolle aktiv |
 | T5 | **Übervertrauen in KI-Antworten (Automation Bias)** | Mitarbeiter übernehmen KI-Antworten unkritisch für wichtige Entscheidungen | HOCH (psychologischer Effekt, verstärkt durch professionelle UI) | HOCH (im Banking: falsche regulatorische Interpretation kann rechtliche Konsequenzen haben) | Disclaimer im UI, Quellenangaben (RAG), KI-Kompetenz-Schulung (Art. 4), System-Prompt-Hinweis "Antworten prüfen" | MITTEL -- technische Maßnahmen können Automation Bias nur begrenzt adressieren; Schulung ist entscheidend |
 | T6 | **Unbeabsichtigte Verarbeitung personenbezogener Daten im Prompt** | Nutzer geben personenbezogene Daten (Namen, Kontodaten, Gehälter) als Teil ihrer Frage ein, die vom LLM verarbeitet werden | HOCH (Nutzer kontrollieren Eingaben) | MITTEL (Daten bleiben auf StackIT, keine Drittlandübermittlung) | StackIT-Hosting (EU, kein Datenabfluss), Token-Tracking ohne Prompt-Inhalt (nur Zählung), ext-prompts Guardrails, KI-Nutzungsrichtlinie (geplant) | NIEDRIG -- Datensouveränität durch StackIT gewährleistet; Restrisiko durch Nutzerverhalten |
 
@@ -266,7 +266,7 @@ E.W. = Eintrittswahrscheinlichkeit
 | 10 | Halluzinations-Mitigation | BaFin KI-OH, Best Practice | TEILWEISE ERFÜLLT | RAG mit Quellenangaben, Disclaimer, Schulung | CCJ (Technik), VÖB (Schulung) |
 | 11 | Token-/Kosten-Kontrolle | Best Practice, BAIT Kap. 8 | ERFÜLLT | ext-token: Per-User/Per-Model Tracking, Quotas, Hard Stops (HTTP 429) | CCJ |
 | 12 | Monitoring und Alerting | BSI DER.1, BAIT Kap. 5 | ERFÜLLT | kube-prometheus-stack auf allen Environments, Teams-Alerting, 20+ Alert-Rules | CCJ |
-| 13 | Zugriffssteuerung | BSI ORP.4, BAIT Kap. 6 | TEILWEISE ERFÜLLT | Onyx-RBAC nativ (admin/basic). ext-rbac (Gruppen, Entra ID) blockiert durch VÖB IT. | CCJ (Technik), VÖB (Entra ID) |
+| 13 | Zugriffssteuerung | BSI ORP.4, BAIT Kap. 6 | ERFÜLLT | Onyx-RBAC nativ (admin/basic). ext-rbac (Gruppen) implementiert (2026-03-23). ext-access (Dokument-ACL) implementiert (2026-03-25). Entra ID OIDC aktiv (seit 2026-03-24). | CCJ |
 | 14 | KI-Nutzungsrichtlinie | Art. 4 AI Act, Best Practice | NICHT ERFÜLLT | [EMPFEHLUNG] VÖB erstellt interne KI-Nutzungsrichtlinie | VÖB |
 | 15 | AVV mit StackIT | Art. 28 DSGVO | NICHT ERFÜLLT | [KLÄRUNG] Existiert bereits ein AVV zwischen VÖB und StackIT? | VÖB |
 
@@ -322,7 +322,7 @@ VÖB muss als Deployer sicherstellen, dass:
 
 | # | Empfehlung | Aufwand | Verantwortlich |
 |---|-----------|---------|----------------|
-| E9 | **Zugriffssteuerung (ext-access)**: Dokumenten-Isolation per Gruppe/Abteilung -- reduziert T4 (Datenleck über LLM-Kontext) | 3 PT | CCJ (blockiert: Entra ID) |
+| E9 | **Zugriffssteuerung (ext-access)**: Dokumenten-Isolation per Gruppe/Abteilung -- reduziert T4 (Datenleck über LLM-Kontext) | 3 PT | ✅ IMPLEMENTIERT (2026-03-25) |
 | E10 | **Adversarial Testing**: Gezieltes Prompt-Injection-Testing durch Sicherheitsexperten | 2 PT | Extern |
 | E11 | **Bias-Monitoring**: Stichprobenartige Analyse von LLM-Antworten auf systematische Verzerrungen | 0,5 PT | VÖB + CCJ |
 | E12 | **BaFin KI-Orientierungshilfe Mapping** (18.12.2025): Systematischer Abgleich mit BaFin-Erwartungen für KI-IKT-Risiken | 0,5 PT | CCJ |

@@ -169,7 +169,7 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Datenbank**: PostgreSQL Flex `vob-dev` (2 CPU, 4 GB RAM, Single)
 - **Object Storage**: Bucket `vob-dev`
 - **Zugriff**: `https://dev.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
-- **Authentifizierung**: `AUTH_TYPE: basic` (Entra ID ausstehend, blockiert durch VÖB)
+- **Authentifizierung**: `AUTH_TYPE: oidc` (Entra ID OIDC, seit 2026-03-23)
 - **LLM**: 4 Chat-Modelle via StackIT AI Model Serving: GPT-OSS 120B (`openai/gpt-oss-120b`), Qwen3-VL 235B (`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`), Llama 3.3 70B (`cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic`), Llama 3.1 8B (`neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8`)
 - **Embedding**: Qwen3-VL-Embedding 8B (4096 Dimensionen, multilingual)
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-dev.yaml`
@@ -203,13 +203,13 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Object Storage**: Bucket `vob-prod`
 - **Load Balancer**: `188.34.92.162`
 - **Egress**: `188.34.73.72` (PG ACL eingeschraenkt auf `/32`)
-- **Authentifizierung**: Basic (temporaer), Microsoft Entra ID (OIDC) geplant (blockiert durch VÖB)
-- **LLM**: Noch nicht konfiguriert (wartet auf DNS/TLS-Aktivierung und VÖB-Zugang)
+- **Authentifizierung**: `AUTH_TYPE: oidc` (Entra ID OIDC, seit 2026-03-24)
+- **LLM**: 3 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B), Embedding Qwen3-VL-Embedding 8B (seit 2026-03-24)
 - **Security**: SEC-06 Phase 2 aktiv (`runAsNonRoot: true`, Vespa = dokumentierte Ausnahme)
-- **Monitoring**: 9 Pods in `monitoring` NS (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP. Teams-Alerting (PROD-Kanal)
-- **GitHub Environment**: `prod` mit Required Reviewer + 6 Secrets (keine Secrets im Git)
+- **Monitoring**: 14 Pods in `monitoring` NS (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG/Redis/OpenSearch/Blackbox Exporter, Operator, Loki, 2x Promtail). 25 Targets UP. 50 VÖB Rules. Loki Log-Aggregation (seit 2026-03-25). Teams-Alerting (PROD-Kanal)
+- **GitHub Environment**: `prod` mit Required Reviewer + 7 Secrets (inkl. OPENSEARCH_PASSWORD, keine Secrets im Git)
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-prod.yaml`
-- **Zugriff**: DNS/TLS pending (A-Record + ACME-CNAME bei GlobVill angefragt)
+- **Zugriff**: HTTPS LIVE seit 2026-03-17 (`https://chatbot.voeb-service.de`)
 - **Aenderungen**: Nur nach erfolgreicher TEST-Validierung + GitHub Environment Approval
 - **Zweck**: Production-Betrieb fuer VÖB-Mitarbeiter
 
@@ -334,7 +334,7 @@ class TestTokenUsageAPI:
 
 ### Security-Tests
 
-[ENTWURF -- Blockiert: Wartet auf Phase 4f (ext-rbac), benoetigt Entra ID von VÖB]
+[ENTWURF -- ext-rbac implementiert (2026-03-23), Entra ID OIDC live (2026-03-24). Security-Tests ausstehend (Phase 5).]
 
 **Definition**: Tests für Sicherheitsfunktionalität (Authentication, Authorization, Input Validation).
 
@@ -603,7 +603,7 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 
 ### RBAC Module -- Testfaelle
 
-[ENTWURF -- Blockiert: Wartet auf Phase 4f (ext-rbac), benoetigt Entra ID von VÖB]
+[ext-rbac implementiert (2026-03-23, 29 Tests). Entra ID OIDC live (2026-03-24). Testfaelle ausstehend (manuelle Validierung Phase 5).]
 
 #### TC-RBAC-001: User-Gruppe erstellen und zuweisen
 
@@ -1000,9 +1000,9 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | 2 | Token Limits durchgesetzt | Token-Budgets werden geprueft, HTTP 429 bei Ueberschreitung | Implementiert (4c, 29 Unit Tests bestanden) | [x] Ja [ ] Nein |
 | 3 | Branding angewendet | UI zeigt VÖB-Branding korrekt | Implementiert (4b, deployed DEV+TEST, getestet 2026-03-08) | [x] Ja [ ] Nein |
 | 4 | Custom Prompts | System Prompts konfigurierbar, CORE #7 Hook aktiv | Implementiert (4d, 29 Unit Tests, deployed 2026-03-09) | [x] Ja [ ] Nein |
-| 5 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | [TBD] | [ ] Ja [ ] Nein |
-| 6 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | [Blockiert — Entra ID] | [ ] Ja [ ] Nein |
-| 7 | Access Control | Dokument-Zugriffssteuerung pro Gruppe | [Blockiert — braucht RBAC] | [ ] Ja [ ] Nein |
+| 5 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | ✅ Entra ID OIDC live DEV + PROD (seit 2026-03-24) | [x] Ja [ ] Nein |
+| 6 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | ✅ ext-rbac implementiert (2026-03-23, 29 Tests) | [x] Ja [ ] Nein |
+| 7 | Access Control | Dokument-Zugriffssteuerung pro Gruppe | ✅ ext-access implementiert (2026-03-25, 11 Tests) | [x] Ja [ ] Nein |
 | 8 | Chat-Funktionalität | Benutzer können chatten, LLM antwortet | [TBD] | [ ] Ja [ ] Nein |
 | 9 | RAG funktioniert | Dokumente werden gesucht und eingebettet | [TBD] | [ ] Ja [ ] Nein |
 | 10 | Skalierbarkeit | System skaliert auf 150 gleichzeitige Benutzer (PROD-Sizing, ADR-005) | [TBD] | [ ] Ja [ ] Nein |
@@ -1021,8 +1021,8 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | ext-branding (Phase 4b) | TC-BRANDING-001 bis TC-BRANDING-005 | Alle bestanden | 5 TCs, 21 Unit Tests (test_branding.py) |
 | ext-token (Phase 4c) | TC-TL-001 bis TC-TL-006, TC-TOKEN-001 bis TC-TOKEN-004 | Alle bestanden | 10 TCs, 11 Unit Tests (test_token_tracker.py) |
 | ext-prompts (Phase 4d) | TC-PROMPTS-001 bis TC-PROMPTS-005 | Alle bestanden | 5 TCs, 29 Unit Tests (test_prompts.py) |
-| ext-rbac (Phase 4f) | TC-RBAC-001 bis TC-RBAC-005 | TBD (Entra ID) | ENTWURF, 5 TCs geplant |
-| Authentifizierung (Phase 3) | TC-AUTH-001 (geplant) | TBD (Entra ID) | Blockiert |
+| ext-rbac (Phase 4f) | TC-RBAC-001 bis TC-RBAC-005 | ✅ Implementiert (2026-03-23) | 29 Unit Tests (test_rbac.py) |
+| Authentifizierung (Phase 3) | TC-AUTH-001 | ✅ Entra ID OIDC live (2026-03-24) | DEV + PROD |
 | Chat-Funktionalitaet | TC-CHAT-001 (geplant) | TBD (Phase 5) | E2E Test geplant |
 | RAG-Funktionalitaet | TC-RAG-001 (geplant) | TBD (Phase 5) | Integration Test geplant |
 | Skalierbarkeit (NFR) | Load Test Skalierung-001 (geplant) | TBD (Phase 5) | K6 Performance Test, 150 User |
@@ -1140,7 +1140,7 @@ Markiert als "Verified Fixed"
 |-------|----------|--------|--------|-----------------|
 | **Phase 1-2: Infrastruktur** | Feb 2026 | DEV + TEST Environment Setup | Erledigt (DEV 2026-02-27, TEST 2026-03-03) | Entwicklung (CCJ) |
 | **Phase 4a: Extension Framework** | Feb 2026 | Feature Flags, Health Endpoint (10 Tests, 100% bestanden) | Erledigt (2026-02-12) | Entwicklung (CCJ) |
-| **Phase 3: Authentifizierung** | Ausstehend | Entra ID Integration | Blockiert (wartet auf VÖB IT) | Entwicklung + VÖB IT |
+| **Phase 3: Authentifizierung** | 2026-03-23/24 | Entra ID OIDC Integration | Erledigt (DEV 2026-03-23, PROD 2026-03-24) | Entwicklung (CCJ) + VÖB IT |
 | **Phase 4b-4d: Feature-Tests** | 2026-03-08 bis 2026-03-09 | Branding, Token Limits, Custom Prompts — alle implementiert und getestet | Erledigt (4b: 21 Tests, 4c: 11 Tests, 4d: 29 Tests) | Entwicklung (CCJ) |
 | **Phase 5: E2E + Security-Tests** | Ausstehend | Vollstaendige User Flows, Pentest | Geplant | Tech Lead (CCJ) + externer Auditor |
 | **Phase 6: UAT + Go-Live** | Ausstehend | VÖB-Stakeholder Abnahme auf TEST-Umgebung | Geplant | Tech Lead (CCJ) + VÖB |

@@ -62,7 +62,7 @@ deployment/
       values-common.yaml              ← PG aus, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an
       values-dev.yaml                 ← 1 Replica pro Service, 8 Celery-Worker (Standard Mode)
       values-test.yaml                ← NEU — TEST analog DEV, eigene Credentials
-      values-prod.yaml              ← PROD: Platzhalter (noch nicht deployed)
+      values-prod.yaml              ← PROD: Deployed (2026-03-11, 20 Pods, Helm Rev 4+)
 
 .github/workflows/
   stackit-deploy.yml                  ← NEU (neben bestehenden Workflows)
@@ -396,7 +396,7 @@ Detaillierte Anleitung: [`docs/runbooks/ci-cd-pipeline.md`](../runbooks/ci-cd-pi
 
 ## Phase 6: LLM-Integration (nach funktionierendem Deploy)
 
-> **Status**: ✅ Chat-Modell konfiguriert (2026-02-27). Embedding-Modell ausstehend.
+> **Status**: ✅ Chat-Modelle + Embedding konfiguriert (DEV 2026-02-27, PROD 2026-03-24).
 
 StackIT AI Model Serving bietet eine **OpenAI-kompatible API** (vLLM-Backend).
 Onyx unterstützt das nativ über LiteLLM — keine Code-Änderung nötig, reine Admin-UI-Konfiguration.
@@ -575,7 +575,7 @@ Neues File `deployment/helm/values/values-test.yaml`, analog zu `values-dev.yaml
 | `WEB_DOMAIN` | `http://<TEST-LoadBalancer-IP>` (bis DNS verfügbar) |
 | `REDIS_HOST` | `onyx-test` (Release-Name = Redis-Service-Name) |
 | Alle Replicas | 1 (wie DEV) |
-| `AUTH_TYPE` | `basic` (bis Entra ID verfügbar) |
+| `AUTH_TYPE` | `basic` (bis Entra ID verfuegbar, inzwischen auf OIDC umgestellt wo aktiv) |
 
 ### 7.5 GitHub Secrets für Environment `test`
 
@@ -673,11 +673,11 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | TEST Environment | Nach DEV-Validierung | Phase 7: Node Pool skalieren, PG + Bucket + Namespace + Helm | ✅ LIVE (2026-03-03) |
 | Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ✅ DEV + TEST aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12) |
 | Branding | Nach TEST-Setup | Logo-Dateien ersetzen, ext/-Komponenten | ✅ Deployed (DEV+TEST, 2026-03-08) |
-| Entra ID (Auth) | Sobald Credentials von VÖB | `AUTH_TYPE: oidc` in Helm Values | Blockiert |
-| DNS + TLS | Nach DNS-Setup | Let's Encrypt oder StackIT-CA | Blockiert (VÖB IT) |
+| Entra ID (Auth) | Sobald Credentials von VÖB | `AUTH_TYPE: oidc` in Helm Values | ✅ LIVE (DEV 2026-03-23, PROD 2026-03-24) |
+| DNS + TLS | Nach DNS-Setup | Let's Encrypt oder StackIT-CA | ✅ LIVE (alle Environments HTTPS) |
 | Security-Härtung P0 | Vor TEST-Deploy | SEC-01: PG ACL einschränken (30 Min) | ✅ Erledigt (2026-03-03) |
 | Security-Härtung P1 | Nach TEST, vor PROD | SEC-06 Phase 1 ✅ (`privileged: false` deployed). Phase 2: `runAsNonRoot` (4-6h) + M7: Cluster-ACL. SEC-02/04/05 zurückgestellt. | ⏳ Teilweise |
-| PROD Cluster | Vor Go-Live | Eigener SKE-Cluster + 2× g1a.8d + PG 4.8 HA (ADR-004) | Geplant |
+| PROD Cluster | Vor Go-Live | Eigener SKE-Cluster + 2× g1a.8d + PG 4.8 HA (ADR-004) | ✅ Deployed (2026-03-11) |
 | Monitoring | Phase M5 | kube-prometheus-stack + Exporters + Teams Alerting | ✅ Erledigt (2026-03-10/11) |
 
 ---
@@ -696,7 +696,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | 8 | Object Storage Credentials | Niko | ✅ Erledigt (2026-02-27) |
 | 9 | StackIT AI Model Serving (Chat-Modell konfiguriert) | Niko | ✅ Erledigt (2026-02-27) |
 | 10 | DNS-Zone (`dev.chatbot.voeb-service.de` → `188.34.74.187`) | VÖB IT | ✅ Erledigt (2026-03-05) |
-| 11 | Entra ID Credentials | VÖB IT | Blockiert |
+| 11 | Entra ID Credentials | VÖB IT | ✅ Erhalten (2026-03-22) |
 | 12 | Storage Class Name prüfen | Bei `terraform plan` sichtbar | ✅ `premium-perf2-stackit` (bestätigt) |
 | 13 | CI/CD Pipeline Helm-Fixes | Niko | ✅ Erledigt (2026-03-02) — `f3a22017f` + `64c9c7aca` |
 | 14 | Upstream-Workflows deaktivieren | Niko | ✅ Erledigt (2026-03-02) — 21 Workflows disabled via API |
@@ -716,7 +716,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 | 28 | **H3**: Llama 3.3 Model-ID vereinheitlichen (FP8 vs Standard) | Niko | ✅ Erledigt (2026-03-08) — korrekte ID: `cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic` |
 | 29 | **M3**: IP-Ownership in ADR-001 klären ("CCJ oder VÖB" → eindeutig) | Niko | ⏳ Klärung mit VÖB |
 | 30 | **C5**: DSGVO-Dokumente erstellen (DSFA, Löschkonzept, AVV) | Niko | ⏳ P2 (vor Abnahme) |
-| 31 | **M5**: PROD OIDC-Secrets in GitHub Environment `prod` vorbereiten | Niko | ⏳ Nach Entra ID |
+| 31 | **M5**: PROD OIDC-Secrets in GitHub Environment `prod` vorbereiten | Niko | ✅ Erledigt (2026-03-24) |
 | 32 | **M6**: PROD Node-Sizing entscheiden (2 vs 3 Nodes) | Niko | ✅ Erledigt (2026-03-11) — 2× g1a.8d, deployed in values-prod.yaml |
 | 33 | **M7**: Cluster-API-ACL Default `0.0.0.0/0` entfernen (`modules/stackit/variables.tf`) | Niko | ⏳ P1 (vor PROD) |
 | 34 | **M9**: ✅ Erledigt — Standard Mode (8 separate Worker), Lightweight Mode durch Upstream PR #9014 entfernt | Niko | ✅ Erledigt (2026-03-06) |
