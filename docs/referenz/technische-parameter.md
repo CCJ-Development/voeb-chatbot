@@ -369,7 +369,7 @@
 
 | Cluster | Gueltig bis | Hinweis |
 |---------|-------------|---------|
-| vob-chatbot (DEV+TEST) | 2026-05-28 | 90-Tage-Rotation |
+| vob-chatbot (DEV+TEST) | 2026-06-14 | 90-Tage-Rotation |
 | vob-prod (PROD) | **2026-06-22** | Erneuert 2026-03-24 (vorherige expired) |
 
 ---

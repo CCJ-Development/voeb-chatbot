@@ -38,7 +38,7 @@ Problem erkannt
 
 ### Voraussetzungen
 
-- Kubeconfig konfiguriert: DEV/TEST: `~/.kube/config` (Ablauf: 2026-05-28), PROD: `~/.kube/config-prod` (Ablauf: 2026-06-09)
+- Kubeconfig konfiguriert: DEV/TEST: `~/.kube/config` (Ablauf: 2026-06-14), PROD: `~/.kube/config-prod` (Ablauf: 2026-06-22)
 - `helm` und `kubectl` installiert
 - Zugriff auf den SKE Cluster
 

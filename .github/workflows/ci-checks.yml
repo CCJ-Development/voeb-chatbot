@@ -28,6 +28,8 @@ concurrency:
 
 env:
   HELM_CHART_PATH: deployment/helm/charts/onyx
+  # Node.js 24 Opt-In: Vermeidet Deprecation-Warnings (Pflicht ab 02.06.2026)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # =========================================================

@@ -167,7 +167,7 @@ mcpServer:
 # --- SEC-06: Container Security Hardening (2026-03-08) ---
 # Onyx Chart Default: privileged: true + runAsUser: 0 für Celery + Model Server.
 # Phase 1: privileged entfernt. runAsUser: 0 beibehalten (minimale Änderung).
-# Phase 2 (vor PROD): runAsUser: 1001 + runAsNonRoot: true (Onyx Dockerfile definiert User 'onyx' UID 1001).
+# Phase 2: ERLEDIGT fuer PROD (values-prod.yaml: runAsUser: 1001 + runAsNonRoot: true). DEV bleibt Phase 1.
 # BSI SYS.1.6.A10: "Privileged Mode SOLLTE NICHT verwendet werden."
 celery_shared:
   image:

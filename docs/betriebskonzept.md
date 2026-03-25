@@ -397,7 +397,7 @@ GitHub Environment Secrets (verschlüsselt, pro Environment getrennt)
 |--------|-----------|
 | `STACKIT_REGISTRY_USER` | Container Registry Robot Account |
 | `STACKIT_REGISTRY_PASSWORD` | Container Registry Token |
-| `STACKIT_KUBECONFIG` | Base64-encoded Kubeconfig DEV+TEST (Ablauf: 2026-05-28) |
+| `STACKIT_KUBECONFIG` | Base64-encoded Kubeconfig DEV+TEST (Ablauf: 2026-06-14) |
 
 ### Helm-basiertes Deployment
 
@@ -987,7 +987,7 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 - **GitHub Environments**: `dev`, `test` und `prod` mit je 5 Secrets (POSTGRES_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, DB_READONLY_PASSWORD). PROD nutzt zusaetzlich STACKIT_KUBECONFIG als Environment-Secret (ueberschreibt das globale Repository-Secret automatisch)
 - **GitHub Environment Protection (`prod`)**: Required Reviewer konfiguriert — Deployment auf PROD erfordert manuelle Freigabe
 - **Globale Secrets**: STACKIT_REGISTRY_USER, STACKIT_REGISTRY_PASSWORD, STACKIT_KUBECONFIG (DEV+TEST)
-- **Kubeconfig-Ablauf**: DEV+TEST 2026-05-28, PROD 2026-06-09 -- Erneuerung einplanen
+- **Kubeconfig-Ablauf**: DEV+TEST 2026-06-14, PROD 2026-06-22 -- Erneuerung einplanen
 - **Kubernetes Secrets**: `onyx-postgresql`, `onyx-redis`, `onyx-dbreadonly`, `onyx-objectstorage`, `stackit-registry` (pro Namespace)
 
 ### Security-Audit Findings (SEC-01 bis SEC-07)

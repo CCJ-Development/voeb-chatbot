@@ -48,14 +48,7 @@ prometheus:
             labels:
               environment: "dev"
               service: "api"
-      - job_name: "onyx-api-test"
-        metrics_path: "/metrics"
-        scrape_interval: "30s"
-        static_configs:
-          - targets: ["onyx-test-api-service.onyx-test.svc.cluster.local:8080"]
-            labels:
-              environment: "test"
-              service: "api"
+      # onyx-api-test: Entfernt (TEST dauerhaft heruntergefahren seit 2026-03-19)
       # PostgreSQL Exporter (StackIT Managed PG Flex)
       - job_name: "postgres-dev"
         metrics_path: "/metrics"
@@ -66,15 +59,7 @@ prometheus:
             labels:
               environment: "dev"
               service: "postgresql"
-      - job_name: "postgres-test"
-        metrics_path: "/metrics"
-        scrape_interval: "30s"
-        scrape_timeout: "15s"
-        static_configs:
-          - targets: ["postgres-exporter-test.monitoring.svc.cluster.local:9187"]
-            labels:
-              environment: "test"
-              service: "postgresql"
+      # postgres-test: Entfernt (TEST dauerhaft heruntergefahren seit 2026-03-19)
       # Redis Exporter (In-Cluster Redis)
       - job_name: "redis-dev"
         metrics_path: "/metrics"
@@ -84,14 +69,7 @@ prometheus:
             labels:
               environment: "dev"
               service: "redis"
-      - job_name: "redis-test"
-        metrics_path: "/metrics"
-        scrape_interval: "30s"
-        static_configs:
-          - targets: ["redis-exporter-test.monitoring.svc.cluster.local:9121"]
-            labels:
-              environment: "test"
-              service: "redis"
+      # redis-test: Entfernt (TEST dauerhaft heruntergefahren seit 2026-03-19)
     # ServiceMonitor Namespace Selector (alle Namespaces)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false

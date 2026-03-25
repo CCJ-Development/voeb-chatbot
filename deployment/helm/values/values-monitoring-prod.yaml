@@ -158,7 +158,7 @@ grafana:
   # Dashboard-Provisioning via Sidecar (ConfigMap-basiert, NICHT gnetId).
   # Dashboards werden als ConfigMaps mit Label grafana_dashboard=1 deployed.
   # Siehe: deployment/k8s/monitoring-exporters/grafana-dashboards/
-  # 4 Dashboards: PG (14114), Redis (763), SLO, Audit-Log.
+  # 5 Dashboards: PG (14114), Redis (763), SLO, Audit-Log, Token-Usage.
   # gnetId-Approach funktioniert NICHT (Sidecar kann grafana.com nicht erreichen).
   sidecar:
     dashboards:

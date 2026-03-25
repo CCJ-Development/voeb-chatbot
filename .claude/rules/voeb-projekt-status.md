@@ -53,7 +53,7 @@
   - ✅ SEC-06 Phase 2: `runAsNonRoot: true` aktiv (Vespa = dokumentierte Ausnahme)
   - ✅ PG ACL: Egress `188.34.73.72/32` + Admin
   - ✅ Maintenance-Window: 03:00-05:00 UTC (O8, eigenes Fenster)
-  - ✅ Kubeconfig gueltig bis 2026-06-09 (90 Tage)
+  - ✅ Kubeconfig gueltig bis 2026-06-22 (90 Tage)
   - ✅ DNS: A-Record + ACME-CNAME gesetzt durch Leif/GlobVill (2026-03-17)
   - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
   - ✅ SEC-09: Rate-Limiting 10r/s, Upload-Limit 20 MB, MAX_FILE_SIZE_BYTES Backend-Limit

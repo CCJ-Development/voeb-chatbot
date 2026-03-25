@@ -2,7 +2,7 @@
 # ============================================================================
 # NetworkPolicy Apply-Skript (C5/SEC-03)
 #
-# Wendet alle 5 NetworkPolicies in sicherer Reihenfolge an:
+# Wendet alle 8 NetworkPolicies in sicherer Reihenfolge an:
 #   1. Allow-Policies (02-05) — Verbindungen erlauben
 #   2. Default-Deny (01) — alles andere sperren
 #
@@ -46,7 +46,7 @@ done
 
 echo ""
 echo "--- Schritt 2/3: Monitoring Allow-Policies anwenden ---"
-for policy in 06-allow-monitoring-scrape.yaml 07-allow-redis-exporter-ingress.yaml; do
+for policy in 06-allow-monitoring-scrape.yaml 07-allow-redis-exporter-ingress.yaml 08-allow-opensearch-exporter-ingress.yaml; do
     echo "  Applying: ${policy}"
     kubectl apply -f "${SCRIPT_DIR}/${policy}" -n "${NAMESPACE}"
 done
@@ -61,7 +61,7 @@ kubectl get networkpolicy -n "${NAMESPACE}"
 
 echo ""
 echo "============================================"
-echo "Alle 7 Policies angewendet auf: ${NAMESPACE}"
+echo "Alle 8 Policies angewendet auf: ${NAMESPACE}"
 echo "============================================"
 echo ""
 echo "Naechste Schritte — Verifikation:"

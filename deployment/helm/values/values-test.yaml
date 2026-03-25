@@ -67,13 +67,15 @@ configMap:
   DOMAIN: "test.chatbot.voeb-service.de"
   WEB_DOMAIN: "https://test.chatbot.voeb-service.de"
 
-  # Auth: Basic Auth (Entra ID kommt in Phase 3)
+  # Auth: Basic Auth (TEST nie auf OIDC migriert, dauerhaft heruntergefahren seit 2026-03-19)
   AUTH_TYPE: "basic"
   REQUIRE_EMAIL_VERIFICATION: "false"
 
   # VÖB Extension Framework (EXT_ENABLED + EXT_BRANDING_ENABLED in values-common.yaml)
   EXT_TOKEN_LIMITS_ENABLED: "true"
   EXT_CUSTOM_PROMPTS_ENABLED: "true"
+  EXT_DOC_ACCESS_ENABLED: "true"
+  EXT_AUDIT_ENABLED: "true"
 
   # Logging
   LOG_LEVEL: "INFO"

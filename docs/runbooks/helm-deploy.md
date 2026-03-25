@@ -40,7 +40,7 @@
 
 **WICHTIG:** IMMER `values-{env}-secrets.yaml` mit angeben! Ohne diese Datei werden PG, Redis, S3 Credentials auf leere Strings gesetzt und alle Pods crashen.
 
-**PROD nutzt ein separates Kubeconfig:** `~/.kube/config-prod` (Cluster `vob-prod`, Ablauf 2026-06-09). DEV/TEST: `~/.kube/config` (Cluster `vob-chatbot`, Ablauf 2026-05-28).
+**PROD nutzt ein separates Kubeconfig:** `~/.kube/config-prod` (Cluster `vob-prod`, Ablauf 2026-06-22). DEV/TEST: `~/.kube/config` (Cluster `vob-chatbot`, Ablauf 2026-06-14).
 
 ### Erwartete Pod-Counts
 
@@ -340,7 +340,7 @@ WEB_DOMAIN: "https://chatbot.voeb-service.de"
 | Alembic Migrationen nicht nachgeholt | Wenn Upstream Migrationen in die Kette einfuegt (zwischen bestehende Hashes), aber die DB bereits auf einem spaeteren Head gestempelt ist, wird `alembic upgrade head` diese Migrationen nicht ausfuehren. | Neue Migrationen identifizieren (`git diff HEAD~1 -- backend/alembic/versions/`), dann SQL manuell ausfuehren: `kubectl exec -it -n onyx-{env} $(kubectl get pod -n onyx-{env} -l app=api-server -o name \| head -1) -- psql $DATABASE_URL -c "<SQL>"`. Details: Sync #3 in Historische Syncs. |
 | OpenSearch Default-Passwort auf PROD | PROD nutzt ein eigenes OpenSearch-Passwort (GitHub Secret `OPENSEARCH_PASSWORD`). Bei Clean Install ohne explizites Passwort wird ein Onyx-Default verwendet → Inkonsistenz mit vorhandenen Daten. | `--set "auth.opensearch.values.opensearch_admin_password=<PW>"` immer mitgeben (manuell) oder GitHub Secret pruefen (CI/CD). |
 | DB Pool Exhaustion bei RollingUpdate | RollingUpdate startet neue Pods bevor alte gestoppt werden → doppelter DB-Connection-Pool → PostgreSQL `max_connections` erschoepft → neue Pods schlagen fehl. | Recreate-Strategie setzen (siehe Abschnitt "Recreate-Strategie"). Im Notfall: alte ReplicaSets manuell auf 0 skalieren (`kubectl scale rs <old-rs> --replicas=0 -n onyx-{env}`). |
-| PROD Kubeconfig verwenden | PROD laeuft auf eigenem Cluster `vob-prod`. Fehlendes `export KUBECONFIG=~/.kube/config-prod` fuehrt dazu, dass Befehle auf DEV/TEST-Cluster landen. | `export KUBECONFIG=~/.kube/config-prod` vor allen PROD-Befehlen setzen. Ablauf: 2026-06-09 (erneuern via Terraform). |
+| PROD Kubeconfig verwenden | PROD laeuft auf eigenem Cluster `vob-prod`. Fehlendes `export KUBECONFIG=~/.kube/config-prod` fuehrt dazu, dass Befehle auf DEV/TEST-Cluster landen. | `export KUBECONFIG=~/.kube/config-prod` vor allen PROD-Befehlen setzen. Ablauf: 2026-06-22 (erneuern via Terraform). |
 
 ---
 

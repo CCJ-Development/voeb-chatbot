@@ -14,14 +14,14 @@
 #   Global:
 #     - STACKIT_REGISTRY_USER      (Robot Account Name aus Container Registry)
 #     - STACKIT_REGISTRY_PASSWORD  (Robot Account Token aus Container Registry)
-#     - STACKIT_KUBECONFIG         (base64-encoded, Ablauf prüfen! Aktuell: 2026-05-28)
+#     - STACKIT_KUBECONFIG         (base64-encoded, Ablauf prüfen! DEV: 2026-06-14, PROD: 2026-06-22)
 #   Per Environment (dev/test/prod):
 #     - POSTGRES_PASSWORD          (Managed PG Flex App-User Passwort)
 #     - S3_ACCESS_KEY_ID           (StackIT Object Storage)
 #     - S3_SECRET_ACCESS_KEY       (StackIT Object Storage)
 #     - DB_READONLY_PASSWORD       (PG Readonly User für Knowledge Graph)
 #     - REDIS_PASSWORD             (Redis Standalone Passwort)
-#   Nur DEV (Entra ID OIDC):
+#   DEV + PROD (Entra ID OIDC):
 #     - ENTRA_CLIENT_ID            (Entra ID App Registration: Anwendungs-ID)
 #     - ENTRA_CLIENT_SECRET        (Entra ID App Registration: Geheimer Schlüssel)
 #     - ENTRA_TENANT_ID            (Entra ID: Verzeichnis-ID, für OPENID_CONFIG_URL)
@@ -76,6 +76,8 @@ env:
   # Bei Upstream-Update: Tag hier und in MEMORY.md aktualisieren.
   MODEL_SERVER_REPO: docker.io/onyxdotapp/onyx-model-server
   MODEL_SERVER_TAG: v2.9.8
+  # Node.js 24 Opt-In: Vermeidet Deprecation-Warnings (Pflicht ab 02.06.2026)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # =========================================================

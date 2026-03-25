@@ -223,7 +223,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 |-----------|-------|---------|-----------|
 | SKE Cluster `vob-chatbot` (DEV/TEST) | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs zurückgestellt |
 | SKE Cluster `vob-chatbot` (DEV/TEST) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
-| SKE Cluster `vob-prod` (PROD) | Tech Lead | Cluster-Admin (Kubeconfig) | Eigener Cluster (ADR-004), Kubeconfig gültig bis 2026-06-09 |
+| SKE Cluster `vob-prod` (PROD) | Tech Lead | Cluster-Admin (Kubeconfig) | Eigener Cluster (ADR-004), Kubeconfig gültig bis 2026-06-22 |
 | SKE Cluster `vob-prod` (PROD) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | GitHub Environment `prod` mit Required Reviewer + 7 Secrets |
 | Namespace `onyx-dev` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
 | Namespace `onyx-test` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
@@ -431,8 +431,8 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 | S3 Access Key + Secret | GitHub Secret → K8s Secret | Manuell |
 | OpenSearch Admin-Passwort | K8s Secret `onyx-opensearch` (DEV/TEST: `OnyxDev1!`, PROD: GitHub Secret) | Manuell |
 | Container Registry Token | GitHub Secret | Manuell |
-| Kubeconfig (DEV/TEST) | GitHub Secret (base64) | Ablauf: 2026-05-28 |
-| Kubeconfig (PROD) | GitHub Secret (base64) | Ablauf: 2026-06-09 |
+| Kubeconfig (DEV/TEST) | GitHub Secret (base64) | Ablauf: 2026-06-14 |
+| Kubeconfig (PROD) | GitHub Secret (base64) | Ablauf: 2026-06-22 |
 | StackIT AI Model Serving Token | Onyx Admin UI (in DB) | Manuell (90d empfohlen) |
 | Terraform SA Key | `~/.stackit/` (lokal, chmod 600) | Manuell |
 
@@ -487,7 +487,7 @@ Externe Services (über Internet):
 | OS | Flatcar 4459.2.1 | Flatcar 4459.2.3 |
 | Maintenance-Window | 02:00-04:00 UTC | 03:00-05:00 UTC |
 | Egress-IP (NAT Gateway) | `188.34.93.194` | `188.34.73.72` |
-| Kubeconfig Ablauf | 2026-05-28 | 2026-06-09 |
+| Kubeconfig Ablauf | 2026-06-14 | 2026-06-22 |
 
 ### Kubernetes Network Policies
 
@@ -1036,7 +1036,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 4. **Kein BAIT/BSI-Requirement** für Pre-Production — das 4-Augen-Prinzip (BAIT Kap. 2/7, freiwillige Orientierung) betrifft die Produktionsumgebung, nicht DEV/TEST bei Solo-Dev
 5. **DEV/TEST enthalten keine Kundendaten** — Worst Case (Cluster-Admin Leak auf DEV/TEST-Cluster) betrifft nur Testdaten
 
-**Opportunistische Umsetzung**: Kann beim Kubeconfig-Renewal (Ablauf 2026-05-28) kostenneutral mitgemacht werden — neue ServiceAccounts + namespace-scoped RoleBindings statt erneuter Cluster-Admin-Kubeconfig.
+**Opportunistische Umsetzung**: Kann beim Kubeconfig-Renewal (Ablauf 2026-06-14) kostenneutral mitgemacht werden — neue ServiceAccounts + namespace-scoped RoleBindings statt erneuter Cluster-Admin-Kubeconfig.
 
 ### SEC-06: Container SecurityContext — Phase 2 ERLEDIGT (2026-03-11)
 
@@ -1268,7 +1268,7 @@ configMap:
 ### Opportunistisch (P3 — Nice-to-have)
 
 8. **SEC-04**: Terraform Remote State (bei Teamvergrößerung oder Audit-Anforderung)
-9. **SEC-05**: Separate Kubeconfigs (beim Kubeconfig-Renewal 2026-05-28)
+9. **SEC-05**: Separate Kubeconfigs (beim Kubeconfig-Renewal 2026-06-14)
 10. **SEC-06 Phase 3**: `readOnlyRootFilesystem: true` (diminishing returns)
 11. **BAIT/DORA-Compliance-Matrix**: Vollständige Prüfung gegen BAIT/DORA-Anforderungen (freiwillige Orientierung)
 12. **IP-Ownership (M3)**: In ADR-001 "CCJ oder VÖB" eindeutig klären

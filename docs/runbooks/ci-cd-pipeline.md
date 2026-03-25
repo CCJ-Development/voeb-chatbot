@@ -32,7 +32,7 @@
 - `gh` CLI authentifiziert (oder GitHub UI)
 - Für Cluster-Zugriff: `kubectl` mit gültiger Kubeconfig
   - DEV/TEST-Cluster `vob-chatbot`: Ablauf **2026-06-14** (erneuert 2026-03-16)
-  - PROD-Cluster `vob-prod`: Ablauf **2026-06-09**
+  - PROD-Cluster `vob-prod`: Ablauf **2026-06-22** (erneuert 2026-03-24)
 
 ---
 
@@ -201,8 +201,8 @@ kubectl set image deployment/onyx-dev-api-server \
 |--------|-------|-------------|
 | `STACKIT_REGISTRY_USER` | Global | Robot Account Name |
 | `STACKIT_REGISTRY_PASSWORD` | Global | Robot Account Token |
-| `STACKIT_KUBECONFIG` | Global | Base64-encoded Kubeconfig fuer DEV/TEST-Cluster `vob-chatbot`, **Ablauf: 2026-05-28** |
-| `STACKIT_KUBECONFIG` | Environment `prod` | Base64-encoded Kubeconfig fuer PROD-Cluster `vob-prod`, **Ablauf: 2026-06-09**. Ueberschreibt das globale Secret fuer PROD-Deployments. |
+| `STACKIT_KUBECONFIG` | Global | Base64-encoded Kubeconfig fuer DEV/TEST-Cluster `vob-chatbot`, **Ablauf: 2026-06-14** |
+| `STACKIT_KUBECONFIG` | Environment `prod` | Base64-encoded Kubeconfig fuer PROD-Cluster `vob-prod`, **Ablauf: 2026-06-22**. Ueberschreibt das globale Secret fuer PROD-Deployments. |
 | `POSTGRES_PASSWORD` | Per Environment | PG Flex App-User Passwort |
 | `S3_ACCESS_KEY_ID` | Per Environment | StackIT Object Storage |
 | `S3_SECRET_ACCESS_KEY` | Per Environment | StackIT Object Storage |
@@ -234,7 +234,7 @@ Es gibt zwei Kubeconfigs fuer zwei separate Cluster:
 | Cluster | Environments | Ablauf | GitHub Secret Scope |
 |---------|-------------|--------|---------------------|
 | `vob-chatbot` (DEV/TEST) | dev, test | **2026-06-14** (erneuert 2026-03-16) | Global |
-| `vob-prod` (PROD) | prod | **2026-06-09** | Environment `prod` |
+| `vob-prod` (PROD) | prod | **2026-06-22** (erneuert 2026-03-24) | Environment `prod` |
 
 **Schritt 1: DEV/TEST-Cluster erneuern**
 
@@ -369,7 +369,7 @@ Onyx migriert von Vespa auf OpenSearch als Vektor-Datenbank (ab v4.0.0 entfernt 
 
 | Was | Wann | Wie |
 |-----|------|-----|
-| Kubeconfig-Ablauf | Monatlich | Beide Kubeconfigs pruefen: DEV/TEST `vob-chatbot` (aktuell: 2026-06-14) + PROD `vob-prod` (aktuell: 2026-06-09) |
+| Kubeconfig-Ablauf | Monatlich | Beide Kubeconfigs pruefen: DEV/TEST `vob-chatbot` (aktuell: 2026-06-14) + PROD `vob-prod` (aktuell: 2026-06-22) |
 | GitHub Actions Updates | Bei Dependabot-Alert oder monatlich | SHA im Workflow gegen neuestes Release-Tag prüfen |
 | Model Server Version | Bei Onyx-Release | Docker Hub Tags prüfen, `MODEL_SERVER_TAG` aktualisieren |
 | Robot Account Token | Bei Ablauf | StackIT Portal → Container Registry → Robot Account |
