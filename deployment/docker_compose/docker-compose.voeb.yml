@@ -18,6 +18,7 @@ services:
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
       - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
       - ../../backend/onyx/access/access.py:/app/onyx/access/access.py:ro
+      - ../../backend/onyx/natural_language_processing/search_nlp_models.py:/app/onyx/natural_language_processing/search_nlp_models.py:ro
       - ../../backend/alembic:/app/alembic
     env_file:
       - path: .env
@@ -31,6 +32,7 @@ services:
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
       - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
       - ../../backend/onyx/access/access.py:/app/onyx/access/access.py:ro
+      - ../../backend/onyx/natural_language_processing/search_nlp_models.py:/app/onyx/natural_language_processing/search_nlp_models.py:ro
     env_file:
       - path: .env
         required: false

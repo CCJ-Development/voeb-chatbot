@@ -1,6 +1,6 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Erweitert (2026-03-25) — Monitoring-Audit + 3 Sprints: cert-manager Scrape, SLO Dashboard, Blackbox Probes, OpenSearch Exporter, Security Alerts, Loki Log-Aggregation. 25 Targets, 46 VÖB Rules, 3 Dashboards, 5/5 externe Deps.
+> **Status:** ✅ Erweitert (2026-03-25) — Monitoring-Audit + 3 Sprints: cert-manager Scrape, SLO Dashboard, Blackbox Probes, OpenSearch Exporter, Security Alerts, Loki Log-Aggregation. 25 Targets, 46 VÖB Rules, 4 Dashboards (PG, Redis, SLO, Audit-Log), 5/5 externe Deps.
 > **Entscheidung:** Self-Hosted kube-prometheus-stack + Loki (Niko, 2026-03-10 / erweitert 2026-03-25)
 > **Scope:** PROD (eigener Cluster vob-prod). DEV deployed (shared Cluster). TEST heruntergefahren.
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), DSGVO Art. 5 (Rechenschaftspflicht), orientiert an BAIT Kap. 5 (freiwillig)

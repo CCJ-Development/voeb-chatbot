@@ -94,6 +94,7 @@ deployment/helm/
     values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (aktualisiert 2026-03-22, Chart 0.4.36, 20 Pods)
     values-monitoring.yaml   ← kube-prometheus-stack DEV/TEST (separater Helm Release in NS monitoring)
     values-monitoring-prod.yaml ← kube-prometheus-stack PROD (90d Retention, 50Gi, separater Teams-Kanal)
+    values-loki-prod.yaml    ← Loki Log-Aggregation PROD (loki-stack 2.10.3, 30d Retention, 20Gi)
     values-dev-secrets.yaml  ← DEV Secrets: PG, Redis, S3 Credentials (gitignored)
     values-test-secrets.yaml ← TEST Secrets (gitignored)
 ```

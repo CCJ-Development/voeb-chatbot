@@ -82,7 +82,7 @@ git merge upstream/main --no-commit --no-ff
 **Erwartete Konflikte (harmlos):**
 - `AGENTS.md`, `.claude/skills` → Unsere Version behalten (`git checkout --ours`)
 - `Chart.yaml`, `Chart.lock` → Upstream übernehmen (`git checkout --theirs`)
-- 10 Core-Dateien → Upstream übernehmen, Patches neu anwenden (siehe unten)
+- 14 Core-Dateien → Upstream übernehmen, Patches neu anwenden (siehe unten)
 - `backend/Dockerfile` → Upstream übernehmen, COPY ext/ neu einfügen (siehe "Zusätzliche Merge-Stellen")
 - `deployment/docker_compose/env.template` → Manuell mergen (wir appenden am Ende, Upstream ändert Mitte)
 
@@ -203,7 +203,7 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 12 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
+Neben den 14 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
 
 ### `backend/Dockerfile` (seit Phase 4a)
 
@@ -308,7 +308,7 @@ Nach jedem Upstream-Sync: Dictionary (`web/src/ext/i18n/translations.ts`) pruefe
 **Geschaetzter Aufwand:** ~1 Stunde pro Sync.
 
 ## Warum "Extend, don't modify" funktioniert
-- Max 10 vorhersagbare Core-Konflikte + 4 bekannte Infra-Stellen
+- Max 14 vorhersagbare Core-Konflikte + 4 bekannte Infra-Stellen
 - Unser ext_-Code: Zero Konflikte (Ordner existiert nicht in Upstream)
 - Unsere Infra (Terraform, Helm Values, CI/CD): Zero Konflikte (Pfade existieren nicht in Upstream)
 - Unsere Docs: Zero Konflikte (existieren nicht in Upstream)

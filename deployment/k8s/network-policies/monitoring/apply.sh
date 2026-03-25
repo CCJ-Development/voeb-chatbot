@@ -52,22 +52,22 @@ kubectl apply -f "$SCRIPT_DIR/06-allow-pg-exporter-egress.yaml" -n "$NAMESPACE" 
 echo "[6/13] Redis Exporter Egress (Port 6379)..."
 kubectl apply -f "$SCRIPT_DIR/07-allow-redis-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[7/12] AlertManager Webhook Egress (Port 443)..."
+echo "[7/13] AlertManager Webhook Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/08-allow-alertmanager-webhook-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[8/12] Backup-Check Egress (Port 443)..."
+echo "[8/13] Backup-Check Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/09-allow-backup-check-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[9/12] Blackbox Exporter Egress (Port 443)..."
+echo "[9/13] Blackbox Exporter Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/10-allow-blackbox-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[10/12] OpenSearch Exporter Egress (Port 9200)..."
+echo "[10/13] OpenSearch Exporter Egress (Port 9200)..."
 kubectl apply -f "$SCRIPT_DIR/11-allow-opensearch-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[11/12] Loki Ingress (Port 3100)..."
+echo "[11/13] Loki Ingress (Port 3100)..."
 kubectl apply -f "$SCRIPT_DIR/12-allow-loki-ingress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[12/12] Promtail Egress (Port 3100 + K8s API)..."
+echo "[12/13] Promtail Egress (Port 3100 + K8s API)..."
 kubectl apply -f "$SCRIPT_DIR/13-allow-promtail-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
 # 2. Default-Deny zuletzt
