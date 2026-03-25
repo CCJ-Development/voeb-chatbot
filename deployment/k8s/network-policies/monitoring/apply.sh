@@ -34,29 +34,44 @@ fi
 echo "=== Monitoring NetworkPolicies anwenden (Namespace: $NAMESPACE) ==="
 
 # 1. Allow-Policies zuerst
-echo "[1/8] DNS Egress..."
+echo "[1/13] DNS Egress..."
 kubectl apply -f "$SCRIPT_DIR/02-allow-dns-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[2/8] Scrape Egress..."
+echo "[2/13] Scrape Egress..."
 kubectl apply -f "$SCRIPT_DIR/03-allow-scrape-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[3/8] Intra-Namespace..."
+echo "[3/13] Intra-Namespace..."
 kubectl apply -f "$SCRIPT_DIR/04-allow-intra-namespace.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[4/8] K8s API Egress..."
+echo "[4/13] K8s API Egress..."
 kubectl apply -f "$SCRIPT_DIR/05-allow-k8s-api-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[5/8] PG Exporter Egress (Port 5432)..."
+echo "[5/13] PG Exporter Egress (Port 5432)..."
 kubectl apply -f "$SCRIPT_DIR/06-allow-pg-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[6/8] Redis Exporter Egress (Port 6379)..."
+echo "[6/13] Redis Exporter Egress (Port 6379)..."
 kubectl apply -f "$SCRIPT_DIR/07-allow-redis-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[7/8] AlertManager Webhook Egress (Port 443)..."
+echo "[7/12] AlertManager Webhook Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/08-allow-alertmanager-webhook-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
+echo "[8/12] Backup-Check Egress (Port 443)..."
+kubectl apply -f "$SCRIPT_DIR/09-allow-backup-check-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
+echo "[9/12] Blackbox Exporter Egress (Port 443)..."
+kubectl apply -f "$SCRIPT_DIR/10-allow-blackbox-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
+echo "[10/12] OpenSearch Exporter Egress (Port 9200)..."
+kubectl apply -f "$SCRIPT_DIR/11-allow-opensearch-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
+echo "[11/12] Loki Ingress (Port 3100)..."
+kubectl apply -f "$SCRIPT_DIR/12-allow-loki-ingress.yaml" -n "$NAMESPACE" $DRY_RUN
+
+echo "[12/12] Promtail Egress (Port 3100 + K8s API)..."
+kubectl apply -f "$SCRIPT_DIR/13-allow-promtail-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
 # 2. Default-Deny zuletzt
-echo "[8/8] Default-Deny (Zero-Trust Baseline)..."
+echo "[13/13] Default-Deny (Zero-Trust Baseline)..."
 kubectl apply -f "$SCRIPT_DIR/01-default-deny-all.yaml" -n "$NAMESPACE" $DRY_RUN
 
 echo ""
@@ -67,6 +82,8 @@ for APP_NS in onyx-dev onyx-test onyx-prod; do
     kubectl apply -f "$SCRIPT_DIR/../06-allow-monitoring-scrape.yaml" -n "$APP_NS" $DRY_RUN
     echo "[+] ${APP_NS}: Redis Exporter Ingress..."
     kubectl apply -f "$SCRIPT_DIR/../07-allow-redis-exporter-ingress.yaml" -n "$APP_NS" $DRY_RUN
+    echo "[+] ${APP_NS}: OpenSearch Exporter Ingress..."
+    kubectl apply -f "$SCRIPT_DIR/../08-allow-opensearch-exporter-ingress.yaml" -n "$APP_NS" $DRY_RUN
   else
     echo "[-] ${APP_NS}: Namespace existiert nicht, ueberspringe."
   fi

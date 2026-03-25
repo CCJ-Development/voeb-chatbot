@@ -57,7 +57,7 @@
   - ✅ DNS: A-Record + ACME-CNAME gesetzt durch Leif/GlobVill (2026-03-17)
   - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
   - ✅ SEC-09: Rate-Limiting 10r/s, Upload-Limit 20 MB, MAX_FILE_SIZE_BYTES Backend-Limit
-  - ✅ **Monitoring PROD deployed** (2026-03-12): 9 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG Exporter, Redis Exporter, Operator). 3 Targets UP (API, PG, Redis). Teams PROD-Kanal. Sidecar-Dashboards (PG 14114, Redis 763). 7 NetworkPolicies in monitoring NS.
+  - ✅ **Monitoring PROD erweitert** (2026-03-25): 14 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG/Redis/OpenSearch/Blackbox Exporter, Operator, Loki, 2x Promtail). 25 Targets (alle UP). 46 VÖB Rules (10 Recording + 36 Alerting). 3 Grafana Dashboards (PG, Redis, SLO). Teams PROD-Kanal. Loki Log-Aggregation (30d Retention, 20Gi). Blackbox Probes fuer 4 externe Deps (LLM, OIDC, S3, PROD Health). 13 NetworkPolicies monitoring NS + 6 cert-manager NS.
   - ✅ **NetworkPolicies onyx-prod: LIVE** (2026-03-24) — 7 Policies (default-deny, DNS, intra-NS, NGINX ingress, external egress, monitoring scrape, Redis exporter). Zero-Trust Baseline. Verifiziert: Health OK, externer Zugriff OK.
   - ✅ CI/CD: `--set opensearch_admin_password` ergaenzt (2026-03-22), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
   - ✅ **Embedding PROD: Qwen3-VL-Embedding 8B** (2026-03-24) — LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen

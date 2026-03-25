@@ -1,0 +1,30 @@
+# NetworkPolicy: Allow Loki Ingress — Monitoring Namespace
+#
+# Erlaubt Promtail und Grafana den Zugriff auf Loki:
+# - Promtail → Loki:3100 (Log-Push)
+# - Grafana → Loki:3100 (Log-Query)
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-loki-ingress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app: loki
+  policyTypes:
+    - Ingress
+  ingress:
+    # Promtail (Log-Push) + Grafana (Log-Query)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - port: 3100
+          protocol: TCP

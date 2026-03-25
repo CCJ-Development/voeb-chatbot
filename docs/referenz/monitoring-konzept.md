@@ -1,11 +1,11 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Deployed (2026-03-10) — Phase 1-4 live (Exporters + Dashboards deployed), Alerting via Teams aktiv. PROD deployed (2026-03-12, Helm Rev 4). OpenSearch-Monitoring hinzugefuegt (2026-03-19), Vespa auf Alive-Check reduziert (Zombie-Mode).
-> **Entscheidung:** Self-Hosted kube-prometheus-stack (Niko, 2026-03-10)
-> **Scope:** DEV + TEST (Shared Cluster) deployed, PROD (eigener Cluster) deployed (2026-03-12, Helm Rev 4)
-> **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), orientiert an BAIT Kap. 5 (freiwillig)
-> **Helm Release:** `monitoring` in Namespace `monitoring` (separater Release, nicht im Onyx Chart)
-> **Chart:** `prometheus-community/kube-prometheus-stack`
+> **Status:** ✅ Erweitert (2026-03-25) — Monitoring-Audit + 3 Sprints: cert-manager Scrape, SLO Dashboard, Blackbox Probes, OpenSearch Exporter, Security Alerts, Loki Log-Aggregation. 25 Targets, 46 VÖB Rules, 3 Dashboards, 5/5 externe Deps.
+> **Entscheidung:** Self-Hosted kube-prometheus-stack + Loki (Niko, 2026-03-10 / erweitert 2026-03-25)
+> **Scope:** PROD (eigener Cluster vob-prod). DEV deployed (shared Cluster). TEST heruntergefahren.
+> **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), DSGVO Art. 5 (Rechenschaftspflicht), orientiert an BAIT Kap. 5 (freiwillig)
+> **Helm Releases:** `monitoring` (kube-prometheus-stack) + `loki` (loki-stack) in Namespace `monitoring`
+> **Charts:** `prometheus-community/kube-prometheus-stack` 82.10.3 + `grafana/loki-stack` 2.10.3
 
 ---
 
@@ -1010,3 +1010,4 @@ Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/d
 | v0.3.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: NP 7→8, Kickoff-Referenz, Änderungshistorie |
 | v0.4 | 2026-03-19 | COFFEESTUDIOS | OpenSearch als ueberwachte Komponente hinzugefuegt: PVC Alert (`OpenSearchStorageFull`). Vespa-Monitoring auf Alive-Check reduziert (Zombie-Mode). |
 | v0.5 | 2026-03-22 | COFFEESTUDIOS | Helm Rev 3→4. Pod-Counts aktualisiert (DEV 16→17, TEST 15→0 heruntergefahren, PROD 19→20). PROD CPU Requests korrigiert (~8.750→~7.850m). Alert-Tabelle mit YAML-Realitaet abgeglichen: 20 Regeln DEV/TEST, 22 PROD. `OpenSearchClusterRed` als GEPLANT (nicht implementiert) dokumentiert. NP 8→9 (`09-allow-backup-check-egress.yaml` ergaenzt). Scrape-Egress Inline-YAML um `onyx-prod` ergaenzt. Entscheidungstabelle Vespa-Eintrag aktualisiert. |
+| v1.0 | 2026-03-25 | COFFEESTUDIOS | Monitoring-Audit + 3 Sprints. Neue Komponenten: cert-manager ServiceMonitor, OpenSearch Exporter (elasticsearch-exporter v1.9.0), Blackbox Exporter (PROD Health + 3 externe Deps), Loki Log-Aggregation (loki-stack 2.10.3, 30d Retention). SLO Recording Rules (10) + SLO Dashboard (Availability, Latenz, Error Budget). Security Alerts (3: Auth, 403, OIDC). cert-manager NetworkPolicies (6, Zero-Trust). PGBackupCheck Alert-Noise behoben (Zeitfenster 8h). Grafana Dashboards als ConfigMap (PG, Redis, SLO). Targets 19→25, VÖB Rules 22→46, Dashboards 0→3, NetworkPolicies monitoring 9→13 + cert-manager 0→6. Helm Cleanup (Rev 8 FAILED → Rev 9). KubeCPUOvercommit Silence (90d). |

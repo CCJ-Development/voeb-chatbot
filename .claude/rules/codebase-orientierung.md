@@ -102,29 +102,49 @@ Monitoring PROD: `helm upgrade monitoring prometheus-community/kube-prometheus-s
 
 ## Monitoring
 ```
-deployment/k8s/monitoring-exporters/   ← postgres_exporter + redis_exporter (6 Deployments + Services)
-  pg-exporter-dev.yaml
-  pg-exporter-test.yaml
-  pg-exporter-prod.yaml
-  redis-exporter-dev.yaml
-  redis-exporter-test.yaml
-  redis-exporter-prod.yaml
-  apply.sh                   ← Deploy-Script mit Auto-Detection DEV/TEST/PROD
+deployment/k8s/monitoring-exporters/   ← Exporter + Dashboards + Datasources
+  pg-exporter-dev.yaml / test / prod   ← PostgreSQL Exporter (3 Environments)
+  redis-exporter-dev.yaml / test / prod ← Redis Exporter (3 Environments)
+  opensearch-exporter-prod.yaml        ← OpenSearch Exporter (PROD, elasticsearch-exporter v1.9.0)
+  blackbox-exporter-prod.yaml          ← Blackbox Exporter (PROD Health + Externe Deps)
+  cert-manager-servicemonitor.yaml     ← ServiceMonitor fuer cert-manager Metriken
+  pg-backup-check-prod.yaml            ← CronJob: PG Backup-Validierung (alle 4h)
+  grafana-datasource-loki.yaml         ← Grafana Loki Datasource (automatisch provisioniert)
+  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed)
+    postgresql-14114.json              ← PG Dashboard (gnetId 14114)
+    redis-763.json                     ← Redis Dashboard (gnetId 763)
+    slo-overview.json                  ← SLA/SLO Dashboard (Availability, Latenz, Error Budget)
+  apply.sh                             ← Deploy-Script mit Auto-Detection DEV/TEST/PROD
 deployment/k8s/network-policies/
-  monitoring/                ← NetworkPolicies fuer monitoring-Namespace
+  monitoring/                ← NetworkPolicies fuer monitoring-Namespace (13 Policies)
     01-default-deny-all.yaml
     02-allow-dns-egress.yaml
-    03-allow-scrape-egress.yaml
+    03-allow-scrape-egress.yaml        ← Prometheus → API:8080 + cert-manager:9402
     04-allow-intra-namespace.yaml
     05-allow-k8s-api-egress.yaml
-    06-allow-pg-exporter-egress.yaml    ← PG Exporter → StackIT PG:5432
+    06-allow-pg-exporter-egress.yaml   ← PG Exporter → StackIT PG:5432
     07-allow-redis-exporter-egress.yaml ← Redis Exporter → Redis:6379
-    08-allow-alertmanager-webhook-egress.yaml ← AlertManager → Teams Webhook (HTTPS)
-    apply.sh                 ← Sichere Apply-Reihenfolge (8 Steps + App-NS Policies)
-  06-allow-monitoring-scrape.yaml       ← App-NS: Ingress von monitoring:8080
-  07-allow-redis-exporter-ingress.yaml  ← App-NS: Ingress von Redis Exporter:6379
+    08-allow-alertmanager-webhook-egress.yaml ← AlertManager → Teams Webhook
+    09-allow-backup-check-egress.yaml  ← Backup-Check → StackIT API
+    10-allow-blackbox-egress.yaml      ← Blackbox Exporter → externe HTTPS
+    11-allow-opensearch-exporter-egress.yaml ← OS Exporter → OpenSearch:9200
+    12-allow-loki-ingress.yaml         ← Promtail/Grafana → Loki:3100
+    13-allow-promtail-egress.yaml      ← Promtail → Loki:3100 + K8s API
+    apply.sh                 ← Sichere Apply-Reihenfolge (13 Steps + App-NS Policies)
+  cert-manager/              ← NetworkPolicies fuer cert-manager-Namespace (6 Policies)
+    01-default-deny-all.yaml
+    02-allow-dns-egress.yaml
+    03-allow-k8s-api-egress.yaml
+    04-allow-acme-egress.yaml          ← Let's Encrypt + Cloudflare
+    05-allow-monitoring-scrape-ingress.yaml ← Prometheus:9402
+    06-allow-webhook-ingress.yaml      ← K8s Admission:443
+    apply.sh
+  06-allow-monitoring-scrape.yaml      ← App-NS: Ingress von monitoring:8080
+  07-allow-redis-exporter-ingress.yaml ← App-NS: Ingress von Redis Exporter:6379
+  08-allow-opensearch-exporter-ingress.yaml ← App-NS: Ingress von OS Exporter:9200
 ```
 Zugriff: `kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80` → `http://localhost:3001`
+Loki PROD: `helm upgrade loki grafana/loki-stack -n monitoring -f values-loki-prod.yaml`
 Konzept: `docs/referenz/monitoring-konzept.md`
 
 ## CI/CD
