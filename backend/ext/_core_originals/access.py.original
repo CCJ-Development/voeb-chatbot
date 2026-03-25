@@ -25,25 +25,9 @@ def _get_access_for_document(
         document_id=document_id,
     )
 
-    # ext-access hook: Gruppen-ACLs fuer Dokument ermitteln
-    _user_groups: list[str] = []
-    try:
-        from ext.config import EXT_DOC_ACCESS_ENABLED
-
-        if EXT_DOC_ACCESS_ENABLED:
-            from ext.services.doc_access import get_user_groups_for_document
-
-            _user_groups = get_user_groups_for_document(document_id, db_session)
-    except ImportError:
-        pass
-    except Exception:
-        import logging
-
-        logging.getLogger("ext").error("ext-access hook failed", exc_info=True)
-
     doc_access = DocumentAccess.build(
         user_emails=info[1] if info and info[1] else [],
-        user_groups=_user_groups,
+        user_groups=[],
         external_user_emails=[],
         external_user_group_ids=[],
         is_public=info[2] if info else False,
@@ -80,35 +64,12 @@ def _get_access_for_documents(
         db_session=db_session,
         document_ids=document_ids,
     )
-    # ext-access hook: Batch Gruppen-Lookup
-    _ext_access_enabled = False
-    _get_groups_fn = None
-    try:
-        from ext.config import EXT_DOC_ACCESS_ENABLED
-
-        if EXT_DOC_ACCESS_ENABLED:
-            from ext.services.doc_access import get_user_groups_for_document
-
-            _ext_access_enabled = True
-            _get_groups_fn = get_user_groups_for_document
-    except ImportError:
-        pass
-    except Exception:
-        import logging
-
-        logging.getLogger("ext").error("ext-access batch hook failed", exc_info=True)
-
     doc_access = {}
     for document_id, user_emails, is_public in document_access_info:
-        _user_groups: list[str] = []
-        if _ext_access_enabled and _get_groups_fn:
-            try:
-                _user_groups = _get_groups_fn(document_id, db_session)
-            except Exception:
-                pass  # Einzelnes Dokument nicht brechen
         doc_access[document_id] = DocumentAccess.build(
             user_emails=[email for email in user_emails if email],
-            user_groups=_user_groups,
+            # MIT version will wipe all groups and external groups on update
+            user_groups=[],
             is_public=is_public,
             external_user_emails=[],
             external_user_group_ids=[],
@@ -147,25 +108,7 @@ def _get_acl_for_user(
     """
     if user.is_anonymous:
         return {PUBLIC_DOC_PAT}
-
-    acl = {prefix_user_email(user.email), PUBLIC_DOC_PAT}
-
-    # ext-access hook: Gruppen-ACLs zum User hinzufuegen
-    try:
-        from ext.config import EXT_DOC_ACCESS_ENABLED
-
-        if EXT_DOC_ACCESS_ENABLED:
-            from ext.services.doc_access import get_group_acls_for_user
-
-            acl.update(get_group_acls_for_user(user, db_session))
-    except ImportError:
-        pass
-    except Exception:
-        import logging
-
-        logging.getLogger("ext").error("ext-access acl hook failed", exc_info=True)
-
-    return acl
+    return {prefix_user_email(user.email), PUBLIC_DOC_PAT}
 
 
 def get_acl_for_user(user: User, db_session: Session | None = None) -> set[str]:

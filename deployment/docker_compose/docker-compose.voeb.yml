@@ -17,6 +17,7 @@ services:
       - ../../backend/onyx/chat/prompt_utils.py:/app/onyx/chat/prompt_utils.py:ro
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
       - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
+      - ../../backend/onyx/access/access.py:/app/onyx/access/access.py:ro
       - ../../backend/alembic:/app/alembic
     env_file:
       - path: .env
@@ -29,6 +30,7 @@ services:
       - ../../backend/onyx/chat/prompt_utils.py:/app/onyx/chat/prompt_utils.py:ro
       - ../../backend/onyx/db/persona.py:/app/onyx/db/persona.py:ro
       - ../../backend/onyx/db/document_set.py:/app/onyx/db/document_set.py:ro
+      - ../../backend/onyx/access/access.py:/app/onyx/access/access.py:ro
     env_file:
       - path: .env
         required: false

@@ -362,7 +362,8 @@ class TestDeleteUserGroup:
         curator_membership.user_id = curator_id
 
         # First execute call returns curator memberships, rest return empty
-        db.execute.return_value.scalars.return_value.all.return_value = [
+        # Code: .execute(...).scalars().unique().all()
+        db.execute.return_value.scalars.return_value.unique.return_value.all.return_value = [
             curator_membership
         ]
 
@@ -385,7 +386,8 @@ class TestFetchAllUserGroups:
 
         group1 = MagicMock()
         group2 = MagicMock()
-        db.execute.return_value.scalars.return_value.all.return_value = [
+        # Code: .execute(...).scalars().unique().all()
+        db.execute.return_value.scalars.return_value.unique.return_value.all.return_value = [
             group1, group2
         ]
 
