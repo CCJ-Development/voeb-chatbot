@@ -1,0 +1,23 @@
+# ACME (Let's Encrypt) + Cloudflare DNS API Egress
+# cert-manager braucht HTTPS zu:
+# - acme-v02.api.letsencrypt.org (Cert-Issuance)
+# - api.cloudflare.com (DNS-01 Challenge)
+# IPs sind dynamisch, daher Port 443 ohne IP-Restriktion.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-acme-egress
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 443
+          protocol: TCP

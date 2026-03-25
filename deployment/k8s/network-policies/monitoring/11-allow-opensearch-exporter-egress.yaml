@@ -1,0 +1,30 @@
+# NetworkPolicy: Allow OpenSearch Exporter Egress — Monitoring Namespace
+#
+# Erlaubt dem OpenSearch Exporter ausgehende HTTPS-Verbindungen (Port 9200)
+# zu OpenSearch im onyx-prod Namespace.
+#
+# Anwendung: kubectl apply -f 11-allow-opensearch-exporter-egress.yaml -n monitoring
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-opensearch-exporter-egress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: network-policy
+    security.voeb/policy-type: allow
+spec:
+  podSelector:
+    matchLabels:
+      app: opensearch-exporter
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: onyx-prod
+      ports:
+        - port: 9200
+          protocol: TCP

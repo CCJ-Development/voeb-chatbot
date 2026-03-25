@@ -1,0 +1,23 @@
+# DNS-Aufloesung (CoreDNS)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/part-of: voeb-chatbot
+    security.voeb/policy-type: allow
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+        - port: 8053
+          protocol: UDP
+        - port: 8053
+          protocol: TCP

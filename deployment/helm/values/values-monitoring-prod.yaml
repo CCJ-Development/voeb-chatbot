@@ -126,6 +126,15 @@ prometheus:
             target_label: instance
           - target_label: __address__
             replacement: "blackbox-exporter-prod.monitoring.svc.cluster.local:9115"
+      # OpenSearch Exporter (In-Cluster, elasticsearch-exporter v1.9.0)
+      - job_name: "opensearch-prod"
+        metrics_path: "/metrics"
+        scrape_interval: "30s"
+        static_configs:
+          - targets: ["opensearch-exporter-prod.monitoring.svc.cluster.local:9114"]
+            labels:
+              environment: "prod"
+              service: "opensearch"
     # ServiceMonitor Namespace Selector (alle Namespaces)
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
@@ -401,6 +410,76 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "PROD End-to-End Latenz ueber 5s ({{ $value | printf \"%.2f\" }}s)"
               description: "Die gesamte Request-Dauer (DNS + TLS + HTTP) ist ungewoehnlich hoch."
+
+      # --- OpenSearch Alerts (H2, Sprint 3) ---
+      - name: voeb-opensearch.rules
+        rules:
+          - alert: OpenSearchClusterRed
+            expr: elasticsearch_cluster_health_status{color="red",job="opensearch-prod"} == 1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "OpenSearch Cluster RED"
+              description: "OpenSearch Cluster ist im RED-Status. Datenverlust moeglich."
+
+          - alert: OpenSearchJVMHeapHigh
+            expr: |
+              elasticsearch_jvm_memory_used_bytes{area="heap",job="opensearch-prod"}
+              / elasticsearch_jvm_memory_max_bytes{area="heap",job="opensearch-prod"} > 0.85
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OpenSearch JVM Heap ueber 85%"
+
+          - alert: OpenSearchExporterDown
+            expr: up{job="opensearch-prod"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "OpenSearch Exporter nicht erreichbar"
+
+          - alert: OpenSearchUnassignedShards
+            expr: elasticsearch_cluster_health_unassigned_shards{job="opensearch-prod"} > 0
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OpenSearch hat unassigned Shards ({{ $value }})"
+              description: "Erwartet bei Single-Node (Replicas). Pruefen ob neue unassigned Shards."
+
+      # --- Security Alerts (M1, Sprint 3) ---
+      - name: voeb-security.rules
+        rules:
+          - alert: HighAuthFailureRate
+            expr: |
+              sum(rate(http_requests_total{job="onyx-api-prod", handler=~"/auth/.*", status=~"4.."}[5m]))
+              / sum(rate(http_requests_total{job="onyx-api-prod", handler=~"/auth/.*"}[5m])) > 0.5
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Auth-Fehlerrate ueber 50%"
+              description: "Moeglicherweise Brute-Force oder OIDC-Problem."
+
+          - alert: High403Rate
+            expr: sum(rate(http_requests_total{job="onyx-api-prod", status="403"}[5m])) > 5
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Hohe 403-Rate (>5/s seit 10min)"
+
+          - alert: OIDCCallbackErrors
+            expr: sum(rate(http_requests_total{job="onyx-api-prod", handler="/auth/oidc/callback", status=~"4..|5.."}[5m])) > 0.1
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "OIDC Callback Fehler (>0.1/s)"
+              description: "Entra ID Callback schlaegt fehl. Token abgelaufen? Redirect URI?"
 
       - name: voeb-chatbot.rules
         rules:

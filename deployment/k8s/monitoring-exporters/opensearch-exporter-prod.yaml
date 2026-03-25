@@ -1,0 +1,105 @@
+# OpenSearch Exporter — PROD Monitoring
+#
+# Exportiert OpenSearch Cluster-Metriken nach Prometheus:
+# - Cluster Health (green/yellow/red)
+# - JVM Heap, GC
+# - Index-Groesse, Shard-Status
+# - Query/Indexing Latenz
+#
+# Nutzt den elasticsearch-exporter (kompatibel mit OpenSearch).
+# Auth via Secret aus onyx-prod Namespace (opensearch_admin_username/password).
+#
+# Referenz: audit-output/monitoring-erweiterungsplan-2026-03-25.md (H2)
+# Anwendung:
+#   1. Secret erstellen (siehe unten)
+#   2. kubectl apply -f opensearch-exporter-prod.yaml
+#
+# Secret erstellen:
+#   OSPW=$(kubectl get secret -n onyx-prod onyx-opensearch -o jsonpath='{.data.opensearch_admin_password}' | base64 -d)
+#   kubectl create secret generic opensearch-exporter-prod -n monitoring \
+#     --from-literal=OPENSEARCH_URI="https://admin:${OSPW}@onyx-opensearch-master.onyx-prod.svc.cluster.local:9200"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opensearch-exporter-prod
+  namespace: monitoring
+  labels:
+    app: opensearch-exporter
+    app.kubernetes.io/part-of: voeb-chatbot
+    app.kubernetes.io/component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opensearch-exporter
+  template:
+    metadata:
+      labels:
+        app: opensearch-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: exporter
+          image: quay.io/prometheuscommunity/elasticsearch-exporter:v1.9.0
+          args:
+            - --es.uri=$(OPENSEARCH_URI)
+            - --es.ssl-skip-verify
+            - --es.all
+            - --es.indices
+            - --es.shards
+            - --collector.clustersettings
+          env:
+            - name: OPENSEARCH_URI
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-exporter-prod
+                  key: OPENSEARCH_URI
+          ports:
+            - containerPort: 9114
+              name: http-metrics
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 150m
+              memory: 128Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9114
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9114
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch-exporter-prod
+  namespace: monitoring
+  labels:
+    app: opensearch-exporter
+    app.kubernetes.io/part-of: voeb-chatbot
+spec:
+  selector:
+    app: opensearch-exporter
+  ports:
+    - port: 9114
+      targetPort: 9114
+      name: http-metrics
+      protocol: TCP
