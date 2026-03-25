@@ -209,6 +209,24 @@ jobs:
       - name: Build Helm dependencies
         run: helm dependency build ${{ env.HELM_CHART_PATH }}
 
+      - name: Helm Dry-Run (DEV)
+        run: |
+          IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
+          REGISTRY="${{ env.REGISTRY }}"
+          PROJECT="${{ env.REGISTRY_PROJECT }}"
+
+          echo "=== Helm Dry-Run DEV ==="
+          helm upgrade --install onyx-dev \
+            ${{ env.HELM_CHART_PATH }} \
+            --namespace onyx-dev \
+            -f deployment/helm/values/values-common.yaml \
+            -f deployment/helm/values/values-dev.yaml \
+            --set "global.version=${IMAGE_TAG}" \
+            --set "api.image.repository=${REGISTRY}/${PROJECT}/onyx-backend" \
+            --set "webserver.image.repository=${REGISTRY}/${PROJECT}/onyx-web-server" \
+            --dry-run 2>&1 | tail -5
+          echo "Dry-Run OK"
+
       - name: Deploy to DEV
         run: |
           IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
@@ -456,6 +474,24 @@ jobs:
 
       - name: Build Helm dependencies
         run: helm dependency build ${{ env.HELM_CHART_PATH }}
+
+      - name: Helm Dry-Run (PROD)
+        run: |
+          IMAGE_TAG="${{ needs.prepare.outputs.image_tag }}"
+          REGISTRY="${{ env.REGISTRY }}"
+          PROJECT="${{ env.REGISTRY_PROJECT }}"
+
+          echo "=== Helm Dry-Run PROD ==="
+          helm upgrade --install onyx-prod \
+            ${{ env.HELM_CHART_PATH }} \
+            --namespace onyx-prod \
+            -f deployment/helm/values/values-common.yaml \
+            -f deployment/helm/values/values-prod.yaml \
+            --set "global.version=${IMAGE_TAG}" \
+            --set "api.image.repository=${REGISTRY}/${PROJECT}/onyx-backend" \
+            --set "webserver.image.repository=${REGISTRY}/${PROJECT}/onyx-web-server" \
+            --dry-run 2>&1 | tail -5
+          echo "Dry-Run OK"
 
       - name: Deploy to PROD
         run: |

@@ -132,6 +132,45 @@
 
 ---
 
+## Status-Update (2026-03-25)
+
+### Erledigt
+
+| # | Massnahme | Erledigt |
+|---|----------|---------|
+| M-01 | PROD Kubeconfig | ✅ Gueltig bis 2026-06-09 |
+| M-02 | PROD-Audit | ✅ Monitoring-Audit 2026-03-25 (25 Targets, 50 Rules) |
+| M-03 | PROD NetworkPolicies | ✅ 7 Policies onyx-prod + 13 monitoring + 6 cert-manager |
+| M-05 | technische-parameter.md | ✅ Aktualisiert 2026-03-25 |
+| M-12 | Sicherheitskonzept v0.9 | ✅ Auth auf OIDC aktualisiert |
+| M-13 | Monitoring-NPs | ✅ 13 Policies (war 7) |
+
+### Umgesetzt (2026-03-25)
+
+| # | Massnahme | Details |
+|---|----------|---------|
+| M-08 | ruff in CI | ✅ `lint-backend` Job in ci-checks.yml |
+| M-10 | Helm Dry-Run | ✅ Dry-Run Step vor DEV + PROD Deploy |
+| M-15 | Secret-Rotation-Schedule | ✅ Tabelle in secret-rotation.md |
+
+### Bewusst nicht umgesetzt (Solo-Dev, 150 User, kein Mehrwert)
+
+| # | Massnahme | Begruendung |
+|---|----------|-------------|
+| M-04 | Trivy im CI | Onyx-Base-Images werden upstream gepflegt, wir aendern sie nicht |
+| M-06 | busybox pinnen | Minimales Risiko, OpenSearch Init-Container |
+| M-07 | Dependabot | Solo-Dev, lokaler Merge — Dependabot-PRs waeren nur Noise |
+| M-09 | global.version Default | CI setzt ohnehin SHA-Tag per `--set` |
+| M-11 | Rollback-Logik | Manueller Rollback reicht bei Solo-Dev |
+| M-14 | DEV OpenSearch --set | DEV nutzt Chart-Default-Passwort |
+| M-16 | PSA Labels | runAsNonRoot bereits aktiv, PSA waere redundant |
+| M-17 | :latest Tag entfernen | Kein Sicherheitsrisiko, SHA-Tag wird immer gesetzt |
+| M-18 | Upstream-Workflows deaktivieren | Bereits erledigt (nur 3 aktive Workflows) |
+| M-19 | ADR-006 Status | Rein kosmetisch |
+| M-20-M-25 | Backlog | Nach M1-Abnahme evaluieren |
+
+---
+
 ## Was gut ist (Positiv-Befunde)
 
 | Bereich | Detail |

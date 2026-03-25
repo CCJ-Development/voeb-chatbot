@@ -19,6 +19,20 @@ Dieses Runbook beschreibt die Rotation aller PROD-Secrets. Es gilt als Referenz 
 
 ---
 
+## Rotation-Schedule (Ablaufdaten)
+
+| Secret | Ablauf | Rotation noetig | Wie |
+|--------|--------|:-:|---|
+| **Kubeconfig PROD** | **2026-06-09** | Ja, ~2 Wochen vorher | `terraform apply` oder StackIT Portal → GitHub Secret aktualisieren |
+| **Kubeconfig DEV** | **2026-06-14** | Ja, ~2 Wochen vorher | Analog PROD |
+| **Let's Encrypt Certs** | 2026-06-15 | Nein (auto-renewal) | cert-manager erneuert automatisch 30d vorher |
+| **Entra ID Client Secret** | Abhaengig von Entra-Konfiguration | Pruefen bei VÖB | Entra ID Portal → App Registration → Neues Secret |
+| PG / Redis / S3 / OpenSearch | Kein Ablauf | Bei Bedarf (Kompromittierung) | Siehe Sektionen unten |
+
+> **Erinnerung:** Kubeconfig-Erneuerung ~Ende Mai 2026 einplanen (PROD 06-09, DEV 06-14).
+
+---
+
 ## Uebersicht: Alle PROD-Secrets
 
 | Secret | GitHub Secret | Kubernetes Secret | Woher |
