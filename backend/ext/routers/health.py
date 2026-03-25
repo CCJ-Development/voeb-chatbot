@@ -7,10 +7,12 @@ from onyx.auth.users import current_user
 from onyx.db.models import User
 
 from ext.config import EXT_ANALYTICS_ENABLED
+from ext.config import EXT_AUDIT_ENABLED
 from ext.config import EXT_BRANDING_ENABLED
 from ext.config import EXT_CUSTOM_PROMPTS_ENABLED
 from ext.config import EXT_DOC_ACCESS_ENABLED
 from ext.config import EXT_ENABLED
+from ext.config import EXT_I18N_ENABLED
 from ext.config import EXT_TOKEN_LIMITS_ENABLED
 from ext.config import EXT_RBAC_ENABLED
 
@@ -32,5 +34,7 @@ def ext_health_check(
             "branding": EXT_BRANDING_ENABLED,
             "custom_prompts": EXT_CUSTOM_PROMPTS_ENABLED,
             "doc_access": EXT_DOC_ACCESS_ENABLED,
+            "i18n": EXT_I18N_ENABLED,
+            "audit": EXT_AUDIT_ENABLED,
         },
     }

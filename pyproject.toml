@@ -248,6 +248,7 @@ select = [
   "S324",
   "W",
 ]
+per-file-ignores = {"backend/ext/tests/**" = ["ARG002"]}
 
 [tool.setuptools.packages.find]
 where = ["backend"]
