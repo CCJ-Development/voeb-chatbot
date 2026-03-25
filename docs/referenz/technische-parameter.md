@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-19
+> Letzte Aktualisierung: 2026-03-24
 
 ---
 
@@ -11,19 +11,19 @@
 |-----------|-----|------|------|
 | Cluster | vob-chatbot (shared) | vob-chatbot (shared) | vob-prod (eigener, ADR-004) |
 | Namespace | onyx-dev | onyx-test | onyx-prod |
-| K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
-| Flatcar | 4459.2.1 | 4459.2.1 | 4459.2.3 |
+| K8s Version | v1.33.9 | v1.33.9 | v1.33.9 |
+| Flatcar | 4459.2.3 | 4459.2.3 | 4459.2.3 |
 | Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
 | Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
 | Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 19 |
+| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 20 (inkl. OpenSearch, seit 2026-03-22) |
 | API Replicas | 1 | 1 | 2 (HA) |
 | Web Replicas | 1 | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
 | IngressClass | nginx | nginx-test | nginx |
 | URL | https://dev.chatbot.voeb-service.de | https://test.chatbot.voeb-service.de | https://chatbot.voeb-service.de |
-| HTTPS | **TEMPORAER DEAKTIVIERT** (2026-03-18) — DNS zeigt auf alte LB-IP, wartet auf Update | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
-| Auth | basic | basic | basic (Entra ID geplant, Phase 3) |
+| HTTPS | **LIVE** (seit 2026-03-22, DNS A-Record auf 188.34.118.222 aktualisiert) | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
+| Auth | oidc (Entra ID, seit 2026-03-23) | basic | oidc (Entra ID, seit 2026-03-24) |
 | Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell) | workflow_dispatch (manuell, Required Reviewer) |
 | Status | LIVE seit 2026-02-27 | **Heruntergefahren** (dauerhaft, seit 2026-03-19). Helm Release bleibt. Reaktivierung jederzeit moeglich. | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
 | Deployment-Strategie | Recreate | Recreate | Recreate |
@@ -39,7 +39,7 @@
 | Authoritative NS | GlobVill (dns.voerde.globvill.de, dns.globvill.de, dns.globvill.ruhr) |
 | DNS Provider | Cloudflare (DNS-only, kein Proxy, Pro-Plan) |
 | DNS-Aufloesungskette | GlobVill CNAME -> *.voeb-service.de.cdn.cloudflare.net -> Cloudflare A-Record -> StackIT LB IP |
-| LB DEV | ~~188.34.74.187~~ **188.34.118.222** (neue IP seit 2026-03-18, DNS-Update pending) |
+| LB DEV | **188.34.118.222** (DNS aktualisiert 2026-03-22 durch Leif/GlobVill) |
 | LB TEST | 188.34.118.201 |
 | LB PROD | 188.34.92.162 |
 | Egress DEV+TEST | 188.34.93.194 (NAT Gateway, fest fuer Cluster-Lifecycle) |
@@ -55,13 +55,13 @@
 | ClusterIssuers | onyx-dev-letsencrypt, onyx-test-letsencrypt, onyx-prod-letsencrypt (alle READY) |
 | ACME Server | https://acme-v02.api.letsencrypt.org/directory (Production) |
 | ACME Email | nikolaj.ivanov@coffee-studios.de |
-| HSTS DEV | **Deaktiviert** (temporaer, seit 2026-03-18 — HTTPS deaktiviert, http-snippet Override in values-dev.yaml) |
+| HSTS DEV | max-age=3600; includeSubDomains (reaktiviert mit HTTPS, 2026-03-22) |
 | HSTS TEST | max-age=3600; includeSubDomains |
 | HSTS PROD | max-age=31536000; includeSubDomains |
 | HTTP-zu-HTTPS Redirect | 308 Permanent Redirect |
-| NetworkPolicies DEV/TEST | 5 Policies in onyx-dev/onyx-test (SEC-03, seit 2026-03-05) |
-| NetworkPolicies PROD | Offen (vollstaendiges Set kommt mit DNS/TLS-Hardening) |
-| NetworkPolicies Monitoring | 7 Policies pro Cluster (Zero-Trust) |
+| NetworkPolicies DEV | 7 Policies in onyx-dev (SEC-03 + Monitoring-Scrape + Redis-Exporter, seit 2026-03-10) |
+| NetworkPolicies PROD | **Offen** — naechster Schritt (vollstaendiges Set inkl. Default-Deny) |
+| NetworkPolicies Monitoring DEV | 7 von 9 Policies applied (08-AlertManager-Webhook + 09-Backup-Check fehlen) |
 | SKE Cluster API ACL | 0.0.0.0/0 (Kubeconfig mit Client-Zertifikat als Schutz) |
 | PG ACL DEV+TEST | 188.34.93.194/32 + Admin (SEC-01) |
 | PG ACL PROD | 188.34.73.72/32 + Admin (SEC-01) |
@@ -316,7 +316,7 @@
 
 | Komponente | Version | Hinweis |
 |------------|---------|---------|
-| Kubernetes DEV+TEST | v1.33.8 | Flatcar 4459.2.1 |
+| Kubernetes DEV+TEST | v1.33.9 | Flatcar 4459.2.3 |
 | Kubernetes PROD | v1.33.9 | Flatcar 4459.2.3 |
 | PostgreSQL | 16 | StackIT Managed Flex |
 | Redis | 7.0.15 | In-Cluster, OT Operator |
@@ -370,7 +370,7 @@
 | Cluster | Gueltig bis | Hinweis |
 |---------|-------------|---------|
 | vob-chatbot (DEV+TEST) | 2026-05-28 | 90-Tage-Rotation |
-| vob-prod (PROD) | 2026-06-09 | 90-Tage-Rotation |
+| vob-prod (PROD) | **2026-06-22** | Erneuert 2026-03-24 (vorherige expired) |
 
 ---
 
@@ -404,7 +404,7 @@
 | Helm Flags | --wait --timeout 15m --history-max 5 |
 | paths-ignore | docs/**, *.md (Root), .claude/** |
 | Branch Protection | PR required, 3 Status Checks (helm-validate, build-backend, build-frontend) |
-| PROD Secrets | 6 Environment Secrets + Required Reviewer |
+| PROD Secrets | 7 Environment Secrets + Required Reviewer (inkl. OPENSEARCH_PASSWORD seit 2026-03-22) |
 
 ---
 

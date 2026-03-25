@@ -45,11 +45,11 @@ Dieses Konzept gilt für:
 
 | Umgebung | Status | URL | Auth |
 |----------|--------|-----|------|
-| DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
-| TEST | LIVE seit 2026-03-03 | `https://test.chatbot.voeb-service.de` | Onyx-interne E-Mail/Passwort-Authentifizierung (`AUTH_TYPE: basic`), kein HTTP Basic Auth |
-| PROD | HTTPS LIVE seit 2026-03-17 | `https://chatbot.voeb-service.de` | Temporär `AUTH_TYPE: basic` (Entra ID wartet auf VÖB) |
+| DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Entra ID OIDC (`AUTH_TYPE: oidc`, seit 2026-03-23) |
+| TEST | Heruntergefahren (seit 2026-03-19) | `https://test.chatbot.voeb-service.de` | — |
+| PROD | HTTPS LIVE seit 2026-03-17 | `https://chatbot.voeb-service.de` | Entra ID OIDC (`AUTH_TYPE: oidc`, seit 2026-03-24) |
 
-> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/TEST/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (20 Pods, `https://chatbot.voeb-service.de`). DEV ist seit 2026-03-22 HTTPS LIVE (`https://dev.chatbot.voeb-service.de`, DNS A-Record von Leif auf `188.34.118.222` aktualisiert). Entra ID steht noch aus. Abschnitte die mangels Informationen von VÖB nicht finalisiert werden können, sind mit `[AUSSTEHEND -- Klärung mit VÖB]` markiert.
+> **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (20 Pods, `https://chatbot.voeb-service.de`). DEV ist seit 2026-03-22 HTTPS LIVE. Entra ID OIDC ist seit 2026-03-24 auf DEV und PROD LIVE. TEST ist seit 2026-03-19 dauerhaft heruntergefahren.
 
 ---
 
@@ -66,7 +66,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 |-------------|--------|---------|
 | Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV+TEST+PROD) | TLSv1.3 / ECDSA P-384 auf allen Environments. DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record auf `188.34.118.222` aktualisiert). |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
-| Zugriffskontrollen (Authentifizierung) | TEILWEISE | Basic Auth aktiv (DEV/TEST). Entra ID (OIDC) geplant (Phase 3) |
+| Zugriffskontrollen (Authentifizierung) | IMPLEMENTIERT | Entra ID OIDC aktiv (DEV seit 2026-03-23, PROD seit 2026-03-24). TEST heruntergefahren. |
 | Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01). PROD: Egress `188.34.73.72/32` + Admin-IP |
 | Minimales Privilege Principle | TEILWEISE | PG-User `onyx_app` hat nur `login` + `createdb`. Kubernetes RBAC: ein globaler Kubeconfig (SEC-05 offen) |
 
@@ -131,54 +131,75 @@ Onyx unterstützt folgende Auth-Typen nativ (Enum `AuthType` in `backend/onyx/co
 | `slack_user` | Slack-Integration-Benutzer (nicht genutzt in VÖB-Deployment) |
 | `ext_perm_user` | External Permission User (nicht genutzt in VÖB-Deployment) |
 
-### Geplant: Microsoft Entra ID (OIDC) -- Phase 3
+### Microsoft Entra ID (OIDC) -- Phase 3
 
-**Status: BLOCKIERT** -- wartet auf Entra ID Zugangsdaten von VÖB IT.
-
-Onyx unterstützt OIDC nativ. Die Konfiguration erfolgt über Umgebungsvariablen:
+**Status: IMPLEMENTIERT** auf DEV (seit 2026-03-23) und PROD (seit 2026-03-24).
 
 ```yaml
-# Geplante Konfiguration (values-prod.yaml — aktuell AUTH_TYPE: "basic" temporär)
+# Aktive Konfiguration (values-dev.yaml + values-prod.yaml)
 configMap:
   AUTH_TYPE: "oidc"
   OPENID_CONFIG_URL: "https://login.microsoftonline.com/<TENANT_ID>/v2.0/.well-known/openid-configuration"
-  OAUTH_CLIENT_ID: "<CLIENT_ID>"        # → Kubernetes Secret
-  OAUTH_CLIENT_SECRET: "<CLIENT_SECRET>" # → Kubernetes Secret
+  OAUTH_CLIENT_ID: "<CLIENT_ID>"        # → GitHub Secret (ENTRA_CLIENT_ID)
+  OAUTH_CLIENT_SECRET: "<CLIENT_SECRET>" # → GitHub Secret (ENTRA_CLIENT_SECRET)
+  OIDC_PKCE_ENABLED: "false"            # Deaktiviert (Cookie-Loss durch NGINX→Next.js Proxy)
+  VALID_EMAIL_DOMAINS: ""               # Leer (scale42.de + voeb-service.de muessen beide funktionieren)
 ```
 
-**Geplanter Flow (Standard OIDC Authorization Code Flow)**:
+**Aktiver Flow (OIDC Authorization Code Flow)**:
 ```
-1. Benutzer öffnet Chatbot → Umleitung zu Microsoft Login
+1. Benutzer oeffnet Chatbot → Umleitung zu Microsoft Login
 2. Benutzer authentifiziert sich bei Entra ID
 3. Entra ID sendet Authorization Code an /auth/oidc/callback
-4. Onyx-Backend tauscht Code gegen ID Token + Access Token
-5. Onyx erstellt Session (Cookie-basiert)
-6. Zugriff auf geschützte Ressourcen
+4. Onyx-Backend tauscht Code gegen ID Token + Access Token (mit Client Secret)
+5. Onyx erstellt Session (Cookie-basiert, 7 Tage)
+6. Zugriff auf geschuetzte Ressourcen
 ```
 
-**Benötigte Informationen von VÖB** (siehe `docs/entra-id-kundenfragen.md`):
+**JIT Provisioning:** Erster OIDC-Login = ADMIN-Rolle, alle weiteren = BASIC. Kein automatisches Claims→Roles Mapping. Rollen-Aenderung manuell durch Admin.
 
-| Information | Status |
-|-------------|--------|
-| Tenant ID | [AUSSTEHEND -- Klärung mit VÖB] |
-| Client ID + Secret | [AUSSTEHEND -- Klärung mit VÖB] |
-| Redirect URI / Domain | [AUSSTEHEND -- Klärung mit VÖB] |
-| User-Scope (alle oder bestimmte Gruppen) | [AUSSTEHEND -- Klärung mit VÖB] |
-| Session-Policy (Standard vs. Strikt) | [AUSSTEHEND -- Klärung mit VÖB] |
-| Conditional Access Policies | [AUSSTEHEND -- Klärung mit VÖB] |
+**Lessons Learned (Phase 3):**
+- Entra ID Client Secret ID ≠ Secret Value (Secret Value muss konfiguriert werden)
+- PKCE deaktiviert weil Session-Cookie durch NGINX→Next.js Proxy verloren geht
+- httpx-oauth schluckt Fehler (HTTP 500 ohne Log bei falschem Secret)
+
+Details: [Entra ID Setup Runbook](runbooks/entra-id-setup.md)
 
 ### Autorisierung (RBAC)
 
 **IMPLEMENTIERT (Onyx-nativ)**:
 Onyx bringt ein rollenbasiertes Zugangskontrollsystem mit (siehe Rollen oben). Rollen werden pro User in der PostgreSQL-Datenbank gespeichert.
 
-**GEPLANT (Extension Layer)**:
-Erweitertes RBAC ueber das Extension-Modul `ext-rbac` (Phase 4f) mit:
-- Gruppen-basierter Zugriffskontrolle (Abteilungen = Gruppen, Mapping auf Entra ID)
-- 4 Rollen: System-Admin, Gruppen-Admin, Power-User, Standard-User
-- Zugriffssteuerung pro Gruppe (Agenten, Modelle, Dokumente) ueber `ext-access` (Phase 4g)
+**IMPLEMENTIERT (Extension Layer, Phase 4f)**:
+Erweitertes RBAC ueber `ext-rbac` (`EXT_RBAC_ENABLED=true`, seit 2026-03-23):
+- Gruppen-basierte Zugriffskontrolle (7 API-Endpoints, Admin-UI unter `/admin/ext-groups`)
+- Persona- und DocumentSet-Zuordnung pro Gruppe (Core #11 + #12 gepatcht)
+- Entra ID Gruppen-Sync: Aktuell manuell, automatischer Sync geplant
+
+**GEPLANT (Phase 4g)**:
+- `ext-access`: Document Access Control pro Gruppe (braucht Core #3 access.py)
 
 Details: [Rollenmodell](referenz/rbac-rollenmodell.md) | [Entwicklungsplan](referenz/ext-entwicklungsplan.md)
+
+### LLM Access Control
+
+**VERFUEGBAR (Onyx FOSS-nativ), KONFIGURATION AUSSTEHEND:**
+
+Onyx bietet Provider-Level Access Control fuer LLM-Modelle (implementiert in `backend/onyx/db/llm.py`):
+
+| Feature | Status | Beschreibung |
+|---------|--------|-------------|
+| Public/Private Provider | ✅ FOSS | `is_public`-Flag steuert Sichtbarkeit |
+| User Group Restrictions | ✅ FOSS | Provider auf bestimmte Gruppen einschraenken (`llm_provider__user_group`) |
+| Persona Whitelist | ✅ FOSS | Provider auf bestimmte Agents einschraenken (`llm_provider__persona`) |
+| Kombinierte AND-Logik | ✅ FOSS | Gruppen + Persona muessen beide erfuellt sein |
+| Graceful Fallback | ✅ FOSS | Bei fehlendem Zugriff → stiller Fallback auf Default-Provider |
+
+**Aktueller Stand (2026-03-24):** Alle Provider sind `is_public=true` (Default). Keine Gruppen- oder Persona-Restrictions konfiguriert. Geplant: Abteilungs-basierte Modellzuweisung — jedes Modell als eigener Provider (1:1 Mapping), Gruppen = VÖB-Abteilungen, ein Basis-Modell public fuer alle, weitere Modelle nur fuer zugewiesene Abteilungen sichtbar. Externe Provider (z.B. Claude/Anthropic) mit eigener DPA nur fuer berechtigte Gruppen.
+
+**Kosten-Kontrolle:** ext-token (`EXT_TOKEN_LIMITS_ENABLED=true`) trackt Token-Verbrauch per User und Modell. Per-User-Limits konfigurierbar.
+
+Details: [LLM Access Control SSOT](referenz/llm-access-control.md) | [Audit](audit/2026-03-24-llm-access-control-audit.md) | [Runbook](runbooks/llm-provider-management.md)
 
 ### Zugriffsmatrix
 
