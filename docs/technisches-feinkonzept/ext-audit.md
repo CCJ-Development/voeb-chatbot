@@ -42,7 +42,7 @@ ext-audit protokolliert alle Admin-Aktionen in einer PostgreSQL-Tabelle:
 - Backend: `log_audit_event()` Utility-Funktion (aufgerufen von bestehenden ext-Routern)
 - Backend: Admin-Endpoint GET `/ext/audit/events` (Audit-Log Browser mit Filtern)
 - Backend: Admin-Endpoint GET `/ext/audit/export` (CSV-Export fuer Compliance)
-- DSGVO: IP-Anonymisierung nach 90 Tagen (Cronjob oder periodischer Task)
+- DSGVO: IP-Anonymisierung nach 90 Tagen (Celery-Task `ext_audit_ip_anonymize`, 24h-Intervall, self-scheduling)
 
 ### Nicht im Umfang
 
@@ -144,7 +144,10 @@ CREATE INDEX idx_ext_audit_log_action ON ext_audit_log (action);
 
 ### DSGVO: IP-Anonymisierung
 
-Periodischer Task (alle 24h):
+Implementiert als `@shared_task(name="ext_audit_ip_anonymize")` in `backend/ext/tasks/audit_ip_anonymize.py`.
+Self-scheduling (same pattern wie `ext_doc_access_sync`): Nach jedem Lauf schedult sich der Task
+selbst mit `apply_async(countdown=86400)` fuer den naechsten Lauf in 24 Stunden.
+
 ```sql
 UPDATE ext_audit_log
 SET ip_address = NULL, user_agent = NULL

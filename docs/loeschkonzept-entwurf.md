@@ -85,6 +85,7 @@ Chat-Konversationen im VoeB-Chatbot sind im Regelfall **KEINE** Handelsbriefe (H
 | **LK-12M** | 12 Monate | Nutzungsmetriken (Empfehlung fuer Jahresberichte) |
 | **LK-AKTIV** | Solange Account aktiv | Konfigurationsdaten gebunden an aktiven User |
 | **LK-UNBEGRENZT** | Unbegrenzt | System-Konfiguration ohne Personenbezug |
+| **LK-90D** | 90 Tage | Pseudonyme Felder im Audit-Log (IP-Adresse, User-Agent) |
 | **LK-PROMETHEUS** | 30d DEV/TEST, 90d PROD | Aggregierte Monitoring-Metriken |
 
 ### 3.2 Dateninventar
@@ -104,6 +105,7 @@ Chat-Konversationen im VoeB-Chatbot sind im Regelfall **KEINE** Handelsbriefe (H
 | D11 | **PostgreSQL-Backups** | StackIT Object Storage (Managed) | **Ja** (enthalten alle DB-Daten) | Art. 6(1)(f) berechtigtes Interesse | **LK-30D** | StackIT Managed (geschaetzt 30 Tage, `[KLAERUNG]` exakte Policy) | Automatisch (StackIT Managed Backup-Rotation) | :white_check_mark: |
 | D12 | **Object Storage Dateien** (Uploads, Connector-Files) | StackIT Object Storage (`vob-dev`, `vob-test`, `vob-prod`) | **Ggf.** (Dateiinhalte koennten PII enthalten) | `[KLAERUNG]` -- abhaengig von Dokumentquelle | `[KLAERUNG]` | `[KLAERUNG]` -- an Connector-Lebensdauer gebunden | Manuell (Connector-Loeschung) + S3 Lifecycle Policies (`[NICHT IMPLEMENTIERT]`) | :warning: |
 | D13 | **Search-Docs / Chat-Referenzen** | PostgreSQL (`chat_message__search_doc`) | **Ja** (indirekt via Chat-Message FK) | Art. 6(1)(f) berechtigtes Interesse | **LK-6M** | Folgt Chat-Session (CASCADE) | CASCADE bei Chat-Loeschung | :white_check_mark: |
+| D14 | **Audit-Log** (Admin-Aktionen) | PostgreSQL (`ext_audit_log`) | **Ja** (`actor_email`, `ip_address`, `user_agent`) | Art. 6(1)(c) rechtliche Verpflichtung (Rechenschaftspflicht Art. 5 DSGVO) | **LK-90D** (IP/UA) / **LK-UNBEGRENZT** (restliche Audit-Daten) | IP-Adresse + User-Agent: 90 Tage (dann NULL gesetzt). Restliche Felder (actor_email, action, resource): unbegrenzt (Audit-Trail) | Automatisch: Celery-Task `ext_audit_ip_anonymize` (24h, self-scheduling). Vollstaendige Loeschung: manuell per SQL bei Betroffenenantrag Art. 17 DSGVO | :white_check_mark: |
 
 ### 3.3 Zusammenfassung nach Loeschklasse
 
@@ -115,7 +117,8 @@ Chat-Konversationen im VoeB-Chatbot sind im Regelfall **KEINE** Handelsbriefe (H
 | **LK-6M** | **D1 Chat-Verlaeufe, D13 Search-Docs** | :x: **NICHT IMPLEMENTIERT** |
 | **LK-12M** | **D2 Token-Usage** | :x: **NICHT IMPLEMENTIERT** |
 | LK-AKTIV | D3 User-Limits, D4 User-Accounts | :warning: Teilweise (CASCADE vorhanden, Deprovisioning fehlt) |
-| LK-UNBEGRENZT | D5 Prompts, D6 Branding | :white_check_mark: Kein Loeschbedarf |
+| LK-UNBEGRENZT | D5 Prompts, D6 Branding, D14 Audit-Trail | :white_check_mark: Kein Loeschbedarf |
+| **LK-90D** | **D14 Audit-Log (IP/UA-Felder)** | :white_check_mark: Ja (Celery-Task `ext_audit_ip_anonymize`) |
 
 ---
 

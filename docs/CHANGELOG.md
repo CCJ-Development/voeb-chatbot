@@ -22,6 +22,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `get_audit_context` FastAPI Dependency (Client-IP via X-Forwarded-For + User-Agent)
   - `log_audit_event()` best-effort (bricht nie den Request ab)
   - Feature Flag `EXT_AUDIT_ENABLED`, 13 Unit Tests
+  - Celery-Task `ext_audit_ip_anonymize` (self-scheduling, 24h) fuer DSGVO IP-Anonymisierung
   - Alembic-Migration `d8a1b2c3e4f5` (auto-run bei Deploy)
   - Feinkonzept: `docs/technisches-feinkonzept/ext-audit.md`
 

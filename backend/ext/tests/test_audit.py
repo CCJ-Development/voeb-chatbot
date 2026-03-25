@@ -181,6 +181,26 @@ class TestAnonymizeOldIPs:
         assert "db_session" in sig.parameters
 
 
+class TestAuditIPAnonymizeTask:
+    def test_task_importable(self) -> None:
+        """Celery-Task ist importierbar."""
+        from ext.tasks.audit_ip_anonymize import ext_audit_ip_anonymize_task
+
+        assert callable(ext_audit_ip_anonymize_task)
+
+    def test_task_name(self) -> None:
+        """Task hat den erwarteten Celery-Namen."""
+        from ext.tasks.audit_ip_anonymize import ext_audit_ip_anonymize_task
+
+        assert ext_audit_ip_anonymize_task.name == "ext_audit_ip_anonymize"
+
+    def test_task_interval_is_24h(self) -> None:
+        """Self-Scheduling Intervall ist 24 Stunden."""
+        from ext.tasks.audit_ip_anonymize import _ANONYMIZE_INTERVAL
+
+        assert _ANONYMIZE_INTERVAL == 86400
+
+
 # --- get_audit_context ---
 
 

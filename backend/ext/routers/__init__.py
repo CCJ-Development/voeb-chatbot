@@ -106,4 +106,9 @@ def register_ext_routers(application: FastAPI) -> None:
         from ext.routers.audit import router as audit_router
 
         include_router_with_global_prefix_prepended(application, audit_router)
-        logger.info("Extension audit router registered")
+
+        # IP-Anonymisierung: Task importieren + ersten Lauf schedulen (nach 60s)
+        from ext.tasks.audit_ip_anonymize import ext_audit_ip_anonymize_task
+
+        ext_audit_ip_anonymize_task.apply_async(countdown=60)
+        logger.info("Extension audit router + IP anonymize task registered")
