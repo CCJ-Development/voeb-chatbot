@@ -5,12 +5,14 @@ paths:
   - "web/src/components/**"
   - "web/src/lib/**"
   - "web/src/sections/**"
+  - "web/src/refresh-components/**"
 ---
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 14 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 15 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 **#1-#10:** 9 von 10 gepatcht (#5 header/ noch offen).
+**#15:** Gepatcht (2026-03-26). ActionsPopover fuer Basic User ausgeblendet.
 **#3:** Gepatcht (ext-access, 2026-03-25). 3 Hooks fuer gruppen-basierte Dokumentzugriffskontrolle.
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
 **#13:** Gepatcht (LLM Custom Modal Fix, 2026-03-24). Upstream-Bug: onyx-dot-app/onyx#9592.
@@ -98,6 +100,13 @@ paths:
 - MERGE: 1 Stelle, 1 Zeile. Niedriges Merge-Risiko (Funktion seit Monaten unveraendert)
 - STATUS: ✅ Gepatcht (2026-03-24). OpenSearch verlangt lowercase Index-Namen, `clean_model_name()` macht kein `.lower()`.
 - HINWEIS: **TEMPORAER** — Upstream-Bug. Bei Upstream-Sync pruefen ob gefixt. Betrifft jeden OpenSearch-User mit Modellnamen die Grossbuchstaben enthalten.
+
+## 15. `web/src/refresh-components/popovers/ActionsPopover/index.tsx` — Actions-Popover fuer Basic User ausblenden
+- ERLAUBT: Early-Return `if (!isAdmin && !isCurator) return null;` nach allen Hooks, vor `displayTools`
+- VERBOTEN: Tool-Logik, Popover-Struktur, MCP-Handling veraendern
+- MERGE: 1 Stelle, 1 Zeile (nach letztem `useCallback`, vor `displayTools` Filter). Niedriges Merge-Risiko (Insertion-Stelle ist stabil)
+- STATUS: ✅ Gepatcht (2026-03-26). Basic User sehen den "Manage Actions" Button im Chat nicht.
+- HINWEIS: `useUser()` mit `isAdmin`/`isCurator` ist bereits in der Komponente vorhanden (Zeile 306). Kein neuer Import noetig.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

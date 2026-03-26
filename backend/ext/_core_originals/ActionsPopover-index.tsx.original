@@ -450,9 +450,6 @@ export default function ActionsPopover({
     ]
   );
 
-  // VÖB: Hide actions popover for basic users (no tool management needed)
-  if (!isAdmin && !isCurator) return null;
-
   // Filter out MCP tools from the main list (they have mcp_server_id)
   // Also filter out internal search tool for basic users when there are no connectors
   // Also filter out tools that are not chat-selectable (e.g., OpenURL)

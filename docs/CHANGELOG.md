@@ -8,6 +8,11 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- [UI] **"Manage Actions" Button im Chat fuer Basic User ausgeblendet** (2026-03-26)
+  - ActionsPopover (Core #15): Early-Return wenn User weder Admin noch Curator ist
+  - Basic User koennen weiterhin alle Agent-Tools nutzen, aber nicht konfigurieren
+
 ### Added
 - [ext-analytics] **Plattform-Nutzungsanalysen + Compliance-KPIs** (2026-03-26)
   - Grafana Dashboard "VÖB Analytics Overview" (19 SQL-Panels in 7 Rows): Nutzung, Agenten, Token, Qualitaet, Content, Compliance, User-Tabelle

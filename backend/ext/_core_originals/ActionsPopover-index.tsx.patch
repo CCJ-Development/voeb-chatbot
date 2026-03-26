@@ -1,0 +1,12 @@
+--- backend/ext/_core_originals/ActionsPopover-index.tsx.original	2026-03-26 11:50:29
++++ web/src/refresh-components/popovers/ActionsPopover/index.tsx	2026-03-26 11:50:13
+@@ -450,6 +450,9 @@
+     ]
+   );
+ 
++  // VÖB: Hide actions popover for basic users (no tool management needed)
++  if (!isAdmin && !isCurator) return null;
++
+   // Filter out MCP tools from the main list (they have mcp_server_id)
+   // Also filter out internal search tool for basic users when there are no connectors
+   // Also filter out tools that are not chat-selectable (e.g., OpenURL)

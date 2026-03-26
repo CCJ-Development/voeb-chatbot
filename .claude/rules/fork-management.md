@@ -278,6 +278,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
 | `web/src/sections/modals/llmConfig/CustomModal.tsx` (CORE #13) | UI-Fix | ~25 | Mittel |
+| `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #15) | Early-Return | 1 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 **Achtung #13:** TEMPORAER — Upstream-Bug onyx-dot-app/onyx#9592. Bei Upstream-Sync pruefen ob Issue gefixt. Falls ja: Patch entfernen, `.original` + `.patch` loeschen, #13 aus core-dateien.md entfernen.
