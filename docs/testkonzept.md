@@ -964,6 +964,240 @@ Wenn Production-Daten verwendet werden, müssen diese DSGVO-konform anonymisiert
 | Testdatum | 2026-03-09 |
 | Testdateien | `backend/ext/tests/test_prompts.py` (29 Tests) |
 
+### ext-analytics (Phase 4e) -- Testergebnisse
+
+**Hinweis:** ext-analytics wurde als eigenstaendiges Modul nachgeruestet (Phase 4e). Die Funktionalitaet ergaenzt ext-token um aggregierte Plattform-KPIs (User-Aktivitaet, Sessions, Agenten, Content, Compliance).
+
+#### TC-ANALYTICS-001: Schemas
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ANALYTICS-001 |
+| **Beschreibung** | Pydantic-Schemas fuer Summary, UserActivity, AgentDetail validieren korrekt (inkl. Nullable-Felder bei leerer DB) |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ANALYTICS-002: Router-Validierung
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ANALYTICS-002 |
+| **Beschreibung** | from_date > to_date liefert HTTP 400, Export > 365 Tage liefert HTTP 400 |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ANALYTICS-003: CSV-Export
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ANALYTICS-003 |
+| **Beschreibung** | CSV enthaelt Kategorie/KPI/Wert Header, User-Tabelle mit Emails und Rollen |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ANALYTICS-004: Feature Flag
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ANALYTICS-004 |
+| **Beschreibung** | EXT_ANALYTICS_ENABLED=false → Router wird nicht registriert |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### Testergebnis-Zusammenfassung Phase 4e
+
+| Metrik | Wert |
+|--------|------|
+| Tests geplant | 9 |
+| Tests durchgefuehrt | 9 |
+| Tests bestanden | 9 |
+| Erfolgsquote | 100% |
+| Kritische Fehler | 0 |
+| Testumgebung | Docker (onyx-api_server-1) |
+| Testdatum | 2026-03-26 |
+| Testdateien | `backend/ext/tests/test_analytics.py` (9 Tests in 4 Klassen) |
+
+Einzeltests:
+
+| Test | Beschreibung | Ergebnis |
+|------|-------------|----------|
+| test_summary_response_valid | Vollstaendiges Summary-Schema validieren | Bestanden |
+| test_summary_response_nullable_fields | Leere DB / Null-Werte | Bestanden |
+| test_user_activity_response | User-Aktivitaetstabelle Schema | Bestanden |
+| test_agent_detail_response | Agent-Detail Schema | Bestanden |
+| test_from_date_after_to_date_raises | from_date > to_date → 400 | Bestanden |
+| test_export_max_365_days | Export > 365 Tage → 400 | Bestanden |
+| test_csv_contains_headers | CSV enthaelt Kategorie/KPI/Wert Header | Bestanden |
+| test_csv_includes_user_table | CSV enthaelt User-Emails und Rollen | Bestanden |
+| test_flag_disabled_no_registration | Flag false → kein Router | Bestanden |
+
+Ausfuehrung: `docker exec onyx-api_server-1 python -m pytest /app/ext/tests/test_analytics.py -xv`
+Ergebnis: 9/9 bestanden (2026-03-26)
+
+### ext-access (Phase 4g) -- Testergebnisse
+
+**Deployed auf DEV: 2026-03-25**
+
+#### TC-ACCESS-001: ACL-Hooks
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ACCESS-001 |
+| **Beschreibung** | User in 2 Gruppen erhaelt 2 ACL-Strings mit korrektem `group:` Prefix. User ohne Gruppen erhaelt leeres Set. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ACCESS-002: Dokument-Gruppen-Zuordnung
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ACCESS-002 |
+| **Beschreibung** | Dokument via CC-Pair einer Gruppe zugeordnet → Gruppenname wird korrekt aufgeloest. Dokument ohne Gruppen → leere Liste. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ACCESS-003: Full Resync
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ACCESS-003 |
+| **Beschreibung** | trigger_full_resync markiert alle Gruppen als is_up_to_date=False und committet. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ACCESS-004: Sync-Status
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ACCESS-004 |
+| **Beschreibung** | get_sync_status meldet korrekte Zahlen fuer total/pending/synced Gruppen. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-ACCESS-005: Feature Flag + Edge Cases
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-ACCESS-005 |
+| **Beschreibung** | Celery-Task noop bei Flag=false. User in 10 Gruppen → alle 10 ACLs. Leere DB → 0/0/0 Sync-Status. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### Testergebnis-Zusammenfassung Phase 4g
+
+| Metrik | Wert |
+|--------|------|
+| Tests geplant | 11 |
+| Tests durchgefuehrt | 11 |
+| Tests bestanden | 11 |
+| Erfolgsquote | 100% |
+| Kritische Fehler | 0 |
+| Testumgebung | Docker (onyx-api_server-1) |
+| Testdatum | 2026-03-25 |
+| Testdateien | `backend/ext/tests/test_doc_access.py` (11 Tests in 6 Klassen) |
+
+Einzeltests:
+
+| Test | Beschreibung | Ergebnis |
+|------|-------------|----------|
+| test_user_in_two_groups | User in 2 Gruppen → 2 ACL-Strings | Bestanden |
+| test_user_in_no_groups | User ohne Gruppen → leeres Set | Bestanden |
+| test_acl_prefix_format | ACL-Strings mit `group:` Prefix | Bestanden |
+| test_document_in_one_group | Dokument via CC-Pair in Gruppe | Bestanden |
+| test_document_no_groups | Dokument ohne Gruppen → leere Liste | Bestanden |
+| test_document_in_multiple_groups | Dokument in 2 Gruppen → beide Namen | Bestanden |
+| test_marks_all_groups | Resync markiert alle Gruppen | Bestanden |
+| test_all_synced | Alle synced → pending=0 | Bestanden |
+| test_celery_task_noop_when_disabled | Flag=false → Task noop | Bestanden |
+| test_user_in_many_groups | User in 10 Gruppen → alle 10 ACLs | Bestanden |
+| test_sync_status_empty_db | Leere DB → 0/0/0 | Bestanden |
+
+Ausfuehrung: `docker exec onyx-api_server-1 python -m pytest /app/ext/tests/test_doc_access.py -xv`
+Ergebnis: 11/11 bestanden (2026-03-25)
+
+### ext-audit (Phase 4i) -- Testergebnisse
+
+**Deployed auf DEV: 2026-03-25**
+
+#### TC-AUDIT-001: Audit-Events
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-AUDIT-001 |
+| **Beschreibung** | Events werden in DB geschrieben mit IP/User-Agent aus audit_ctx. System-Events (actor=None) moeglich. Exception in DB → kein Crash (best-effort). Flag=false → kein DB-Write. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-AUDIT-002: Event-Abfrage
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-AUDIT-002 |
+| **Beschreibung** | Filter nach actor, action, resource_type funktioniert. Pagination (page/page_size) korrekt. Leere DB → leere Response. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-AUDIT-003: CSV-Export
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-AUDIT-003 |
+| **Beschreibung** | CSV hat Header-Zeile mit timestamp, actor_email, action. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-AUDIT-004: IP-Anonymisierung
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-AUDIT-004 |
+| **Beschreibung** | anonymize_old_ips ist importierbar und akzeptiert db_session Parameter. Celery-Task (ext_audit_ip_anonymize) importierbar, 24h Intervall. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### TC-AUDIT-005: Audit Context
+
+| Feld | Wert |
+|------|------|
+| **Test ID** | TC-AUDIT-005 |
+| **Beschreibung** | get_audit_context extrahiert IP aus X-Forwarded-For (erste IP). Fallback auf client.host wenn kein Header. |
+| **Testtyp** | Unit Test |
+| **Ergebnis** | Bestanden |
+
+#### Testergebnis-Zusammenfassung Phase 4i
+
+| Metrik | Wert |
+|--------|------|
+| Tests geplant | 13 |
+| Tests durchgefuehrt | 13 |
+| Tests bestanden | 13 |
+| Erfolgsquote | 100% |
+| Kritische Fehler | 0 |
+| Testumgebung | Docker (onyx-api_server-1) |
+| Testdatum | 2026-03-25 |
+| Testdateien | `backend/ext/tests/test_audit.py` (13 Tests in 6 Klassen) |
+
+Einzeltests:
+
+| Test | Beschreibung | Ergebnis |
+|------|-------------|----------|
+| test_creates_entry | Event wird in DB geschrieben | Bestanden |
+| test_with_audit_context | IP + User-Agent aus audit_ctx | Bestanden |
+| test_without_actor | System-Events (actor=None) | Bestanden |
+| test_never_raises | DB-Fehler → kein Crash | Bestanden |
+| test_noop_when_disabled | Flag=false → kein DB-Write | Bestanden |
+| test_with_filters | Filter actor/action/resource_type | Bestanden |
+| test_pagination | Page/PageSize korrekt | Bestanden |
+| test_csv_format | CSV hat Header-Zeile | Bestanden |
+| test_anonymize_function_exists | anonymize_old_ips importierbar | Bestanden |
+| test_anonymize_signature | Funktion akzeptiert db_session | Bestanden |
+| test_task_importable | Celery-Task importierbar | Bestanden |
+| test_task_name | Task-Name = ext_audit_ip_anonymize | Bestanden |
+| test_task_interval_is_24h | Intervall = 86400s (24h) | Bestanden |
+
+Ausfuehrung: `docker exec onyx-api_server-1 python -m pytest /app/ext/tests/test_audit.py -xv`
+Ergebnis: 13/13 bestanden (2026-03-25)
+
 ---
 
 ## Abnahmekriterien
@@ -981,6 +1215,9 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | Chat funktioniert | Benutzer können Messages senden und Responses erhalten | E2E Test TC-CHAT-001 |
 | RAG funktioniert | Dokumenten werden eingebettet, Suche funktioniert | Integration Test TC-RAG-001 |
 | Branding funktioniert | UI zeigt Custom Logo, Farben, Texte | E2E Test TC-BRANDING-001 |
+| Analytics funktioniert | Admin kann Nutzungsstatistiken als JSON/CSV abrufen, Grafana Dashboard zeigt KPIs | Unit Tests TC-ANALYTICS-* |
+| Audit-Logging funktioniert | Admin-Aktionen werden protokolliert, CSV-Export funktioniert, DSGVO IP-Anonymisierung (90d) | Unit Tests TC-AUDIT-* |
+| Access Control funktioniert | Dokumente sind nur fuer zugewiesene Gruppen sichtbar nach Resync | Unit Tests TC-ACCESS-* |
 
 ### Non-Funktionale Kriterien
 
@@ -1003,6 +1240,8 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | 5 | Authentifizierung (Entra ID) | Funktioniert für alle Benutzer | ✅ Entra ID OIDC live DEV + PROD (seit 2026-03-24) | [x] Ja [ ] Nein |
 | 6 | RBAC-Kontrollen | Berechtigungen werden korrekt durchgesetzt | ✅ ext-rbac implementiert (2026-03-23, 29 Tests) | [x] Ja [ ] Nein |
 | 7 | Access Control | Dokument-Zugriffssteuerung pro Gruppe | ✅ ext-access implementiert (2026-03-25, 11 Tests) | [x] Ja [ ] Nein |
+| 7a | Analytics | Admin kann Nutzungsstatistiken als JSON/CSV abrufen, Grafana Dashboard zeigt KPIs | ✅ ext-analytics implementiert (2026-03-26, 9 Tests) | [x] Ja [ ] Nein |
+| 7b | Audit-Logging | Admin-Aktionen werden protokolliert, CSV-Export funktioniert, DSGVO IP-Anonymisierung (90d) | ✅ ext-audit implementiert (2026-03-25, 13 Tests) | [x] Ja [ ] Nein |
 | 8 | Chat-Funktionalität | Benutzer können chatten, LLM antwortet | [TBD] | [ ] Ja [ ] Nein |
 | 9 | RAG funktioniert | Dokumente werden gesucht und eingebettet | [TBD] | [ ] Ja [ ] Nein |
 | 10 | Skalierbarkeit | System skaliert auf 150 gleichzeitige Benutzer (PROD-Sizing, ADR-005) | [TBD] | [ ] Ja [ ] Nein |
@@ -1022,6 +1261,9 @@ Die formale Abnahme durch VÖB erfolgt auf Basis folgender Kriterien:
 | ext-token (Phase 4c) | TC-TL-001 bis TC-TL-006, TC-TOKEN-001 bis TC-TOKEN-004 | Alle bestanden | 10 TCs, 11 Unit Tests (test_token_tracker.py) |
 | ext-prompts (Phase 4d) | TC-PROMPTS-001 bis TC-PROMPTS-005 | Alle bestanden | 5 TCs, 29 Unit Tests (test_prompts.py) |
 | ext-rbac (Phase 4f) | TC-RBAC-001 bis TC-RBAC-005 | ✅ Implementiert (2026-03-23) | 29 Unit Tests (test_rbac.py) |
+| ext-analytics (Phase 4e) | TC-ANALYTICS-001 bis TC-ANALYTICS-004 | ✅ Implementiert (2026-03-26) | 4 TCs, 9 Unit Tests (test_analytics.py) |
+| ext-access (Phase 4g) | TC-ACCESS-001 bis TC-ACCESS-005 | ✅ Implementiert (2026-03-25) | 5 TCs, 11 Unit Tests (test_doc_access.py) |
+| ext-audit (Phase 4i) | TC-AUDIT-001 bis TC-AUDIT-005 | ✅ Implementiert (2026-03-25) | 5 TCs, 13 Unit Tests (test_audit.py) |
 | Authentifizierung (Phase 3) | TC-AUTH-001 | ✅ Entra ID OIDC live (2026-03-24) | DEV + PROD |
 | Chat-Funktionalitaet | TC-CHAT-001 (geplant) | TBD (Phase 5) | E2E Test geplant |
 | RAG-Funktionalitaet | TC-RAG-001 (geplant) | TBD (Phase 5) | Integration Test geplant |

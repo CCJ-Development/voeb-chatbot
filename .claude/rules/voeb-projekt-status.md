@@ -57,8 +57,9 @@
   - ✅ DNS: A-Record + ACME-CNAME gesetzt durch Leif/GlobVill (2026-03-17)
   - ✅ **TLS/HTTPS PROD: LIVE** (2026-03-17) — `https://chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr
   - ✅ SEC-09: Rate-Limiting 10r/s, Upload-Limit 20 MB, MAX_FILE_SIZE_BYTES Backend-Limit
-  - ✅ **Monitoring PROD erweitert** (2026-03-25): 14 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG/Redis/OpenSearch/Blackbox Exporter, Operator, Loki, 2x Promtail). 25 Targets (alle UP). 50 VÖB Rules (10 Recording + 40 Alerting). 5 Grafana Dashboards (PG, Redis, SLO, Audit-Log, Token-Usage). ext-token Prometheus Counter (prompt/completion/requests pro Modell). Teams PROD-Kanal. Loki Log-Aggregation (30d Retention, 20Gi). Blackbox Probes fuer 4 externe Deps (LLM, OIDC, S3, PROD Health). 13 NetworkPolicies monitoring NS + 6 cert-manager NS.
+  - ✅ **Monitoring PROD erweitert** (2026-03-25/26): 14 Pods (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG/Redis/OpenSearch/Blackbox Exporter, Operator, Loki, 2x Promtail). 25 Targets (alle UP). 50 VÖB Rules (10 Recording + 40 Alerting). **6 Grafana Dashboards** (PG, Redis, SLO, Audit-Log, Token-Usage, **Analytics Overview**). **4 Datasources** (Prometheus, Alertmanager, Loki, **PostgreSQL**). ext-token Prometheus Counter (prompt/completion/requests pro Modell). Teams PROD-Kanal. Loki Log-Aggregation (30d Retention, 20Gi). Blackbox Probes fuer 4 externe Deps (LLM, OIDC, S3, PROD Health). **14 NetworkPolicies** monitoring NS + 6 cert-manager NS.
   - ✅ **NetworkPolicies onyx-prod: LIVE** (2026-03-24) — 7 Policies (default-deny, DNS, intra-NS, NGINX ingress, external egress, monitoring scrape, Redis exporter). Zero-Trust Baseline. Verifiziert: Health OK, externer Zugriff OK.
+  - ✅ **Grafana PG-Datasource** (2026-03-26) — db_readonly_user mit SELECT-Grants (DEV + PROD), NetworkPolicy `14-allow-grafana-pg-egress`, Sidecar-Provisioning. Analytics Dashboard (19 SQL-Panels) live.
   - ✅ CI/CD: `--set opensearch_admin_password` ergaenzt (2026-03-22), GitHub Secret `OPENSEARCH_PASSWORD` gesetzt
   - ✅ **Embedding PROD: Qwen3-VL-Embedding 8B** (2026-03-24) — LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen
   - ✅ **LLM PROD konfiguriert** (2026-03-24) — 3 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B). Core #13 Fix (api_key + api_base + default_model_name), Upstream-Bug onyx-dot-app/onyx#9592
@@ -79,7 +80,7 @@
   - 4b: ✅ ext-branding — Whitelabel (Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent). **DEV + TEST deployed und getestet (2026-03-08).** Helm Values + CI/CD build-arg konfiguriert. **Logo-Editor (2026-03-24):** Crop/Zoom-Tool, 256x256 PNG Output, DELETE Endpoint, transparenter Hintergrund optional.
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch auf main gemergt.
   - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
-  - 4e: ⏭️ ext-analytics — **ÜBERSPRUNGEN.** Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model). Kein Mehrwert als eigenes Modul.
+  - 4e: ✅ ext-analytics — **Plattform-Nutzungsanalysen.** Implementiert (2026-03-26). Grafana Dashboard (19 SQL-Panels, PG-Datasource, NetworkPolicy) + 4 API-Endpoints (summary, users, agents, CSV-Export). Kein Core-Patch, kein Alembic. 9 Tests. Feature Flag `EXT_ANALYTICS_ENABLED`. DEV + PROD Grafana live.
   - 4f: ✅ ext-rbac — Gruppenverwaltung. **Implementiert (2026-03-23).** 7 Endpoints, eigene Frontend-Seite `/admin/ext-groups`, Core #10 + #11 gepatcht, 29 Tests. Persona + DocumentSet Gruppen-Zuordnung funktioniert (Core #11 + #12 gepatcht).
   - 4g: ✅ ext-access — Document Access Control. **Implementiert (2026-03-25).** Core #3 gepatcht (3 Hooks: user_groups + ACLs). Eigener Celery-Task (Ansatz C, umgeht EE-Guards). 2 Admin-Endpoints (resync, status). 11 Tests. Feature Flag `EXT_DOC_ACCESS_ENABLED`. Aktivierung: Flag + Resync.
   - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. **DEV + PROD deployed (2026-03-22).**
@@ -88,7 +89,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**M1-Abnahmeprotokoll (wartet auf VÖB-Termin).** ext-access + ext-audit PROD LIVE (2026-03-25). Alle 9 ext-Module aktiv.
+**M1-Abnahmeprotokoll (wartet auf VÖB-Termin).** ext-access + ext-audit + ext-analytics PROD LIVE (2026-03-25/26). Alle 10 ext-Module aktiv.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

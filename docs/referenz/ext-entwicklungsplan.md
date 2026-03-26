@@ -25,8 +25,8 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
           ├── Phase 4d: ✅ ext-prompts (DEV + TEST deployed + abgenommen 2026-03-09)
           │     Custom System Prompts (globale Anweisungen fuer jeden LLM-Aufruf)
           │
-          ├── Phase 4e: ⏭️ ext-analytics — ÜBERSPRUNGEN
-          │     Funktionalität bereits in ext-token enthalten
+          ├── Phase 4e: ✅ ext-analytics (implementiert 2026-03-26)
+          │     Grafana Dashboard (19 SQL-Panels) + 4 API-Endpoints + CSV-Export
           │
           ├── Phase 4f: ✅ ext-rbac (implementiert 2026-03-23)
           │     Gruppenverwaltung, 7 Endpoints, Core #10/#11/#12 gepatcht
@@ -57,7 +57,7 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
    ┌───────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐
    │ext-branding│ │ext-token │ │ext-prompts│ │ext-analytics│
    │ Phase 4b  │ │ Phase 4c │ │ Phase 4d  │ │ Phase 4e  │
-   │ ✅ ERLED. │ │ ✅ ERLED.│ │ ✅ ERLED. │ │⏭️ÜBERSP. │
+   │ ✅ ERLED. │ │ ✅ ERLED.│ │ ✅ ERLED. │ │ ✅ IMPL. │
    └───────────┘ └─────┬────┘ └───────────┘ └─────┬─────┘
                         │                           │
                         │      ┌──────────┐         │
@@ -84,7 +84,7 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | ext-branding | **Keiner** | — | — |
 | ext-token | **Keiner** | — | — |
 | ext-prompts | **Keiner** | — | — |
-| ext-analytics | **UEBERSPRUNGEN** | — | Funktionalitaet in ext-token enthalten |
+| ext-analytics | **Keiner** | — | ✅ Implementiert (2026-03-26) |
 | ext-rbac | **Keiner** | — | ✅ Implementiert (2026-03-23) |
 | ext-access | **Keiner** | — | ✅ Implementiert (2026-03-25) |
 
@@ -149,9 +149,20 @@ Phase 4a: ✅ Extension Framework Basis (erledigt)
 | **Aufwand** | Mittel — 1 Core-Patch + CRUD + Injection-Logik |
 | **Abhaengigkeit** | Keine |
 
-### ~~Prioritaet 4: ext-analytics (Phase 4e)~~ — ÜBERSPRUNGEN
+### Prioritaet 4: ext-analytics (Phase 4e) — IMPLEMENTIERT
 
-**Entscheidung (2026-03-09):** ext-token liefert bereits Usage Dashboard (Overview, Timeline, Per-User, Per-Model, User Limits). Ein eigenes Analytics-Modul haette keinen Mehrwert. Falls spaeter CSV-Export gewuenscht, wird er direkt in ext-token ergaenzt.
+**Implementiert**: 2026-03-26 (Grafana Dashboard mit 19 SQL-Panels, 4 API-Endpoints, CSV-Export)
+
+| Aspekt | Detail |
+|--------|--------|
+| **Scope** | Plattform-KPIs (Nutzer, Sessions, Dokumente, Feedback), Admin-only Nutzungsstatistiken |
+| **Core-Aenderungen** | Keine (Read-Only SELECT-Queries auf bestehende Onyx-Tabellen) |
+| **Backend** | `backend/ext/routers/analytics.py` — 4 API-Endpoints (KPIs, Trends, Feedback, CSV-Export) |
+| **Frontend** | Grafana Dashboard (19 SQL-Panels, provisioniert als ConfigMap) |
+| **DB** | Keine eigene Tabelle (Read-Only Queries auf bestehende Onyx-Tabellen) |
+| **Feature Flag** | `EXT_ANALYTICS_ENABLED` (existiert bereits in config.py) |
+| **Aufwand** | Niedrig — Keine Core-Patches, keine Migrationen |
+| **Abhaengigkeit** | Keine |
 
 ### Prioritaet 5: ext-rbac (Phase 4f) — IMPLEMENTIERT
 
@@ -284,7 +295,7 @@ Alle Flags existieren bereits in `backend/ext/config.py`:
 | `EXT_BRANDING_ENABLED` | ext-branding | `false` | |
 | `EXT_TOKEN_LIMITS_ENABLED` | ext-token | `false` | |
 | `EXT_CUSTOM_PROMPTS_ENABLED` | ext-prompts | `false` | |
-| `EXT_ANALYTICS_ENABLED` | ext-analytics | `false` | UEBERSPRUNGEN (2026-03-09) — Funktionalitaet bereits in ext-token enthalten. Flag existiert noch in config.py (Default false), wird in Zukunft entfernt. |
+| `EXT_ANALYTICS_ENABLED` | ext-analytics | `false` | Implementiert (2026-03-26). Grafana Dashboard (19 SQL-Panels) + 4 API-Endpoints + CSV-Export. |
 | `EXT_RBAC_ENABLED` | ext-rbac | `false` | |
 | `EXT_DOC_ACCESS_ENABLED` | ext-access | `false` | |
 | `EXT_I18N_ENABLED` | ext-i18n | `false` | + `NEXT_PUBLIC_EXT_I18N_ENABLED` (Frontend Build-Arg) |

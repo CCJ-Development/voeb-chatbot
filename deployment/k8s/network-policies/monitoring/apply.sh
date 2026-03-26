@@ -34,44 +34,47 @@ fi
 echo "=== Monitoring NetworkPolicies anwenden (Namespace: $NAMESPACE) ==="
 
 # 1. Allow-Policies zuerst
-echo "[1/13] DNS Egress..."
+echo "[1/14] DNS Egress..."
 kubectl apply -f "$SCRIPT_DIR/02-allow-dns-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[2/13] Scrape Egress..."
+echo "[2/14] Scrape Egress..."
 kubectl apply -f "$SCRIPT_DIR/03-allow-scrape-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[3/13] Intra-Namespace..."
+echo "[3/14] Intra-Namespace..."
 kubectl apply -f "$SCRIPT_DIR/04-allow-intra-namespace.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[4/13] K8s API Egress..."
+echo "[4/14] K8s API Egress..."
 kubectl apply -f "$SCRIPT_DIR/05-allow-k8s-api-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[5/13] PG Exporter Egress (Port 5432)..."
+echo "[5/14] PG Exporter Egress (Port 5432)..."
 kubectl apply -f "$SCRIPT_DIR/06-allow-pg-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[6/13] Redis Exporter Egress (Port 6379)..."
+echo "[6/14] Redis Exporter Egress (Port 6379)..."
 kubectl apply -f "$SCRIPT_DIR/07-allow-redis-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[7/13] AlertManager Webhook Egress (Port 443)..."
+echo "[7/14] AlertManager Webhook Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/08-allow-alertmanager-webhook-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[8/13] Backup-Check Egress (Port 443)..."
+echo "[8/14] Backup-Check Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/09-allow-backup-check-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[9/13] Blackbox Exporter Egress (Port 443)..."
+echo "[9/14] Blackbox Exporter Egress (Port 443)..."
 kubectl apply -f "$SCRIPT_DIR/10-allow-blackbox-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[10/13] OpenSearch Exporter Egress (Port 9200)..."
+echo "[10/14] OpenSearch Exporter Egress (Port 9200)..."
 kubectl apply -f "$SCRIPT_DIR/11-allow-opensearch-exporter-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[11/13] Loki Ingress (Port 3100)..."
+echo "[11/14] Loki Ingress (Port 3100)..."
 kubectl apply -f "$SCRIPT_DIR/12-allow-loki-ingress.yaml" -n "$NAMESPACE" $DRY_RUN
 
-echo "[12/13] Promtail Egress (Port 3100 + K8s API)..."
+echo "[12/14] Promtail Egress (Port 3100 + K8s API)..."
 kubectl apply -f "$SCRIPT_DIR/13-allow-promtail-egress.yaml" -n "$NAMESPACE" $DRY_RUN
 
+echo "[13/14] Grafana PG Egress (Port 5432, ext-analytics)..."
+kubectl apply -f "$SCRIPT_DIR/14-allow-grafana-pg-egress.yaml" -n "$NAMESPACE" $DRY_RUN
+
 # 2. Default-Deny zuletzt
-echo "[13/13] Default-Deny (Zero-Trust Baseline)..."
+echo "[14/14] Default-Deny (Zero-Trust Baseline)..."
 kubectl apply -f "$SCRIPT_DIR/01-default-deny-all.yaml" -n "$NAMESPACE" $DRY_RUN
 
 echo ""

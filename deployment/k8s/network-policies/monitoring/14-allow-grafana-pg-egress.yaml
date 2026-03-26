@@ -1,0 +1,18 @@
+# Grafana Egress zu StackIT Managed PG Flex (Port 5432)
+# Fuer ext-analytics: Grafana SQL-Panels lesen direkt aus der Onyx-Datenbank.
+# Ziel bewusst nicht eingeschraenkt: StackIT PG Flex IPs koennen sich bei Maintenance aendern.
+# podSelector schraenkt auf Grafana-Pods ein (Least Privilege).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-grafana-pg-egress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - port: 5432
+          protocol: TCP

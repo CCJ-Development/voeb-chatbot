@@ -798,6 +798,11 @@ Die folgenden Extension-Module (`backend/ext/` + `web/src/ext/`) sind auf DEV un
 | ext-branding | `EXT_BRANDING_ENABLED` | Whitelabel-Branding (Logo, App-Name, Login-Text) — verhindert Verwechslung mit Onyx-Original, stärkt Vertrauenswürdigkeit. Logo-Upload mit Magic-Byte-Validierung (kein SVG/XSS). | Deployed (2026-03-08) |
 | ext-token | `EXT_TOKEN_LIMITS_ENABLED` | **Kostenkontrolle**: Real-Time Token-Tracking, Per-User Quotas, Hard Stops bei Überschreitung (HTTP 429). Verhindert unkontrollierte LLM-Kosten und Missbrauch. | Deployed (2026-03-09) |
 | ext-prompts | `EXT_CUSTOM_PROMPTS_ENABLED` | **Kontrollierte LLM-Steuerung**: Admin-konfigurierbare System Prompts, die vor dem Base System Prompt injiziert werden. Ermöglicht VÖB-spezifische Guardrails und Compliance-Instruktionen. | Deployed (2026-03-09) |
+| ext-rbac | `EXT_RBAC_ENABLED` | **Gruppenbasierte Zugriffskontrolle**: FOSS-Ersatz fuer EE Groups. Gruppenverwaltung mit 7 Endpoints, Persona- und DocumentSet-Zuordnung pro Gruppe (Core #10/#11/#12). | Deployed (2026-03-23) |
+| ext-access | `EXT_DOC_ACCESS_ENABLED` | **Dokumentzugriffskontrolle**: Dokumentzugriff nur fuer zugewiesene Gruppen. ACL-Hooks in Core #3 (access.py), eigener Celery-Task (60s Sync-Intervall, umgeht EE-Guards). | Deployed (2026-03-25) |
+| ext-audit | `EXT_AUDIT_ENABLED` | **Audit-Logging**: Protokollierung aller Admin-Aktionen (15 Hooks in 5 Routern), DSGVO-konforme IP-Anonymisierung (90d Celery-Task), CSV-Export fuer Revisoren. | Deployed (2026-03-25) |
+| ext-analytics | `EXT_ANALYTICS_ENABLED` | **Nutzungsstatistiken**: Admin-only Plattform-KPIs (Nutzer, Sessions, Dokumente, Feedback). Read-Only SELECT-Queries auf bestehende Onyx-Tabellen, keine Core-Patches. | Deployed (2026-03-26) |
+| ext-i18n | `EXT_I18N_ENABLED` | **Deutsche Lokalisierung**: ~250 uebersetzte Strings der Benutzeroberflaeche. Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). | Deployed (2026-03-22) |
 
 **Architektur-Prinzip**: Alle Extensions nutzen das Hook-Pattern (try/except ImportError) in max. 10 Core-Dateien. Bei Fehler in einer Extension läuft Onyx unbeeinträchtigt weiter. Details: `.claude/rules/core-dateien.md`
 

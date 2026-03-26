@@ -99,6 +99,15 @@ def register_ext_routers(application: FastAPI) -> None:
 
         logger.info("Extension doc-access router + sync task registered")
 
+    # ext-analytics: Platform Usage Analytics
+    from ext.config import EXT_ANALYTICS_ENABLED
+
+    if EXT_ANALYTICS_ENABLED:
+        from ext.routers.analytics import router as analytics_router
+
+        include_router_with_global_prefix_prepended(application, analytics_router)
+        logger.info("Extension analytics router registered")
+
     # ext-audit: Audit-Logging
     from ext.config import EXT_AUDIT_ENABLED
 

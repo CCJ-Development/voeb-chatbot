@@ -1,0 +1,654 @@
+{
+  "id": null,
+  "uid": "voeb-analytics-overview",
+  "title": "VÖB Analytics Overview",
+  "description": "Nutzungsstatistiken, Token-Verbrauch, Feedback, Agenten und Compliance",
+  "tags": ["voeb", "analytics", "ext-analytics"],
+  "timezone": "Europe/Berlin",
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_POSTGRESQL",
+        "type": "datasource",
+        "query": "grafana-postgresql-datasource",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [],
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "title": "Uebersicht",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 1,
+      "title": "Registrierte User",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as \"Registrierte User\" FROM \"user\";",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Aktive User (30d)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(DISTINCT user_id) as \"Aktive User (30d)\" FROM chat_session WHERE time_created >= now() - interval '30 days' AND NOT deleted;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Sessions heute",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as \"Sessions heute\" FROM chat_session WHERE DATE(time_created) = CURRENT_DATE AND NOT deleted;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "yellow", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Token heute",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(SUM(total_tokens), 0) as \"Token heute\" FROM ext_token_usage WHERE DATE(created_at) = CURRENT_DATE;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 101,
+      "title": "Nutzungstrends",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 5,
+      "title": "Aktive User pro Tag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', time_created) as time, COUNT(DISTINCT user_id) as \"DAU\" FROM chat_session WHERE NOT deleted AND $__timeFilter(time_created) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "pointSize": 5,
+            "fillOpacity": 10,
+            "showPoints": "auto"
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Sessions pro Tag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', time_created) as time, COUNT(*) as \"Sessions\" FROM chat_session WHERE NOT deleted AND $__timeFilter(time_created) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 102,
+      "title": "Muster und Agenten",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Nachrichten pro Stunde",
+      "description": "Verteilung der Chat-Nachrichten ueber den Tag",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT EXTRACT(HOUR FROM time_sent)::int as \"Stunde\", COUNT(*) as \"Nachrichten\" FROM chat_message WHERE $__timeFilter(time_sent) GROUP BY 1 ORDER BY 1;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "scheme"
+          }
+        }
+      },
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "barWidth": 0.8,
+        "groupWidth": 0.7
+      }
+    },
+    {
+      "id": 8,
+      "title": "Top Agenten",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(p.name, 'Unbekannt') as \"Agent\", COUNT(*) as \"Sessions\" FROM chat_session cs LEFT JOIN persona p ON cs.persona_id = p.id WHERE NOT cs.deleted AND $__timeFilter(cs.time_created) GROUP BY p.name ORDER BY \"Sessions\" DESC LIMIT 10;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "scheme"
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "barWidth": 0.8,
+        "groupWidth": 0.7
+      }
+    },
+    {
+      "id": 103,
+      "title": "Token und Kosten",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 9,
+      "title": "Token pro Modell",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT model_name as \"Modell\", COALESCE(SUM(total_tokens), 0) as \"Tokens\" FROM ext_token_usage WHERE $__timeFilter(created_at) GROUP BY model_name ORDER BY \"Tokens\" DESC;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true },
+        "pieType": "pie",
+        "legend": { "displayMode": "table", "placement": "right", "values": ["value", "percent"] }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Token Trend",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', created_at) as time, COALESCE(SUM(prompt_tokens), 0) as \"Prompt Tokens\", COALESCE(SUM(completion_tokens), 0) as \"Completion Tokens\" FROM ext_token_usage WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 40,
+            "stacking": { "mode": "normal", "group": "A" }
+          }
+        }
+      }
+    },
+    {
+      "id": 104,
+      "title": "Antwortzeit und Feedback",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "title": "Antwortzeit",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', time_sent) as time, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY processing_duration_seconds)::numeric(10,2) as \"Median (s)\", PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY processing_duration_seconds)::numeric(10,2) as \"P95 (s)\" FROM chat_message WHERE message_type = 'ASSISTANT' AND processing_duration_seconds IS NOT NULL AND processing_duration_seconds > 0 AND $__timeFilter(time_sent) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Zufriedenheit",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 33 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT CASE WHEN COUNT(*) > 0 THEN ROUND(COUNT(CASE WHEN is_positive = true THEN 1 END)::numeric / COUNT(*)::numeric * 100, 1) ELSE 0 END as \"Zufriedenheit\" FROM chat_feedback;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 70 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 13,
+      "title": "Feedback Anzahl",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 33 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as \"Total\", COUNT(CASE WHEN is_positive = true THEN 1 END) as \"Positiv\", COUNT(CASE WHEN is_positive = false THEN 1 END) as \"Negativ\" FROM chat_feedback;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {}
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 105,
+      "title": "Fehler und Content",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 14,
+      "title": "Fehlerrate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 42 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', time_sent) as time, COUNT(CASE WHEN error IS NOT NULL THEN 1 END) as \"Fehler\", COUNT(*) as \"Total Antworten\" FROM chat_message WHERE message_type = 'ASSISTANT' AND $__timeFilter(time_sent) GROUP BY 1 ORDER BY 1;",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Fehler" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "title": "Indexierte Dokumente",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 42 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(SUM(total_docs_indexed), 0) as \"Dokumente\" FROM connector_credential_pair;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 16,
+      "title": "Aktive Connectors",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 42 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as \"Aktive Connectors\" FROM connector_credential_pair WHERE status = 'ACTIVE';",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 17,
+      "title": "Nachrichten/Session",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 42 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(msg_count)::numeric, 1) as \"Avg Nachrichten\" FROM (SELECT chat_session_id, COUNT(*) as msg_count FROM chat_message WHERE message_type IN ('USER', 'ASSISTANT') GROUP BY chat_session_id) sub;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": {},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "orange", "value": null }]
+          }
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 106,
+      "title": "Compliance und User-Details",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 18,
+      "title": "Admin-Aktionen",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT timestamp as \"Zeit\", actor_email as \"Admin\", action as \"Aktion\", resource_type as \"Ressource\", resource_name as \"Name\" FROM ext_audit_log ORDER BY timestamp DESC LIMIT 20;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Zeit" },
+            "properties": [
+              { "id": "custom.width", "value": 180 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Admin" },
+            "properties": [
+              { "id": "custom.width", "value": 200 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    },
+    {
+      "id": 19,
+      "title": "User-Aktivitaet",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "${DS_POSTGRESQL}" },
+      "targets": [
+        {
+          "rawSql": "SELECT u.email as \"User\", u.role as \"Rolle\", u.created_at as \"Registriert\", COALESCE(s.session_count, 0) as \"Sessions\", COALESCE(s.message_count, 0) as \"Nachrichten\", COALESCE(t.total_tokens, 0) as \"Tokens\", s.last_activity as \"Letzte Aktivitaet\" FROM \"user\" u LEFT JOIN (SELECT user_id, COUNT(DISTINCT cs.id) as session_count, COUNT(cm.id) as message_count, MAX(cs.time_created) as last_activity FROM chat_session cs LEFT JOIN chat_message cm ON cm.chat_session_id = cs.id AND cm.message_type = 'USER' WHERE NOT cs.deleted GROUP BY cs.user_id) s ON s.user_id = u.id LEFT JOIN (SELECT user_id, SUM(total_tokens) as total_tokens FROM ext_token_usage WHERE user_id IS NOT NULL GROUP BY user_id) t ON t.user_id = u.id ORDER BY COALESCE(s.session_count, 0) DESC LIMIT 100;",
+          "format": "table",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "User" },
+            "properties": [
+              { "id": "custom.width", "value": 220 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Registriert" },
+            "properties": [
+              { "id": "custom.width", "value": 160 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Letzte Aktivitaet" },
+            "properties": [
+              { "id": "custom.width", "value": 160 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": { "show": false }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

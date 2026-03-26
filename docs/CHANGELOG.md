@@ -9,6 +9,15 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- [ext-analytics] **Plattform-Nutzungsanalysen + Compliance-KPIs** (2026-03-26)
+  - Grafana Dashboard "VÖB Analytics Overview" (19 SQL-Panels in 7 Rows): Nutzung, Agenten, Token, Qualitaet, Content, Compliance, User-Tabelle
+  - PostgreSQL Datasource in Grafana konfiguriert (ConfigMap, db_readonly_user mit SELECT-Grants, NetworkPolicy)
+  - 4 Admin-API-Endpoints: GET `/ext/analytics/summary` (JSON), `/users`, `/agents`, `/export` (CSV)
+  - Reine SELECT-Queries auf bestehende Onyx + ext Tabellen, kein Core-Patch, kein Alembic
+  - Feature Flag `EXT_ANALYTICS_ENABLED`, 9 Unit Tests
+  - Feinkonzept: `docs/technisches-feinkonzept/ext-analytics.md`
+  - Runbook: `docs/runbooks/ext-analytics-verwaltung.md`
+
 - [ext-token] **Prometheus Counter fuer Token-Metriken** (2026-03-25)
   - 3 Counter: `ext_token_prompt_total`, `ext_token_completion_total`, `ext_token_requests_total` (Label: model)
   - Inkrementiert in `log_token_usage()` (gleicher Hook wie DB-Insert, kein neuer Code-Pfad)

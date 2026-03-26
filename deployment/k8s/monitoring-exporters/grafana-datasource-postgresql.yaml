@@ -1,0 +1,46 @@
+# Grafana Datasource: PostgreSQL (Read-Only)
+#
+# Automatisches Provisioning via Grafana Sidecar.
+# Label "grafana_datasource" wird vom Sidecar erkannt.
+#
+# ACHTUNG: Enthalt Credentials — NICHT direkt committen.
+# Stattdessen mit echten Werten via kubectl apply deployen:
+#
+#   # PROD:
+#   kubectl --context vob-prod apply -n monitoring -f - <<'EOF'
+#   <dieses Template mit echten Werten>
+#   EOF
+#
+#   # DEV:
+#   kubectl --context vob-chatbot apply -n monitoring -f - <<'EOF'
+#   <dieses Template mit DEV-Werten>
+#   EOF
+#
+# Credentials: db_readonly_user (Terraform-erstellt, SELECT-only)
+# Grants erteilt: 2026-03-26 (GRANT SELECT ON ALL TABLES)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-postgresql
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+    app.kubernetes.io/part-of: voeb-chatbot
+data:
+  postgresql-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: PostgreSQL
+        type: postgres
+        access: proxy
+        url: <POSTGRES_HOST>:5432
+        database: onyx
+        user: db_readonly_user
+        secureJsonData:
+          password: <DB_READONLY_PASSWORD>
+        jsonData:
+          sslmode: require
+          postgresVersion: 1600
+          timescaledb: false
+        isDefault: false
+        editable: false

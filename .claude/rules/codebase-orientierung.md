@@ -112,15 +112,17 @@ deployment/k8s/monitoring-exporters/   ← Exporter + Dashboards + Datasources
   cert-manager-servicemonitor.yaml     ← ServiceMonitor fuer cert-manager Metriken
   pg-backup-check-prod.yaml            ← CronJob: PG Backup-Validierung (alle 4h)
   grafana-datasource-loki.yaml         ← Grafana Loki Datasource (automatisch provisioniert)
-  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed, 5 Stueck)
+  grafana-datasource-postgresql.yaml   ← Grafana PG Datasource Template (Credentials via kubectl, nicht in Git)
+  grafana-dashboards/                  ← Custom Grafana Dashboards (als ConfigMap deployed, 6 Stueck)
     postgresql-14114.json              ← PG Dashboard (gnetId 14114)
     audit-log.json                     ← Audit-Log Dashboard (Loki-basiert, EXT-AUDIT Events)
     token-usage.json                   ← Token/LLM Usage Dashboard (Prometheus Counter)
     redis-763.json                     ← Redis Dashboard (gnetId 763)
     slo-overview.json                  ← SLA/SLO Dashboard (Availability, Latenz, Error Budget)
+    analytics-overview.json            ← ext-analytics Dashboard (19 SQL-Panels auf PG Datasource)
   apply.sh                             ← Deploy-Script mit Auto-Detection DEV/TEST/PROD
 deployment/k8s/network-policies/
-  monitoring/                ← NetworkPolicies fuer monitoring-Namespace (13 Policies)
+  monitoring/                ← NetworkPolicies fuer monitoring-Namespace (14 Policies)
     01-default-deny-all.yaml
     02-allow-dns-egress.yaml
     03-allow-scrape-egress.yaml        ← Prometheus → API:8080 + cert-manager:9402
@@ -134,7 +136,8 @@ deployment/k8s/network-policies/
     11-allow-opensearch-exporter-egress.yaml ← OS Exporter → OpenSearch:9200
     12-allow-loki-ingress.yaml         ← Promtail/Grafana → Loki:3100
     13-allow-promtail-egress.yaml      ← Promtail → Loki:3100 + K8s API
-    apply.sh                 ← Sichere Apply-Reihenfolge (13 Steps + App-NS Policies)
+    14-allow-grafana-pg-egress.yaml    ← Grafana → StackIT PG:5432 (ext-analytics)
+    apply.sh                 ← Sichere Apply-Reihenfolge (14 Steps + App-NS Policies)
   cert-manager/              ← NetworkPolicies fuer cert-manager-Namespace (6 Policies)
     01-default-deny-all.yaml
     02-allow-dns-egress.yaml
