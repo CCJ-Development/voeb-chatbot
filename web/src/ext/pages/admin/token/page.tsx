@@ -147,7 +147,7 @@ export default function ExtTokenAdminPage() {
   const handleCreateLimit = async () => {
     setMessage(null);
     if (!newUserId || !newBudget || !newPeriod) {
-      setMessage({ type: "error", text: "All fields are required" });
+      setMessage({ type: "error", text: "Alle Felder sind erforderlich" });
       return;
     }
     try {
@@ -162,17 +162,17 @@ export default function ExtTokenAdminPage() {
         }),
       });
       if (res.ok) {
-        setMessage({ type: "success", text: "Limit created" });
+        setMessage({ type: "success", text: "Limit erstellt" });
         setNewUserId("");
         setNewBudget("");
         setNewPeriod("168");
         fetchLimits();
       } else {
         const err = await res.json();
-        setMessage({ type: "error", text: err.detail || "Failed" });
+        setMessage({ type: "error", text: err.detail || "Fehlgeschlagen" });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: "Netzwerkfehler" });
     }
   };
 
@@ -205,18 +205,18 @@ export default function ExtTokenAdminPage() {
   };
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "timeseries", label: "Timeline" },
-    { key: "users", label: "Per-User" },
-    { key: "limits", label: "User Limits" },
+    { key: "overview", label: "Übersicht" },
+    { key: "timeseries", label: "Zeitverlauf" },
+    { key: "users", label: "Pro Benutzer" },
+    { key: "limits", label: "Benutzer-Limits" },
   ];
 
   if (loading) {
     return (
       <div className="p-8">
-        <Text headingH2>Token Usage</Text>
+        <Text headingH2>Token-Verbrauch</Text>
         <Text text03 className="p-4">
-          Loading...
+          Laden...
         </Text>
       </div>
     );
@@ -224,9 +224,9 @@ export default function ExtTokenAdminPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <Text headingH2>Token Usage</Text>
+      <Text headingH2>Token-Verbrauch</Text>
       <Text text03 className="pb-4">
-        LLM token consumption and per-user limits.
+        LLM-Token-Verbrauch und Benutzer-Limits.
       </Text>
 
       {message && (
@@ -243,7 +243,7 @@ export default function ExtTokenAdminPage() {
 
       {/* Period selector */}
       <div className="flex items-center gap-3 pb-4">
-        <Text text03>Period:</Text>
+        <Text text03>Zeitraum:</Text>
         {[24, 168, 720].map((h) => (
           <button
             key={h}
@@ -254,7 +254,7 @@ export default function ExtTokenAdminPage() {
                 : "bg-background-neutral-02 text-text-02"
             }`}
           >
-            {h === 24 ? "24h" : h === 168 ? "7 days" : "30 days"}
+            {h === 24 ? "24h" : h === 168 ? "7 Tage" : "30 Tage"}
           </button>
         ))}
       </div>
@@ -312,33 +312,33 @@ function OverviewTab({ summary }: OverviewTabProps) {
     <div>
       {/* Stats cards */}
       <div className="grid grid-cols-2 gap-4 pb-6">
-        <StatCard label="Total Tokens" value={formatTokens(summary.total_tokens)} />
-        <StatCard label="Requests" value={String(summary.total_requests)} />
+        <StatCard label="Tokens gesamt" value={formatTokens(summary.total_tokens)} />
+        <StatCard label="Anfragen" value={String(summary.total_requests)} />
         <StatCard
-          label="Prompt Tokens"
+          label="Prompt-Tokens"
           value={formatTokens(summary.total_prompt_tokens)}
         />
         <StatCard
-          label="Completion Tokens"
+          label="Completion-Tokens"
           value={formatTokens(summary.total_completion_tokens)}
         />
       </div>
 
       {/* By model */}
       <Text mainUiAction className="pb-2">
-        By Model
+        Nach Modell
       </Text>
       <table className="w-full text-sm mb-6">
         <thead>
           <tr className="border-b border-border-02">
             <th className="text-left p-2">
-              <Text text03>Model</Text>
+              <Text text03>Modell</Text>
             </th>
             <th className="text-right p-2">
               <Text text03>Tokens</Text>
             </th>
             <th className="text-right p-2">
-              <Text text03>Requests</Text>
+              <Text text03>Anfragen</Text>
             </th>
           </tr>
         </thead>
@@ -372,7 +372,7 @@ function TimeseriesTab({ timeseries }: TimeseriesTabProps) {
   if (timeseries.data.length === 0) {
     return (
       <Text text03 className="p-4">
-        No data for this period.
+        Keine Daten für diesen Zeitraum.
       </Text>
     );
   }
@@ -382,7 +382,7 @@ function TimeseriesTab({ timeseries }: TimeseriesTabProps) {
   return (
     <div>
       <Text mainUiAction className="pb-2">
-        Token Usage over Time ({timeseries.granularity})
+        Token-Verbrauch im Zeitverlauf ({timeseries.granularity})
       </Text>
       <div className="space-y-1">
         {timeseries.data.map((bucket) => {
@@ -431,22 +431,22 @@ function UsersTab({ summary }: UsersTabProps) {
   return (
     <div>
       <Text mainUiAction className="pb-2">
-        Per-User Breakdown
+        Aufschlüsselung pro Benutzer
       </Text>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border-02">
             <th className="text-left p-2">
-              <Text text03>User</Text>
+              <Text text03>Benutzer</Text>
             </th>
             <th className="text-right p-2">
               <Text text03>Tokens</Text>
             </th>
             <th className="text-right p-2">
-              <Text text03>Requests</Text>
+              <Text text03>Anfragen</Text>
             </th>
             <th className="text-right p-2">
-              <Text text03>Share</Text>
+              <Text text03>Anteil</Text>
             </th>
           </tr>
         </thead>
@@ -474,7 +474,7 @@ function UsersTab({ summary }: UsersTabProps) {
           {summary.by_user.length === 0 && (
             <tr>
               <td colSpan={4} className="p-4 text-center">
-                <Text text03>No user data for this period.</Text>
+                <Text text03>Keine Benutzerdaten für diesen Zeitraum.</Text>
               </td>
             </tr>
           )}
@@ -520,10 +520,10 @@ function LimitsTab({
     <div>
       {/* Existing limits */}
       <Text mainUiAction className="pb-2">
-        Configured User Limits
+        Konfigurierte Benutzer-Limits
       </Text>
       <Text text03 className="pb-3">
-        Budget is in thousands of tokens (e.g. 500 = 500,000 tokens).
+        Budget in Tausend Token (z.B. 500 = 500.000 Token).
       </Text>
 
       {limits.length > 0 ? (
@@ -531,22 +531,22 @@ function LimitsTab({
           <thead>
             <tr className="border-b border-border-02">
               <th className="text-left p-2">
-                <Text text03>User</Text>
+                <Text text03>Benutzer</Text>
               </th>
               <th className="text-right p-2">
                 <Text text03>Budget (k)</Text>
               </th>
               <th className="text-right p-2">
-                <Text text03>Period</Text>
+                <Text text03>Zeitraum</Text>
               </th>
               <th className="text-right p-2">
-                <Text text03>Usage</Text>
+                <Text text03>Verbrauch</Text>
               </th>
               <th className="text-center p-2">
                 <Text text03>Status</Text>
               </th>
               <th className="text-center p-2">
-                <Text text03>Actions</Text>
+                <Text text03>Aktionen</Text>
               </th>
             </tr>
           </thead>
@@ -581,7 +581,7 @@ function LimitsTab({
                           : "bg-background-neutral-02 text-text-03"
                       }`}
                     >
-                      {lim.enabled ? "Active" : "Disabled"}
+                      {lim.enabled ? "Aktiv" : "Deaktiviert"}
                     </span>
                   </td>
                   <td className="text-center p-2">
@@ -590,13 +590,13 @@ function LimitsTab({
                         onClick={() => onToggleLimit(lim)}
                         className="text-xs text-action-link-01 underline"
                       >
-                        {lim.enabled ? "Disable" : "Enable"}
+                        {lim.enabled ? "Deaktivieren" : "Aktivieren"}
                       </button>
                       <button
                         onClick={() => onDeleteLimit(lim.id)}
                         className="text-xs text-action-danger-01 underline"
                       >
-                        Delete
+                        Löschen
                       </button>
                     </div>
                   </td>
@@ -607,25 +607,25 @@ function LimitsTab({
         </table>
       ) : (
         <Text text03 className="pb-6">
-          No per-user limits configured.
+          Keine Benutzer-Limits konfiguriert.
         </Text>
       )}
 
       {/* Create new limit */}
       <Text mainUiAction className="pb-2">
-        Add User Limit
+        Benutzer-Limit hinzufügen
       </Text>
       <div className="flex gap-3 items-end flex-wrap">
         <div className="flex-1 min-w-[200px]">
           <Text text03 className="pb-1 text-xs">
-            User
+            Benutzer
           </Text>
           <select
             value={newUserId}
             onChange={(e) => setNewUserId(e.target.value)}
             className="w-full rounded-08 border border-border-02 bg-background-neutral-01 px-3 py-2 text-sm text-text-01"
           >
-            <option value="">Select user...</option>
+            <option value="">Benutzer auswählen...</option>
             {availableUsers.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.email}
@@ -635,7 +635,7 @@ function LimitsTab({
         </div>
         <div className="w-28">
           <Text text03 className="pb-1 text-xs">
-            Budget (k tokens)
+            Budget (k Token)
           </Text>
           <InputTypeIn
             value={newBudget}
@@ -645,7 +645,7 @@ function LimitsTab({
         </div>
         <div className="w-28">
           <Text text03 className="pb-1 text-xs">
-            Period (hours)
+            Zeitraum (Stunden)
           </Text>
           <InputTypeIn
             value={newPeriod}
@@ -654,7 +654,7 @@ function LimitsTab({
           />
         </div>
         <Button main primary onClick={onCreateLimit}>
-          Add Limit
+          Limit hinzufügen
         </Button>
       </div>
     </div>

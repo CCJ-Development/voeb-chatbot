@@ -29,10 +29,10 @@ type ViewMode = "list" | "edit" | "preview";
 
 const CATEGORIES = [
   { value: "compliance", label: "Compliance" },
-  { value: "tone", label: "Tonality" },
-  { value: "context", label: "Context" },
-  { value: "instructions", label: "Instructions" },
-  { value: "general", label: "General" },
+  { value: "tone", label: "Tonalität" },
+  { value: "context", label: "Kontext" },
+  { value: "instructions", label: "Anweisungen" },
+  { value: "general", label: "Allgemein" },
 ];
 
 const SOFT_LIMIT_ACTIVE = 20;
@@ -111,7 +111,7 @@ export default function ExtPromptsAdminPage() {
   const handleSave = async () => {
     setMessage(null);
     if (!formName.trim() || !formText.trim()) {
-      setMessage({ type: "error", text: "Name and prompt text are required." });
+      setMessage({ type: "error", text: "Name und Prompt-Text sind erforderlich." });
       return;
     }
 
@@ -139,7 +139,7 @@ export default function ExtPromptsAdminPage() {
       if (res.ok) {
         setMessage({
           type: "success",
-          text: editingPrompt ? "Prompt updated." : "Prompt created.",
+          text: editingPrompt ? "Prompt aktualisiert." : "Prompt erstellt.",
         });
         resetForm();
         setView("list");
@@ -149,11 +149,11 @@ export default function ExtPromptsAdminPage() {
         const err = await res.json();
         setMessage({
           type: "error",
-          text: err.detail || "Failed to save prompt.",
+          text: err.detail || "Prompt konnte nicht gespeichert werden.",
         });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error." });
+      setMessage({ type: "error", text: "Netzwerkfehler." });
     } finally {
       setSaving(false);
     }
@@ -174,14 +174,14 @@ export default function ExtPromptsAdminPage() {
   };
 
   const handleDelete = async (prompt: CustomPrompt) => {
-    if (!confirm(`Delete prompt "${prompt.name}"?`)) return;
+    if (!confirm(`Prompt "${prompt.name}" wirklich löschen?`)) return;
     try {
       await fetch(`/api/ext/prompts/${prompt.id}`, { method: "DELETE" });
-      setMessage({ type: "success", text: "Prompt deleted." });
+      setMessage({ type: "success", text: "Prompt gelöscht." });
       fetchPrompts();
       fetchPreview();
     } catch {
-      setMessage({ type: "error", text: "Failed to delete." });
+      setMessage({ type: "error", text: "Löschen fehlgeschlagen." });
     }
   };
 
@@ -196,9 +196,9 @@ export default function ExtPromptsAdminPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <Text headingH2>System Prompts</Text>
+        <Text headingH2>System-Prompts</Text>
         <Text text03 className="p-4">
-          Loading...
+          Laden...
         </Text>
       </div>
     );
@@ -206,10 +206,10 @@ export default function ExtPromptsAdminPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <Text headingH2>System Prompts</Text>
+      <Text headingH2>System-Prompts</Text>
       <Text text03 className="pb-4">
-        Global system prompt instructions that are prepended to every LLM call,
-        regardless of the selected agent/persona.
+        Globale System-Prompt-Anweisungen, die jedem LLM-Aufruf vorangestellt
+        werden, unabhängig vom gewählten Agenten.
       </Text>
 
       {message && (
@@ -229,9 +229,9 @@ export default function ExtPromptsAdminPage() {
       {showLimitWarning && (
         <div className="p-3 rounded-08 mb-4 bg-status-warning-01 text-status-warning-03">
           <Text>
-            Warning: {activeCount} active prompts ({totalChars.toLocaleString()}{" "}
-            chars). Recommended limit: {SOFT_LIMIT_ACTIVE} prompts /{" "}
-            {SOFT_LIMIT_CHARS.toLocaleString()} chars.
+            Warnung: {activeCount} aktive Prompts ({totalChars.toLocaleString()}{" "}
+            Zeichen). Empfohlenes Limit: {SOFT_LIMIT_ACTIVE} Prompts /{" "}
+            {SOFT_LIMIT_CHARS.toLocaleString()} Zeichen.
           </Text>
         </div>
       )}
@@ -249,7 +249,7 @@ export default function ExtPromptsAdminPage() {
           Prompts
         </Button>
         <Button main primary={false} onClick={openCreate}>
-          + New Prompt
+          + Neuer Prompt
         </Button>
         <Button
           main
@@ -259,7 +259,7 @@ export default function ExtPromptsAdminPage() {
             setView("preview");
           }}
         >
-          Preview
+          Vorschau
         </Button>
       </div>
 
@@ -313,9 +313,9 @@ function PromptList({ prompts, onEdit, onToggle, onDelete }: PromptListProps) {
   if (prompts.length === 0) {
     return (
       <div className="p-6 bg-background-neutral-01 border border-border-02 rounded-08 text-center">
-        <Text text03>No system prompts configured yet.</Text>
+        <Text text03>Noch keine System-Prompts konfiguriert.</Text>
         <Text text03 className="pt-2">
-          Create your first prompt to add global instructions to every LLM call.
+          Erstellen Sie Ihren ersten Prompt, um globale Anweisungen hinzuzufügen.
         </Text>
       </div>
     );
@@ -326,22 +326,22 @@ function PromptList({ prompts, onEdit, onToggle, onDelete }: PromptListProps) {
       <thead>
         <tr className="border-b border-border-02">
           <th className="text-left p-2">
-            <Text text03>Priority</Text>
+            <Text text03>Priorität</Text>
           </th>
           <th className="text-left p-2">
             <Text text03>Name</Text>
           </th>
           <th className="text-left p-2">
-            <Text text03>Category</Text>
+            <Text text03>Kategorie</Text>
           </th>
           <th className="text-center p-2">
             <Text text03>Status</Text>
           </th>
           <th className="text-right p-2">
-            <Text text03>Chars</Text>
+            <Text text03>Zeichen</Text>
           </th>
           <th className="text-center p-2">
-            <Text text03>Actions</Text>
+            <Text text03>Aktionen</Text>
           </th>
         </tr>
       </thead>
@@ -365,7 +365,7 @@ function PromptList({ prompts, onEdit, onToggle, onDelete }: PromptListProps) {
                     : "bg-background-neutral-02 text-text-03"
                 }`}
               >
-                {p.is_active ? "Active" : "Inactive"}
+                {p.is_active ? "Aktiv" : "Inaktiv"}
               </span>
             </td>
             <td className="text-right p-2">
@@ -438,14 +438,14 @@ function PromptForm({
   return (
     <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-6">
       <Text mainUiAction className="pb-4">
-        {editing ? "Edit Prompt" : "New Prompt"}
+        {editing ? "Prompt bearbeiten" : "Neuer Prompt"}
       </Text>
 
       <div className="space-y-4">
         {/* Name */}
         <div>
           <Text text03 className="pb-1 text-xs">
-            Name (max 100 chars)
+            Name (max. 100 Zeichen)
           </Text>
           <InputTypeIn
             value={formName}
@@ -458,7 +458,7 @@ function PromptForm({
         <div className="flex gap-4">
           <div className="flex-1">
             <Text text03 className="pb-1 text-xs">
-              Category
+              Kategorie
             </Text>
             <select
               value={formCategory}
@@ -474,7 +474,7 @@ function PromptForm({
           </div>
           <div className="w-32">
             <Text text03 className="pb-1 text-xs">
-              Priority (0-1000)
+              Priorität (0-1000)
             </Text>
             <InputTypeIn
               value={formPriority}
@@ -487,16 +487,16 @@ function PromptForm({
         {/* Prompt text */}
         <div>
           <Text text03 className="pb-1 text-xs">
-            Prompt Text (max 10,000 chars)
+            Prompt-Text (max. 10.000 Zeichen)
           </Text>
           <InputTextArea
             value={formText}
             onChange={(e) => setFormText(e.target.value)}
-            placeholder="Enter the system prompt instructions..."
+            placeholder="System-Prompt-Anweisungen eingeben..."
             className="min-h-[200px]"
           />
           <Text text03 className="pt-1 text-xs">
-            {formText.length.toLocaleString()} / 10,000 chars
+            {formText.length.toLocaleString()} / 10.000 Zeichen
           </Text>
         </div>
 
@@ -508,16 +508,16 @@ function PromptForm({
             onChange={(e) => setFormActive(e.target.checked)}
             className="rounded"
           />
-          <Text>Active</Text>
+          <Text>Aktiv</Text>
         </label>
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">
           <Button main primary onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : editing ? "Update" : "Create"}
+            {saving ? "Speichern..." : editing ? "Aktualisieren" : "Erstellen"}
           </Button>
           <Button main primary={false} onClick={onCancel}>
-            Cancel
+            Abbrechen
           </Button>
         </div>
       </div>
@@ -535,7 +535,7 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
   if (!preview) {
     return (
       <Text text03 className="p-4">
-        Unable to load preview.
+        Vorschau konnte nicht geladen werden.
       </Text>
     );
   }
@@ -545,7 +545,7 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
       <div className="flex gap-4 pb-4">
         <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-3">
           <Text text03 className="text-xs">
-            Active Prompts
+            Aktive Prompts
           </Text>
           <Text headingH3>
             {preview.active_count} / {preview.total_count}
@@ -553,7 +553,7 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
         </div>
         <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-3">
           <Text text03 className="text-xs">
-            Total Characters
+            Zeichen gesamt
           </Text>
           <Text headingH3>
             {preview.assembled_text.length.toLocaleString()}
@@ -562,7 +562,7 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
       </div>
 
       <Text mainUiAction className="pb-2">
-        Assembled Prompt (sent before every LLM call)
+        Zusammengesetzter Prompt (vor jedem LLM-Aufruf)
       </Text>
 
       {preview.assembled_text ? (
@@ -571,7 +571,7 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
         </pre>
       ) : (
         <div className="p-6 bg-background-neutral-01 border border-border-02 rounded-08 text-center">
-          <Text text03>No active prompts. The LLM receives only the standard Onyx system prompt.</Text>
+          <Text text03>Keine aktiven Prompts. Das LLM erhält nur den Standard-System-Prompt.</Text>
         </div>
       )}
     </div>
