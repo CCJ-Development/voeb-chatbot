@@ -9,6 +9,13 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- [ext-i18n] **ext-Admin-Seiten komplett auf Deutsch + Spacing/Kontrast-Fix** (2026-03-29)
+  - Token Usage, Branding, System Prompts: ~115 englische Strings ins Deutsche uebersetzt
+  - LogoCropModal: Tippfehler "Uebernehmen" → "Uebernehmen" korrigiert
+  - GroupsListPage: "Document Sets" → "Dokumentensammlungen"
+  - Text-Spacing: `block` Klasse auf alle `<Text>` mit Padding/Margin (span → block display)
+  - Zeitraum-Buttons: Kontrast-Fix (`bg-background-neutral-inverted-00` + `text-text-inverted-05`)
+  - Tabs: Underline-Pattern statt kaum sichtbarem Hintergrund-Wechsel (`border-b-2` + `text-text-05`)
 - [ext-audit] **Audit-Events wurden nicht persistiert + Logs nicht emittiert** (2026-03-29)
   - `log_audit_event()` nutzte `flush()` statt `commit()` — Audit-Eintraege wurden beim Session-Close verworfen
   - ext-Logger nutzte `logging.getLogger()` statt `setup_logger()` — kein Handler, kein Level konfiguriert

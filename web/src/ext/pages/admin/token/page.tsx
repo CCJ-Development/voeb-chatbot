@@ -214,20 +214,16 @@ export default function ExtTokenAdminPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <Text headingH2>Token-Verbrauch</Text>
-        <Text text03 className="p-4">
-          Laden...
-        </Text>
+        <Text headingH2 className="block">Token-Verbrauch</Text>
+        <Text text03 className="block p-4">Laden...</Text>
       </div>
     );
   }
 
   return (
     <div className="p-8 max-w-4xl">
-      <Text headingH2>Token-Verbrauch</Text>
-      <Text text03 className="pb-4">
-        LLM-Token-Verbrauch und Benutzer-Limits.
-      </Text>
+      <Text headingH2 className="block pb-1">Token-Verbrauch</Text>
+      <Text text03 className="block pb-4">LLM-Token-Verbrauch und Benutzer-Limits.</Text>
 
       {message && (
         <div
@@ -250,7 +246,7 @@ export default function ExtTokenAdminPage() {
             onClick={() => setPeriodHours(h)}
             className={`px-3 py-1 rounded-08 text-sm ${
               periodHours === h
-                ? "bg-theme-primary-05 text-text-inverted-01"
+                ? "bg-background-neutral-inverted-00 text-text-inverted-05"
                 : "bg-background-neutral-02 text-text-02"
             }`}
           >
@@ -260,14 +256,14 @@ export default function ExtTokenAdminPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border-02 pb-0 mb-4">
+      <div className="flex gap-1 border-b border-border-02 mb-4">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 text-sm rounded-t-08 ${
+            className={`px-4 py-2 text-sm ${
               tab === t.key
-                ? "bg-background-neutral-01 text-text-01 border border-border-02 border-b-0"
+                ? "text-text-05 border-b-2 border-b-text-05"
                 : "text-text-03"
             }`}
           >
@@ -325,9 +321,7 @@ function OverviewTab({ summary }: OverviewTabProps) {
       </div>
 
       {/* By model */}
-      <Text mainUiAction className="pb-2">
-        Nach Modell
-      </Text>
+      <Text mainUiAction className="block pb-2">Nach Modell</Text>
       <table className="w-full text-sm mb-6">
         <thead>
           <tr className="border-b border-border-02">
@@ -371,9 +365,7 @@ interface TimeseriesTabProps {
 function TimeseriesTab({ timeseries }: TimeseriesTabProps) {
   if (timeseries.data.length === 0) {
     return (
-      <Text text03 className="p-4">
-        Keine Daten für diesen Zeitraum.
-      </Text>
+      <Text text03 className="block p-4">Keine Daten für diesen Zeitraum.</Text>
     );
   }
 
@@ -381,9 +373,7 @@ function TimeseriesTab({ timeseries }: TimeseriesTabProps) {
 
   return (
     <div>
-      <Text mainUiAction className="pb-2">
-        Token-Verbrauch im Zeitverlauf ({timeseries.granularity})
-      </Text>
+      <Text mainUiAction className="block pb-2">Token-Verbrauch im Zeitverlauf ({timeseries.granularity})</Text>
       <div className="space-y-1">
         {timeseries.data.map((bucket) => {
           const pct = (bucket.total_tokens / maxTokens) * 100;
@@ -430,9 +420,7 @@ interface UsersTabProps {
 function UsersTab({ summary }: UsersTabProps) {
   return (
     <div>
-      <Text mainUiAction className="pb-2">
-        Aufschlüsselung pro Benutzer
-      </Text>
+      <Text mainUiAction className="block pb-2">Aufschlüsselung pro Benutzer</Text>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border-02">
@@ -474,7 +462,7 @@ function UsersTab({ summary }: UsersTabProps) {
           {summary.by_user.length === 0 && (
             <tr>
               <td colSpan={4} className="p-4 text-center">
-                <Text text03>Keine Benutzerdaten für diesen Zeitraum.</Text>
+                <Text text03 className="block">Keine Benutzerdaten für diesen Zeitraum.</Text>
               </td>
             </tr>
           )}
@@ -519,12 +507,8 @@ function LimitsTab({
   return (
     <div>
       {/* Existing limits */}
-      <Text mainUiAction className="pb-2">
-        Konfigurierte Benutzer-Limits
-      </Text>
-      <Text text03 className="pb-3">
-        Budget in Tausend Token (z.B. 500 = 500.000 Token).
-      </Text>
+      <Text mainUiAction className="block pb-2">Konfigurierte Benutzer-Limits</Text>
+      <Text text03 className="block pb-3">Budget in Tausend Token (z.B. 500 = 500.000 Token).</Text>
 
       {limits.length > 0 ? (
         <table className="w-full text-sm mb-6">
@@ -606,20 +590,14 @@ function LimitsTab({
           </tbody>
         </table>
       ) : (
-        <Text text03 className="pb-6">
-          Keine Benutzer-Limits konfiguriert.
-        </Text>
+        <Text text03 className="block pb-6">Keine Benutzer-Limits konfiguriert.</Text>
       )}
 
       {/* Create new limit */}
-      <Text mainUiAction className="pb-2">
-        Benutzer-Limit hinzufügen
-      </Text>
+      <Text mainUiAction className="block pb-2">Benutzer-Limit hinzufügen</Text>
       <div className="flex gap-3 items-end flex-wrap">
         <div className="flex-1 min-w-[200px]">
-          <Text text03 className="pb-1 text-xs">
-            Benutzer
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Benutzer</Text>
           <select
             value={newUserId}
             onChange={(e) => setNewUserId(e.target.value)}
@@ -634,9 +612,7 @@ function LimitsTab({
           </select>
         </div>
         <div className="w-28">
-          <Text text03 className="pb-1 text-xs">
-            Budget (k Token)
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Budget (k Token)</Text>
           <InputTypeIn
             value={newBudget}
             onChange={(e) => setNewBudget(e.target.value)}
@@ -644,9 +620,7 @@ function LimitsTab({
           />
         </div>
         <div className="w-28">
-          <Text text03 className="pb-1 text-xs">
-            Zeitraum (Stunden)
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Zeitraum (Stunden)</Text>
           <InputTypeIn
             value={newPeriod}
             onChange={(e) => setNewPeriod(e.target.value)}
@@ -671,10 +645,8 @@ interface StatCardProps {
 function StatCard({ label, value }: StatCardProps) {
   return (
     <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-4">
-      <Text text03 className="pb-1 text-xs">
-        {label}
-      </Text>
-      <Text headingH3>{value}</Text>
+      <Text text03 className="block pb-1 text-xs">{label}</Text>
+      <Text headingH3 className="block">{value}</Text>
     </div>
   );
 }

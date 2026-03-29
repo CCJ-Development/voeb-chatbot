@@ -160,20 +160,16 @@ export default function ExtBrandingAdminPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <Text headingH2>Branding</Text>
-        <Text text03 className="p-4">
-          Laden...
-        </Text>
+        <Text headingH2 className="block">Branding</Text>
+        <Text text03 className="block p-4">Laden...</Text>
       </div>
     );
   }
 
   return (
     <div className="p-8 max-w-2xl">
-      <Text headingH2>Branding-Konfiguration</Text>
-      <Text text03 className="pb-6">
-        Erscheinungsbild der Anwendung konfigurieren.
-      </Text>
+      <Text headingH2 className="block pb-1">Branding-Konfiguration</Text>
+      <Text text03 className="block pb-6">Erscheinungsbild der Anwendung konfigurieren.</Text>
 
       {message && (
         <div
@@ -189,9 +185,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* App Name */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Anwendungsname
-        </Text>
+        <Text mainUiAction className="block pb-2">Anwendungsname</Text>
         <InputTypeIn
           value={config.application_name || ""}
           onChange={(e) =>
@@ -207,9 +201,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Logo */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Logo
-        </Text>
+        <Text mainUiAction className="block pb-2">Logo</Text>
         <div className="flex items-center gap-4">
           {config.use_custom_logo && (
             <img
@@ -231,9 +223,7 @@ export default function ExtBrandingAdminPage() {
             </Button>
           )}
         </div>
-        <Text text03 className="pt-1">
-          PNG oder JPEG, max. 2 MB
-        </Text>
+        <Text text03 className="block pt-1">PNG oder JPEG, max. 2 MB</Text>
       </div>
 
       {/* Crop Modal */}
@@ -247,9 +237,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Logo Display Style */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Logo-Anzeigestil
-        </Text>
+        <Text mainUiAction className="block pb-2">Logo-Anzeigestil</Text>
         <select
           value={config.logo_display_style || ""}
           onChange={(e) =>
@@ -269,9 +257,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Chat Header */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Kopfzeilen-Inhalt
-        </Text>
+        <Text mainUiAction className="block pb-2">Kopfzeilen-Inhalt</Text>
         <InputTypeIn
           value={config.custom_header_content || ""}
           onChange={(e) =>
@@ -284,9 +270,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Chat Greeting */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Chat-Begrüßungsnachricht
-        </Text>
+        <Text mainUiAction className="block pb-2">Chat-Begrüßungsnachricht</Text>
         <InputTypeIn
           value={config.custom_greeting_message || ""}
           onChange={(e) =>
@@ -299,9 +283,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Chat Footer */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Chat-Fußzeile / Haftungsausschluss
-        </Text>
+        <Text mainUiAction className="block pb-2">Chat-Fußzeile / Haftungsausschluss</Text>
         <InputTypeIn
           value={config.custom_lower_disclaimer_content || ""}
           onChange={(e) =>
@@ -317,9 +299,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Welcome Popup */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Erstbesuch-Hinweis
-        </Text>
+        <Text mainUiAction className="block pb-2">Erstbesuch-Hinweis</Text>
         <label className="flex items-center gap-2 pb-2">
           <input
             type="checkbox"
@@ -355,9 +335,7 @@ export default function ExtBrandingAdminPage() {
 
       {/* Consent Screen */}
       <div className="pb-6">
-        <Text mainUiAction className="pb-2">
-          Einwilligungsbildschirm
-        </Text>
+        <Text mainUiAction className="block pb-2">Einwilligungsbildschirm</Text>
         <label className="flex items-center gap-2 pb-2">
           <input
             type="checkbox"

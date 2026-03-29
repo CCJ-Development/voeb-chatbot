@@ -196,18 +196,16 @@ export default function ExtPromptsAdminPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <Text headingH2>System-Prompts</Text>
-        <Text text03 className="p-4">
-          Laden...
-        </Text>
+        <Text headingH2 className="block">System-Prompts</Text>
+        <Text text03 className="block p-4">Laden...</Text>
       </div>
     );
   }
 
   return (
     <div className="p-8 max-w-4xl">
-      <Text headingH2>System-Prompts</Text>
-      <Text text03 className="pb-4">
+      <Text headingH2 className="block pb-1">System-Prompts</Text>
+      <Text text03 className="block pb-4">
         Globale System-Prompt-Anweisungen, die jedem LLM-Aufruf vorangestellt
         werden, unabhängig vom gewählten Agenten.
       </Text>
@@ -437,16 +435,12 @@ function PromptForm({
 }: PromptFormProps) {
   return (
     <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-6">
-      <Text mainUiAction className="pb-4">
-        {editing ? "Prompt bearbeiten" : "Neuer Prompt"}
-      </Text>
+      <Text mainUiAction className="block pb-4">{editing ? "Prompt bearbeiten" : "Neuer Prompt"}</Text>
 
       <div className="space-y-4">
         {/* Name */}
         <div>
-          <Text text03 className="pb-1 text-xs">
-            Name (max. 100 Zeichen)
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Name (max. 100 Zeichen)</Text>
           <InputTypeIn
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
@@ -457,9 +451,7 @@ function PromptForm({
         {/* Category + Priority row */}
         <div className="flex gap-4">
           <div className="flex-1">
-            <Text text03 className="pb-1 text-xs">
-              Kategorie
-            </Text>
+            <Text text03 className="block pb-1 text-xs">Kategorie</Text>
             <select
               value={formCategory}
               onChange={(e) => setFormCategory(e.target.value)}
@@ -473,9 +465,7 @@ function PromptForm({
             </select>
           </div>
           <div className="w-32">
-            <Text text03 className="pb-1 text-xs">
-              Priorität (0-1000)
-            </Text>
+            <Text text03 className="block pb-1 text-xs">Priorität (0-1000)</Text>
             <InputTypeIn
               value={formPriority}
               onChange={(e) => setFormPriority(e.target.value)}
@@ -486,18 +476,14 @@ function PromptForm({
 
         {/* Prompt text */}
         <div>
-          <Text text03 className="pb-1 text-xs">
-            Prompt-Text (max. 10.000 Zeichen)
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Prompt-Text (max. 10.000 Zeichen)</Text>
           <InputTextArea
             value={formText}
             onChange={(e) => setFormText(e.target.value)}
             placeholder="System-Prompt-Anweisungen eingeben..."
             className="min-h-[200px]"
           />
-          <Text text03 className="pt-1 text-xs">
-            {formText.length.toLocaleString()} / 10.000 Zeichen
-          </Text>
+          <Text text03 className="block pt-1 text-xs">{formText.length.toLocaleString()} / 10.000 Zeichen</Text>
         </div>
 
         {/* Active toggle */}
@@ -544,26 +530,16 @@ function PromptPreviewView({ preview }: PromptPreviewViewProps) {
     <div>
       <div className="flex gap-4 pb-4">
         <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-3">
-          <Text text03 className="text-xs">
-            Aktive Prompts
-          </Text>
-          <Text headingH3>
-            {preview.active_count} / {preview.total_count}
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Aktive Prompts</Text>
+          <Text headingH3 className="block">{preview.active_count} / {preview.total_count}</Text>
         </div>
         <div className="bg-background-neutral-01 border border-border-02 rounded-08 p-3">
-          <Text text03 className="text-xs">
-            Zeichen gesamt
-          </Text>
-          <Text headingH3>
-            {preview.assembled_text.length.toLocaleString()}
-          </Text>
+          <Text text03 className="block pb-1 text-xs">Zeichen gesamt</Text>
+          <Text headingH3 className="block">{preview.assembled_text.length.toLocaleString()}</Text>
         </div>
       </div>
 
-      <Text mainUiAction className="pb-2">
-        Zusammengesetzter Prompt (vor jedem LLM-Aufruf)
-      </Text>
+      <Text mainUiAction className="block pb-2">Zusammengesetzter Prompt (vor jedem LLM-Aufruf)</Text>
 
       {preview.assembled_text ? (
         <pre className="bg-background-neutral-02 border border-border-01 rounded-08 p-4 text-sm whitespace-pre-wrap text-text-02 overflow-auto max-h-[500px]">
