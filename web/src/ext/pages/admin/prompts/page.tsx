@@ -375,21 +375,21 @@ function PromptList({ prompts, onEdit, onToggle, onDelete }: PromptListProps) {
               <div className="flex gap-2 justify-center">
                 <button
                   onClick={() => onEdit(p)}
-                  className="text-xs text-action-link-01 underline"
+                  className="text-xs font-medium text-text-02 hover:text-text-01 underline"
                 >
-                  Edit
+                  Bearbeiten
                 </button>
                 <button
                   onClick={() => onToggle(p)}
-                  className="text-xs text-action-link-01 underline"
+                  className="text-xs font-medium text-text-02 hover:text-text-01 underline"
                 >
-                  {p.is_active ? "Disable" : "Enable"}
+                  {p.is_active ? "Deaktivieren" : "Aktivieren"}
                 </button>
                 <button
                   onClick={() => onDelete(p)}
-                  className="text-xs text-action-danger-01 underline"
+                  className="text-xs font-medium text-status-error-03 hover:text-status-error-02 underline"
                 >
-                  Delete
+                  Löschen
                 </button>
               </div>
             </td>
