@@ -326,7 +326,7 @@ export default function LogoCropModal({
             Abbrechen
           </Button>
           <Button main primary onClick={cropAndExport}>
-            Uebernehmen
+            Übernehmen
           </Button>
         </Modal.Footer>
       </Modal.Content>

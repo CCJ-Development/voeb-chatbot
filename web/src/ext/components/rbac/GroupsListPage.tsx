@@ -31,7 +31,7 @@ function buildGroupDescription(group: UserGroup): string {
     );
   }
   if (group.document_sets.length > 0) {
-    parts.push(`${group.document_sets.length} Document Sets`);
+    parts.push(`${group.document_sets.length} Dokumentensammlungen`);
   }
   if (group.personas.length > 0) {
     parts.push(
@@ -40,7 +40,7 @@ function buildGroupDescription(group: UserGroup): string {
   }
   return parts.length > 0
     ? parts.join(" · ")
-    : "Keine Connectoren / Document Sets / Agenten";
+    : "Keine Connectoren / Dokumentensammlungen / Agenten";
 }
 
 export default function GroupsListPage() {

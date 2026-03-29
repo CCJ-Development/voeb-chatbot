@@ -62,7 +62,7 @@ export default function ExtBrandingAdminPage() {
         setConfig(await res.json());
       }
     } catch {
-      setMessage({ type: "error", text: "Failed to load config" });
+      setMessage({ type: "error", text: "Konfiguration konnte nicht geladen werden" });
     } finally {
       setLoading(false);
     }
@@ -82,17 +82,17 @@ export default function ExtBrandingAdminPage() {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        setMessage({ type: "success", text: "Saved successfully" });
+        setMessage({ type: "success", text: "Erfolgreich gespeichert" });
         router.refresh();
       } else {
         const err = await res.json();
         setMessage({
           type: "error",
-          text: err.detail || "Save failed",
+          text: err.detail || "Speichern fehlgeschlagen",
         });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: "Netzwerkfehler" });
     } finally {
       setSaving(false);
     }
@@ -116,7 +116,7 @@ export default function ExtBrandingAdminPage() {
         body: formData,
       });
       if (res.ok) {
-        setMessage({ type: "success", text: "Logo uploaded" });
+        setMessage({ type: "success", text: "Logo hochgeladen" });
         setConfig((prev) => ({ ...prev, use_custom_logo: true }));
         setLogoVersion((v) => v + 1);
         router.refresh();
@@ -124,11 +124,11 @@ export default function ExtBrandingAdminPage() {
         const err = await res.json();
         setMessage({
           type: "error",
-          text: err.detail || "Logo upload failed",
+          text: err.detail || "Logo-Upload fehlgeschlagen",
         });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: "Netzwerkfehler" });
     }
   };
 
@@ -138,15 +138,15 @@ export default function ExtBrandingAdminPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        setMessage({ type: "success", text: "Logo removed" });
+        setMessage({ type: "success", text: "Logo entfernt" });
         setConfig((prev) => ({ ...prev, use_custom_logo: false }));
         setLogoVersion((v) => v + 1);
         router.refresh();
       } else {
-        setMessage({ type: "error", text: "Failed to remove logo" });
+        setMessage({ type: "error", text: "Logo konnte nicht entfernt werden" });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error" });
+      setMessage({ type: "error", text: "Netzwerkfehler" });
     }
   };
 
@@ -162,7 +162,7 @@ export default function ExtBrandingAdminPage() {
       <div className="p-8">
         <Text headingH2>Branding</Text>
         <Text text03 className="p-4">
-          Loading...
+          Laden...
         </Text>
       </div>
     );
@@ -170,9 +170,9 @@ export default function ExtBrandingAdminPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <Text headingH2>Branding Configuration</Text>
+      <Text headingH2>Branding-Konfiguration</Text>
       <Text text03 className="pb-6">
-        Configure the look and feel of your application.
+        Erscheinungsbild der Anwendung konfigurieren.
       </Text>
 
       {message && (
@@ -190,7 +190,7 @@ export default function ExtBrandingAdminPage() {
       {/* App Name */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Application Name
+          Anwendungsname
         </Text>
         <InputTypeIn
           value={config.application_name || ""}
@@ -214,7 +214,7 @@ export default function ExtBrandingAdminPage() {
           {config.use_custom_logo && (
             <img
               src={`/api/enterprise-settings/logo?v=${logoVersion}`}
-              alt="Current logo"
+              alt="Aktuelles Logo"
               className="w-10 h-10 rounded-full object-cover"
             />
           )}
@@ -232,7 +232,7 @@ export default function ExtBrandingAdminPage() {
           )}
         </div>
         <Text text03 className="pt-1">
-          PNG or JPEG, max 2 MB
+          PNG oder JPEG, max. 2 MB
         </Text>
       </div>
 
@@ -248,7 +248,7 @@ export default function ExtBrandingAdminPage() {
       {/* Logo Display Style */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Logo Display Style
+          Logo-Anzeigestil
         </Text>
         <select
           value={config.logo_display_style || ""}
@@ -260,17 +260,17 @@ export default function ExtBrandingAdminPage() {
           }
           className="w-full p-2 rounded-08 border border-border-02 bg-background-neutral-01 text-text-01"
         >
-          <option value="">Default</option>
+          <option value="">Standard</option>
           <option value="logo_and_name">Logo + Name</option>
-          <option value="logo_only">Logo Only</option>
-          <option value="name_only">Name Only</option>
+          <option value="logo_only">Nur Logo</option>
+          <option value="name_only">Nur Name</option>
         </select>
       </div>
 
       {/* Chat Header */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Header Content
+          Kopfzeilen-Inhalt
         </Text>
         <InputTypeIn
           value={config.custom_header_content || ""}
@@ -285,7 +285,7 @@ export default function ExtBrandingAdminPage() {
       {/* Chat Greeting */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Chat Greeting Message
+          Chat-Begrüßungsnachricht
         </Text>
         <InputTypeIn
           value={config.custom_greeting_message || ""}
@@ -300,7 +300,7 @@ export default function ExtBrandingAdminPage() {
       {/* Chat Footer */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Chat Footer / Disclaimer
+          Chat-Fußzeile / Haftungsausschluss
         </Text>
         <InputTypeIn
           value={config.custom_lower_disclaimer_content || ""}
@@ -318,7 +318,7 @@ export default function ExtBrandingAdminPage() {
       {/* Welcome Popup */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          First Visit Notice
+          Erstbesuch-Hinweis
         </Text>
         <label className="flex items-center gap-2 pb-2">
           <input
@@ -328,7 +328,7 @@ export default function ExtBrandingAdminPage() {
               update("show_first_visit_notice", e.target.checked || null)
             }
           />
-          <Text>Show popup on first visit</Text>
+          <Text>Popup beim ersten Besuch anzeigen</Text>
         </label>
         {config.show_first_visit_notice && (
           <div className="space-y-3 pt-2">
@@ -337,7 +337,7 @@ export default function ExtBrandingAdminPage() {
               onChange={(e) =>
                 update("custom_popup_header", e.target.value || null)
               }
-              placeholder="Popup title"
+              placeholder="Popup-Titel"
               maxLength={100}
             />
             <InputTextArea
@@ -345,7 +345,7 @@ export default function ExtBrandingAdminPage() {
               onChange={(e) =>
                 update("custom_popup_content", e.target.value || null)
               }
-              placeholder="Popup content (Markdown supported)"
+              placeholder="Popup-Inhalt (Markdown unterstützt)"
               maxLength={500}
               rows={4}
             />
@@ -356,7 +356,7 @@ export default function ExtBrandingAdminPage() {
       {/* Consent Screen */}
       <div className="pb-6">
         <Text mainUiAction className="pb-2">
-          Consent Screen
+          Einwilligungsbildschirm
         </Text>
         <label className="flex items-center gap-2 pb-2">
           <input
@@ -366,7 +366,7 @@ export default function ExtBrandingAdminPage() {
               update("enable_consent_screen", e.target.checked || null)
             }
           />
-          <Text>Require consent before using the app</Text>
+          <Text>Einwilligung vor Nutzung erforderlich</Text>
         </label>
         {config.enable_consent_screen && (
           <InputTypeIn
@@ -374,7 +374,7 @@ export default function ExtBrandingAdminPage() {
             onChange={(e) =>
               update("consent_screen_prompt", e.target.value || null)
             }
-            placeholder="Consent text"
+            placeholder="Einwilligungstext"
             maxLength={200}
           />
         )}
@@ -383,7 +383,7 @@ export default function ExtBrandingAdminPage() {
       {/* Save */}
       <div className="flex gap-3">
         <Button main primary onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Configuration"}
+          {saving ? "Speichern..." : "Konfiguration speichern"}
         </Button>
       </div>
     </div>
