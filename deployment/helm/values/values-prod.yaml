@@ -95,6 +95,7 @@ configMap:
   EXT_CUSTOM_PROMPTS_ENABLED: "true"
   EXT_DOC_ACCESS_ENABLED: "true"
   EXT_AUDIT_ENABLED: "true"
+  EXT_ANALYTICS_ENABLED: "true"
 
 # --- Celery Worker: PROD-Konfiguration (Standard Mode) ---
 # Alle Worker aktiv (replicaCount: 1). Worker-Isolation ist Onyx Best Practice
