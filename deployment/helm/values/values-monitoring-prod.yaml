@@ -44,16 +44,28 @@ prometheus:
           resources:
             requests:
               storage: 50Gi
-    # Scrape Onyx API — nur PROD (eigener Cluster)
+    # Scrape Onyx API — jeden Pod einzeln (NICHT via Service!)
+    # Service-Endpoint wuerde bei HA (2+ Pods) Round-Robin machen,
+    # was Prometheus-Counter verfaelscht (oszillierende Werte → Phantom-Resets).
     additionalScrapeConfigs:
       - job_name: "onyx-api-prod"
         metrics_path: "/metrics"
         scrape_interval: "30s"
-        static_configs:
-          - targets: ["onyx-prod-api-service.onyx-prod.svc.cluster.local:8080"]
-            labels:
-              environment: "prod"
-              service: "api"
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: ["onyx-prod"]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            regex: onyx-prod-api-service
+            action: keep
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            regex: api-server-port
+            action: keep
+          - target_label: environment
+            replacement: "prod"
+          - target_label: service
+            replacement: "api"
       # PostgreSQL Exporter (StackIT Managed PG Flex 4.8 Replica)
       - job_name: "postgres-prod"
         metrics_path: "/metrics"
