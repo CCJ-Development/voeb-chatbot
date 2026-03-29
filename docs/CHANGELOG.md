@@ -8,6 +8,13 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- [ext-audit] **Audit-Events wurden nicht persistiert + Logs nicht emittiert** (2026-03-29)
+  - `log_audit_event()` nutzte `flush()` statt `commit()` — Audit-Eintraege wurden beim Session-Close verworfen
+  - ext-Logger nutzte `logging.getLogger()` statt `setup_logger()` — kein Handler, kein Level konfiguriert
+  - Globaler `LOG_LEVEL=WARNING` auf PROD unterdrueckte `logger.info("[EXT-AUDIT]...")` — Loki Dashboard leer
+  - Fix: `commit()` in `audit.py`, `setup_logger("ext", log_level=logging.INFO)` in `routers/__init__.py`
+
 ### Changed
 - [UI] **"Manage Actions" Button im Chat fuer Basic User ausgeblendet** (2026-03-26)
   - ActionsPopover (Core #15): Early-Return wenn User weder Admin noch Curator ist

@@ -8,7 +8,11 @@ import logging
 
 from fastapi import FastAPI
 
-logger = logging.getLogger("ext")
+from onyx.utils.logger import setup_logger
+
+# Explizit INFO: ext-Logs (insb. [EXT-AUDIT]) muessen sichtbar sein,
+# auch wenn globaler LOG_LEVEL=WARNING (PROD).
+logger = setup_logger("ext", log_level=logging.INFO)
 
 
 def register_ext_routers(application: FastAPI) -> None:

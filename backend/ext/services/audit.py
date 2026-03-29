@@ -70,7 +70,7 @@ def log_audit_event(
             user_agent=user_agent,
         )
         db_session.add(entry)
-        db_session.flush()
+        db_session.commit()
 
         logger.info(
             "[EXT-AUDIT] %s %s %s (by %s)",
