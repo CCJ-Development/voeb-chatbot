@@ -8,6 +8,11 @@ den klassischen "Nur Admin"-Check brauchen, definieren wir ihn hier neu.
 
 Bei zukuenftigen Sync-Aenderungen am Auth-System ist ext/auth.py die einzige
 Stelle, an der wir nachziehen muessen — alle ext-Router importieren von hier.
+
+WICHTIG: Onyx's ``check_router_auth`` (server/auth_check.py) hat eine
+Whitelist bekannter User-Dependencies. Eigene Dependencies werden ueber
+das Sentinel-Attribut ``_is_require_permission = True`` erkannt
+(siehe ``_is_require_permission_dependency`` in auth_check.py).
 """
 
 from fastapi import Depends
@@ -29,3 +34,9 @@ async def current_admin_user(user: User = Depends(current_user)) -> User:
             detail="Access denied. User must be an admin to perform this action.",
         )
     return user
+
+
+# Sentinel fuer Onyx ``check_router_auth``: markiert diese Funktion als gueltige
+# Auth-Dependency, sodass der Boot-Time-Check sie akzeptiert ohne Core-Patch
+# in onyx/server/auth_check.py.
+current_admin_user._is_require_permission = True  # type: ignore[attr-defined]
