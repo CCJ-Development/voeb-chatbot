@@ -10,12 +10,12 @@ paths:
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 15 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 14 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 **#1-#10:** 9 von 10 gepatcht (#5 header/ noch offen).
-**#15:** Gepatcht (2026-03-26). ActionsPopover fuer Basic User ausgeblendet.
+**#14:** Gepatcht (2026-03-26). ActionsPopover fuer Basic User ausgeblendet.
 **#3:** Gepatcht (ext-access, 2026-03-25). 3 Hooks fuer gruppen-basierte Dokumentzugriffskontrolle.
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
-**#13:** Gepatcht (LLM Custom Modal Fix, 2026-03-24). Upstream-Bug: onyx-dot-app/onyx#9592.
+**#13:** Gepatcht (2026-03-24). OpenSearch Index-Name lowercase Fix.
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -87,21 +87,14 @@ paths:
 - STATUS: ✅ Gepatcht (ext-rbac, 2026-03-23). Hook inseriert DocumentSet__UserGroup Eintraege wenn EXT_RBAC_ENABLED.
 - HINWEIS: Analog zu #11, gleicher Hook-Pattern.
 
-## 13. `web/src/sections/modals/llmConfig/CustomModal.tsx` — Custom LLM Modal [TEMPORAER]
-- ERLAUBT: `APIKeyField` Import + Rendering, `api_base` InputTypeInField, `api_key`/`api_base` in initialValues, `default_model_name` Fallback auf ersten Modellnamen
-- VERBOTEN: Modal-Struktur, Formik-Schema, Submit-Logik (svc.ts) veraendern
-- MERGE: 4 Stellen: Import (+1 Zeile), initialValues (+3 Zeilen), onSubmit default_model_name (+4 Zeilen), API Key/Base Felder (+17 Zeilen). Mittleres Merge-Risiko (Modal wurde in #9270 komplett refactored)
-- STATUS: ✅ Gepatcht (2026-03-24). Upstream-Bug gemeldet: onyx-dot-app/onyx#9592
-- HINWEIS: **TEMPORAER** — Patch kann entfernt werden sobald Upstream-Fix in onyx-dot-app/onyx#9592 gemergt und per Upstream-Sync uebernommen wird. Bei jedem Upstream-Sync Issue-Status pruefen.
-
-## 14. `backend/onyx/natural_language_processing/search_nlp_models.py` — Index-Name lowercase [TEMPORAER]
+## 13. `backend/onyx/natural_language_processing/search_nlp_models.py` — Index-Name lowercase [TEMPORAER]
 - ERLAUBT: `.lower()` an `clean_model_name()` Return-Value anhaengen
 - VERBOTEN: Alles andere in dieser Datei veraendern
 - MERGE: 1 Stelle, 1 Zeile. Niedriges Merge-Risiko (Funktion seit Monaten unveraendert)
 - STATUS: ✅ Gepatcht (2026-03-24). OpenSearch verlangt lowercase Index-Namen, `clean_model_name()` macht kein `.lower()`.
 - HINWEIS: **TEMPORAER** — Upstream-Bug. Bei Upstream-Sync pruefen ob gefixt. Betrifft jeden OpenSearch-User mit Modellnamen die Grossbuchstaben enthalten.
 
-## 15. `web/src/refresh-components/popovers/ActionsPopover/index.tsx` — Actions-Popover fuer Basic User ausblenden
+## 14. `web/src/refresh-components/popovers/ActionsPopover/index.tsx` — Actions-Popover fuer Basic User ausblenden
 - ERLAUBT: Early-Return `if (!isAdmin && !isCurator) return null;` nach allen Hooks, vor `displayTools`
 - VERBOTEN: Tool-Logik, Popover-Struktur, MCP-Handling veraendern
 - MERGE: 1 Stelle, 1 Zeile (nach letztem `useCallback`, vor `displayTools` Filter). Niedriges Merge-Risiko (Insertion-Stelle ist stabil)

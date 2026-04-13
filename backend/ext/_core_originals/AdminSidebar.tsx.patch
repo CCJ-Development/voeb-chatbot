@@ -1,20 +1,28 @@
---- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-03-22 15:13:48
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-03-23 17:49:13
-@@ -15,7 +15,7 @@
- import SidebarBody from "@/sections/sidebar/SidebarBody";
+--- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-04-13 15:32:41
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-04-13 15:32:16
+@@ -23,8 +23,16 @@
  import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
- import { Disabled } from "@opal/core";
--import { SvgArrowUpCircle, SvgUserManage, SvgX } from "@opal/icons";
-+import { SvgActivity, SvgArrowUpCircle, SvgFileText, SvgPaintBrush, SvgUserManage, SvgX } from "@opal/icons";
+ import Separator from "@/refresh-components/Separator";
+ import Spacer from "@/refresh-components/Spacer";
+-import { SvgArrowUpCircle, SvgSearch, SvgX } from "@opal/icons";
  import {
++  SvgActivity,
++  SvgArrowUpCircle,
++  SvgFileText,
++  SvgPaintBrush,
++  SvgSearch,
++  SvgUserManage,
++  SvgX,
++} from "@opal/icons";
++import {
    useBillingInformation,
    useLicense,
-@@ -125,17 +125,33 @@
+   hasActiveSubscription,
+@@ -133,41 +141,81 @@
    }
  
    // 5. Permissions
 +  // ext-branding: Groups + SCIM sind EE-Features — nur anzeigen wenn EE aktiv.
-+  // Ohne EE sind sie nur visueller Clutter (ausgegraut, nicht klickbar).
 +  // ext-rbac: Eigener Gruppen-Link auf /admin/ext-groups (nicht /admin/groups wegen proxy.ts EE-Rewrite).
 +  const extRbacEnabled = process.env.NEXT_PUBLIC_EXT_RBAC_ENABLED === "true";
    if (!isCurator) {
@@ -22,35 +30,64 @@
 -    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS, !enableEnterprise);
 -    addDisabled(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM, !enableEnterprise);
 +    if (extRbacEnabled) {
-+      items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
++      items.push({
++        section: SECTIONS.PERMISSIONS,
++        name: "Gruppen",
++        icon: SvgUserManage,
++        link: "/admin/ext-groups",
++      });
 +    }
 +    if (enableEnterprise) {
 +      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
 +      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.SCIM);
 +    }
 +  } else if (extRbacEnabled) {
-+    items.push({ section: SECTIONS.PERMISSIONS, name: "Gruppen", icon: SvgUserManage, link: "/admin/ext-groups" });
++    items.push({
++      section: SECTIONS.PERMISSIONS,
++      name: "Gruppen",
++      icon: SvgUserManage,
++      link: "/admin/ext-groups",
++    });
    } else if (enableEnterprise) {
      add(SECTIONS.PERMISSIONS, ADMIN_ROUTES.GROUPS);
    }
  
    // 6. Organization (admin only)
++  // ext-branding: Show ext links + hide billing when VÖB extension is active (no Onyx license)
++  const extBrandingActive = Boolean(
++    settings?.enterpriseSettings && !hasSubscription
++  );
    if (!isCurator) {
 -    if (hasSubscription) {
-+    // ext-branding: Show ext links + hide billing when VÖB extension is active (no Onyx license)
-+    if (settings?.enterpriseSettings && !hasSubscription) {
-+      items.push({ section: SECTIONS.ORGANIZATION, name: "Branding", icon: SvgPaintBrush, link: "/admin/ext-branding" });
-+      items.push({ section: SECTIONS.ORGANIZATION, name: "Token Usage", icon: SvgActivity, link: "/admin/ext-token" });
-+      items.push({ section: SECTIONS.ORGANIZATION, name: "System Prompts", icon: SvgFileText, link: "/admin/ext-prompts" });
++    if (extBrandingActive) {
++      items.push({
++        section: SECTIONS.ORGANIZATION,
++        name: "Branding",
++        icon: SvgPaintBrush,
++        link: "/admin/ext-branding",
++      });
++      items.push({
++        section: SECTIONS.ORGANIZATION,
++        name: "Token Usage",
++        icon: SvgActivity,
++        link: "/admin/ext-token",
++      });
++      items.push({
++        section: SECTIONS.ORGANIZATION,
++        name: "System Prompts",
++        icon: SvgFileText,
++        link: "/admin/ext-prompts",
++      });
 +    } else if (hasSubscription) {
        add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.BILLING);
-     } else {
-       items.push({
-@@ -146,18 +162,18 @@
-       });
      }
-     add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.TOKEN_RATE_LIMITS);
+-    addDisabled(
+-      SECTIONS.ORGANIZATION,
+-      ADMIN_ROUTES.TOKEN_RATE_LIMITS,
+-      !enableEnterprise
+-    );
 -    addDisabled(SECTIONS.ORGANIZATION, ADMIN_ROUTES.THEME, !enableEnterprise);
++    add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.TOKEN_RATE_LIMITS);
 +    // ext-branding: Appearance & Theming ist EE-Feature — nur anzeigen wenn EE aktiv.
 +    if (enableEnterprise) {
 +      add(SECTIONS.ORGANIZATION, ADMIN_ROUTES.THEME);
@@ -60,7 +97,7 @@
    // 7. Usage (admin only)
 -  if (!isCurator) {
 -    addDisabled(SECTIONS.USAGE, ADMIN_ROUTES.USAGE, !enableEnterprise);
-+  // ext-branding: Usage Statistics + Query History sind EE-Features — nur anzeigen wenn EE aktiv.
++  // ext-branding: Usage + Query History sind EE-Features — nur anzeigen wenn EE aktiv.
 +  if (!isCurator && enableEnterprise) {
 +    add(SECTIONS.USAGE, ADMIN_ROUTES.USAGE);
      if (settings?.settings.query_history_type !== "disabled") {
@@ -73,3 +110,10 @@
      }
    }
  
+   // 8. Upgrade Plan (admin only, no subscription)
+-  if (!isCurator && !hasSubscription) {
++  // ext-branding: Upgrade Plan ausblenden wenn VÖB Extension aktiv.
++  if (!isCurator && !hasSubscription && !extBrandingActive) {
+     items.push({
+       section: SECTIONS.UNLABELED,
+       name: "Upgrade Plan",

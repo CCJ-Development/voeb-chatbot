@@ -89,7 +89,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**M1-Abnahmeprotokoll (wartet auf VÖB-Termin).** ext-access + ext-audit + ext-analytics PROD LIVE (2026-03-25/26). Alle 10 ext-Module aktiv.
+**Upstream-Sync #5 abgeschlossen (2026-04-13) — Lokal verifizieren + PR.** 344 Commits, Chart 0.4.44, Core #13 entfernt (Upstream-Fix), 14 Core-Dateien (vorher 15). Anschliessend: M1-Abnahmeprotokoll (wartet auf VÖB-Termin).
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

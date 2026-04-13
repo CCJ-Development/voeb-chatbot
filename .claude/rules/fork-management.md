@@ -82,7 +82,7 @@ git merge upstream/main --no-commit --no-ff
 **Erwartete Konflikte (harmlos):**
 - `AGENTS.md`, `.claude/skills` → Unsere Version behalten (`git checkout --ours`)
 - `Chart.yaml`, `Chart.lock` → Upstream übernehmen (`git checkout --theirs`)
-- 14 Core-Dateien → Upstream übernehmen, Patches neu anwenden (siehe unten)
+- 14 Core-Dateien (ab Sync #5, vorher 15 — CORE #13 CustomModal.tsx entfernt da Upstream-Fix) → Upstream übernehmen, Patches neu anwenden (siehe unten)
 - `backend/Dockerfile` → Upstream übernehmen, COPY ext/ neu einfügen (siehe "Zusätzliche Merge-Stellen")
 - `deployment/docker_compose/env.template` → Manuell mergen (wir appenden am Ende, Upstream ändert Mitte)
 
@@ -201,6 +201,26 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Workflow | Branch + PR (#19), Squash Merge |
 | PROD-Deploy | Manueller `helm upgrade` am selben Tag (Chart 0.4.32 → 0.4.36, OpenSearch + ext-i18n) |
 
+## Fuenfter Upstream-Merge (2026-04-13) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Upstream-Commits | 344 |
+| Konflikte | 7 (4 trivial: .gitignore, AGENTS.md, README.md, web/Dockerfile; 3 ernsthaft: layout.tsx, CustomModal.tsx, AdminSidebar.tsx) |
+| Backend-Core-Konflikte | 0 (alle 7 Hooks auto-merged) |
+| ext_-Code Konflikte | 0 |
+| ext-Code Anpassung | 1 Zeile: `analytics.py` `is_visible` → `is_listed` (Upstream-Rename #9569) |
+| Alembic-Migrationen | 11 neue Upstream + 1 modifiziert. Chain: `ff7273065d0d` down von `689433b0d8de` auf `503883791c39` umgehaengt |
+| Core #13 entfernt | CustomModal.tsx — Upstream-Bug onyx-dot-app/onyx#9592 gefixt (PR #10009 etc). Core-Datei-Zahl 15 → 14. |
+| Chart-Version | 0.4.36 → 0.4.44 (code-interpreter 0.3.1 → 0.3.3) |
+| Helm-Repos | Keine neuen Repos (alle 7 bereits in CI) |
+| Wichtig | SSR→CSR Layout Migration (#9529), AdminSidebar Opal-Refactor, Multi-Model Chat Feature, Group-Permissions Phase 1 (additiv, kein Konflikt) |
+| ext-i18n | 4 neue Multi-Model-Strings ins Dictionary ("Show response", "Hide response", "Add Model", "Deselect preferred response") |
+| Workflow | Branch + PR (geplant) |
+| **Lesson Learned** | `diff3` style zeigt Konflikt-Marker in Symlinks (CLAUDE.md → AGENTS.md). `git ls-files -u` ist authoritativ, nicht `git status` bei Symlinks. |
+| **Lesson Learned** | Upstream `seed_default_groups` (#9795) Migration benennt existierende "Admin"/"Basic" Gruppen zu "(Custom)" um — Verifikation auf PROD notwendig vor Deploy |
+| **Lesson Learned** | Bei massiven Refactors (AdminSidebar Opal) ist `git checkout --theirs` + manuelle Hook-Reinsertion schneller als Markers auflösen |
+
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
 Neben den 14 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
@@ -277,11 +297,11 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `deployment/docker_compose/env.template` | Append | 30 | Niedrig |
 | `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
-| `web/src/sections/modals/llmConfig/CustomModal.tsx` (CORE #13) | UI-Fix | ~25 | Mittel |
-| `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #15) | Early-Return | 1 | Niedrig |
+| `backend/onyx/natural_language_processing/search_nlp_models.py` (CORE #13) | `.lower()` | 1 | Niedrig |
+| `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #14) | Early-Return | 1 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
-**Achtung #13:** TEMPORAER — Upstream-Bug onyx-dot-app/onyx#9592. Bei Upstream-Sync pruefen ob Issue gefixt. Falls ja: Patch entfernen, `.original` + `.patch` loeschen, #13 aus core-dateien.md entfernen.
+**Achtung #13:** TEMPORAER — OpenSearch lowercase Index-Name. Bei Upstream-Sync pruefen ob `clean_model_name()` selbst lowercase macht. Falls ja: Patch entfernen.
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.
 

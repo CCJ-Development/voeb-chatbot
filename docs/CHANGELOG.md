@@ -8,6 +8,20 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- [upstream-sync] **Fuenfter Upstream-Merge (2026-04-13)** — 344 Commits von `upstream/main` (Chart 0.4.36 → 0.4.44)
+  - **Core #13 entfernt:** `CustomModal.tsx` Patch ist obsolet. Upstream hat den Bug onyx-dot-app/onyx#9592 gefixt (PRs #9958, #10003, #10004, #10009). Neue Core-Datei-Zahl: **14** (vorher 15).
+  - **Konflikte (7):** 4 trivial (.gitignore, AGENTS.md, README.md, web/Dockerfile), 3 ernsthaft (layout.tsx SSR→CSR #9529, CustomModal.tsx entfernt, AdminSidebar.tsx Opal-Migration #9863/#9866/#9867/#9895/#9906).
+  - **Backend:** Alle 7 Core-Hooks (main.py, multi_llm.py, access.py, persona.py, document_set.py, prompt_utils.py, search_nlp_models.py) auto-merged ohne Konflikt.
+  - **ext-i18n:** 4 neue Multi-Model-Chat-Strings ins Dictionary ("Show response", "Hide response", "Add Model", "Deselect preferred response").
+  - **Alembic:** 11 neue Upstream-Migrationen + 1 modifizierte. Chain: `ff7273065d0d` (ext-branding) umgehaengt von `689433b0d8de` auf neuen Upstream-Head `503883791c39`.
+  - **Persona-Rename:** `is_visible` → `is_listed` (Upstream #9569). `backend/ext/services/analytics.py` Zeile 451 angepasst.
+  - **Group-Permissions Phase 1:** Upstream fuehrt `AccountType`, `Permission`, `PermissionGrant` als neue Schema-Elemente ein (#9547). Additiv, keine Kollision mit ext-rbac.
+  - **seed_default_groups (#9795):** Upstream-Migration `977e834c1427` legt automatisch "Admin" und "Basic" User Groups an. Bestehende Gruppen mit gleichem Namen werden zu "Admin (Custom)" umbenannt. **PROD-Check notwendig:** Existieren solche Gruppen bereits?
+  - **Security-Fixes:** SCIM advisory lock (#10048), MCP OAuth hardening (#10074/#10071/#10066), License seat count excludes service accounts (#10053).
+  - **Neue Features (nicht aktiviert):** Multi-Model Chat (#9855/#9854/#9929), Bifrost Gateway LLM Provider (#9616/#9617), Generic OpenAI Compatible Provider (#9968), Google Drive error resolution (#9842), Slack federated full thread replies (#9940).
+  - **Upstream-Monitoring:** Prometheus Metrics fuer Celery-Worker, API/heavy ServiceMonitors, Grafana Dashboard Provisioning (#9589/#9590/#9602/#9630/#9633/#9654/#9725/#9982/#9983/#10025/#10042). Separate Pruefung ob unser Custom-Monitoring reduziert werden kann (nicht Teil dieses Syncs).
+
 ### Fixed
 - [ext-i18n] **ext-Admin-Seiten komplett auf Deutsch + Spacing/Kontrast-Fix** (2026-03-29)
   - Token Usage, Branding, System Prompts: ~115 englische Strings ins Deutsche uebersetzt

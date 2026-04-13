@@ -1,15 +1,42 @@
 #!/bin/bash
-# Git Pre-Commit Hook: Blockiert Commits mit verbotenen Onyx-Dateiänderungen
+# Git Pre-Commit Hook: Blockiert Commits mit verbotenen Onyx-Dateiaenderungen.
 # Setup: git config core.hooksPath .githooks && chmod +x .githooks/pre-commit
+#
+# Quelle der Wahrheit: .claude/rules/core-dateien.md
+# Bei neuen/entfernten Core-Dateien: ALLOWED_CORE_FILES hier UND core-dateien.md
+# parallel aktualisieren.
 
+# Upstream-Sync-Erkennung: Bei Merge-State oder chore/upstream-sync-* Branch
+# werden zwangslaeufig hunderte Onyx-Core-Dateien veraendert. Der Hook ist
+# dafuer nicht gedacht und wird uebersprungen.
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null)
+if [[ "$CURRENT_BRANCH" == chore/upstream-sync-* ]] || [ -f .git/MERGE_HEAD ]; then
+  echo "ℹ️  Upstream-Sync oder aktiver Merge erkannt — Pre-commit Hook uebersprungen."
+  echo "    Branch: ${CURRENT_BRANCH:-<detached>}"
+  [ -f .git/MERGE_HEAD ] && echo "    Merge-State: aktiv (.git/MERGE_HEAD vorhanden)"
+  exit 0
+fi
+
+# Whitelist: 14 Core-Dateien aus .claude/rules/core-dateien.md (Stand: Sync #5, 2026-04-13).
+# Directory-Eintraege enden mit '/' und matchen alle Dateien darunter via Prefix.
 ALLOWED_CORE_FILES=(
-  "backend/onyx/server/app.py"
-  "backend/onyx/llm/llm_call.py"
-  "backend/onyx/auth/permissions.py"
-  "web/src/app/layout.tsx"
-  "web/src/components/header/"
-  "web/src/lib/constants.ts"
-  "backend/onyx/chat/prompt_builder.py"
+  # Backend Core (7)
+  "backend/onyx/main.py"                                           # #1  Router registrieren
+  "backend/onyx/llm/multi_llm.py"                                  # #2  Token Hook
+  "backend/onyx/access/access.py"                                  # #3  Access Control
+  "backend/onyx/chat/prompt_utils.py"                              # #7  System Prompts
+  "backend/onyx/db/persona.py"                                     # #11 Persona Gruppen-Zuordnung
+  "backend/onyx/db/document_set.py"                                # #12 DocumentSet Gruppen-Zuordnung
+  "backend/onyx/natural_language_processing/search_nlp_models.py"  # #13 OpenSearch lowercase
+
+  # Frontend Core (7)
+  "web/src/app/layout.tsx"                                         # #4  Navigation + i18n
+  "web/src/components/header/"                                     # #5  Branding
+  "web/src/lib/constants.ts"                                       # #6  CSS Variables
+  "web/src/app/auth/login/LoginText.tsx"                           # #8  Login Tagline
+  "web/src/components/auth/AuthFlowContainer.tsx"                  # #9  Login Icon + Text
+  "web/src/sections/sidebar/AdminSidebar.tsx"                      # #10 Admin Sidebar
+  "web/src/refresh-components/popovers/ActionsPopover/index.tsx"   # #14 Actions-Popover
 )
 
 CHANGED_FILES=$(git diff --cached --name-only)
@@ -33,7 +60,14 @@ done
 
 if [ "$BLOCKED" = true ]; then
   echo ""
-  echo "COMMIT ABGELEHNT: Verbotene Onyx-Dateiänderungen."
-  echo "Bypass: git commit --no-verify"
+  echo "COMMIT ABGELEHNT: Verbotene Onyx-Dateiaenderungen."
+  echo ""
+  echo "Wenn die Aenderung beabsichtigt ist und eine neue Core-Datei etabliert:"
+  echo "  1. In .claude/rules/core-dateien.md als neue Core-Datei dokumentieren"
+  echo "  2. In .githooks/pre-commit die ALLOWED_CORE_FILES Liste erweitern"
+  echo "  3. Backup anlegen: backend/ext/_core_originals/<name>.original + .patch"
+  echo "  4. Nikos Freigabe einholen (Bankenkontext, Null Fehlertoleranz)"
+  echo ""
+  echo "Bypass (nur mit expliziter Freigabe): git commit --no-verify"
   exit 1
 fi

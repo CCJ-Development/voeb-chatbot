@@ -1,7 +1,7 @@
 """ext_branding: Create ext_branding_config table
 
 Revision ID: ff7273065d0d
-Revises: 689433b0d8de
+Revises: 503883791c39
 Create Date: 2026-03-08 22:00:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "ff7273065d0d"
-down_revision = "689433b0d8de"
+down_revision = "503883791c39"
 branch_labels: None = None
 depends_on: None = None
 
