@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from onyx.auth.users import current_admin_user
+from ext.auth import current_admin_user
 from onyx.auth.users import current_curator_or_admin_user
 from onyx.auth.users import current_user
 from onyx.db.engine.sql_engine import get_session

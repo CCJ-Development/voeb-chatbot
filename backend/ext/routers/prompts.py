@@ -10,7 +10,7 @@ from fastapi import Depends
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from onyx.auth.users import current_admin_user
+from ext.auth import current_admin_user
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.models import User
 
