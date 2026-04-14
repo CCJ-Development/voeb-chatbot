@@ -82,7 +82,7 @@ git merge upstream/main --no-commit --no-ff
 **Erwartete Konflikte (harmlos):**
 - `AGENTS.md`, `.claude/skills` → Unsere Version behalten (`git checkout --ours`)
 - `Chart.yaml`, `Chart.lock` → Upstream übernehmen (`git checkout --theirs`)
-- 14 Core-Dateien (ab Sync #5, vorher 15 — CORE #13 CustomModal.tsx entfernt da Upstream-Fix) → Upstream übernehmen, Patches neu anwenden (siehe unten)
+- 15 Core-Dateien (ab Sync #5, vorher 15 — CORE #13 CustomModal.tsx entfernt da Upstream-Fix) → Upstream übernehmen, Patches neu anwenden (siehe unten)
 - `backend/Dockerfile` → Upstream übernehmen, COPY ext/ neu einfügen (siehe "Zusätzliche Merge-Stellen")
 - `deployment/docker_compose/env.template` → Manuell mergen (wir appenden am Ende, Upstream ändert Mitte)
 
@@ -223,7 +223,7 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 14 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
+Neben den 15 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
 
 ### `backend/Dockerfile` (seit Phase 4a)
 
@@ -299,6 +299,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
 | `backend/onyx/natural_language_processing/search_nlp_models.py` (CORE #13) | `.lower()` | 1 | Niedrig |
 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #14) | Early-Return | 1 | Niedrig |
+| `web/src/hooks/useSettings.ts` (CORE #15) | shouldFetch + EXT_BRANDING_ENABLED | ~8 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 **Achtung #13:** TEMPORAER — OpenSearch lowercase Index-Name. Bei Upstream-Sync pruefen ob `clean_model_name()` selbst lowercase macht. Falls ja: Patch entfernen.

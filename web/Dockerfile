@@ -84,6 +84,13 @@ ENV NEXT_PUBLIC_EXT_I18N_ENABLED=${NEXT_PUBLIC_EXT_I18N_ENABLED}
 ARG NEXT_PUBLIC_EXT_RBAC_ENABLED
 ENV NEXT_PUBLIC_EXT_RBAC_ENABLED=${NEXT_PUBLIC_EXT_RBAC_ENABLED}
 
+# VÖB ext-branding: Client-side Gate um useEnterpriseSettings() zu aktivieren.
+# Upstream gated den API-Call hinter EE-Lizenz-Flags (SSR→CSR, Sync #5).
+# Dieser Flag ist semantisch entkoppelt und aktiviert KEINE EE-Features,
+# sondern nur unseren eigenen /api/enterprise-settings Endpoint.
+ARG NEXT_PUBLIC_EXT_BRANDING_ENABLED
+ENV NEXT_PUBLIC_EXT_BRANDING_ENABLED=${NEXT_PUBLIC_EXT_BRANDING_ENABLED}
+
 # Add NODE_OPTIONS argument
 ARG NODE_OPTIONS
 
@@ -174,6 +181,10 @@ ENV NEXT_PUBLIC_EXT_I18N_ENABLED=${NEXT_PUBLIC_EXT_I18N_ENABLED}
 # VÖB ext-rbac: Gruppenverwaltung
 ARG NEXT_PUBLIC_EXT_RBAC_ENABLED
 ENV NEXT_PUBLIC_EXT_RBAC_ENABLED=${NEXT_PUBLIC_EXT_RBAC_ENABLED}
+
+# VÖB ext-branding: siehe builder-Stage
+ARG NEXT_PUBLIC_EXT_BRANDING_ENABLED
+ENV NEXT_PUBLIC_EXT_BRANDING_ENABLED=${NEXT_PUBLIC_EXT_BRANDING_ENABLED}
 
 # Default ONYX_VERSION, typically overriden during builds by GitHub Actions.
 ARG ONYX_VERSION=0.0.0-dev

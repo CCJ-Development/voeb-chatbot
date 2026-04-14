@@ -9,13 +9,6 @@ import {
 } from "@/interfaces/settings";
 import { EE_ENABLED } from "@/lib/constants";
 
-// VÖB ext-branding: Client-side flag um useEnterpriseSettings() zu aktivieren
-// OHNE die EE-Lizenz-Gates anzufassen. Upstream gated den API-Call hinter
-// EE_ENABLED || eeEnabledRuntime (SSR→CSR Migration Sync #5). Unser eigener
-// Build-Arg NEXT_PUBLIC_EXT_BRANDING_ENABLED ist semantisch entkoppelt.
-const EXT_BRANDING_ENABLED =
-  process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
-
 // Longer retry delay for critical settings fetches — avoids rapid error→success
 // flicker in the SettingsProvider error boundary when there's a transient blip.
 const SETTINGS_ERROR_RETRY_INTERVAL = 5_000;
@@ -67,7 +60,7 @@ export function useEnterpriseSettings(eeEnabledRuntime: boolean): {
   // /api/settings. The build-time flag (NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES)
   // may be unset even when the server enables EE via LICENSE_ENFORCEMENT_ENABLED,
   // so the runtime check is needed as a fallback.
-  const shouldFetch = EE_ENABLED || eeEnabledRuntime || EXT_BRANDING_ENABLED;
+  const shouldFetch = EE_ENABLED || eeEnabledRuntime;
 
   const { data, error, isLoading } = useSWR<EnterpriseSettings>(
     shouldFetch ? SWR_KEYS.enterpriseSettings : null,
@@ -96,7 +89,7 @@ export function useEnterpriseSettings(eeEnabledRuntime: boolean): {
 export function useCustomAnalyticsScript(
   eeEnabledRuntime: boolean
 ): string | null {
-  const shouldFetch = EE_ENABLED || eeEnabledRuntime || EXT_BRANDING_ENABLED;
+  const shouldFetch = EE_ENABLED || eeEnabledRuntime;
 
   const { data } = useSWR<string>(
     shouldFetch ? SWR_KEYS.customAnalyticsScript : null,

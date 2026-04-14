@@ -10,12 +10,13 @@ paths:
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 14 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 15 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 **#1-#10:** 9 von 10 gepatcht (#5 header/ noch offen).
 **#14:** Gepatcht (2026-03-26). ActionsPopover fuer Basic User ausgeblendet.
 **#3:** Gepatcht (ext-access, 2026-03-25). 3 Hooks fuer gruppen-basierte Dokumentzugriffskontrolle.
 **#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
 **#13:** Gepatcht (2026-03-24). OpenSearch Index-Name lowercase Fix.
+**#15:** Gepatcht (2026-04-14, Sync #5). useSettings.ts — NEXT_PUBLIC_EXT_BRANDING_ENABLED als Client-Side-Gate fuer useEnterpriseSettings ohne EE-Lizenz-Flag.
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -100,6 +101,13 @@ paths:
 - MERGE: 1 Stelle, 1 Zeile (nach letztem `useCallback`, vor `displayTools` Filter). Niedriges Merge-Risiko (Insertion-Stelle ist stabil)
 - STATUS: ✅ Gepatcht (2026-03-26). Basic User sehen den "Manage Actions" Button im Chat nicht.
 - HINWEIS: `useUser()` mit `isAdmin`/`isCurator` ist bereits in der Komponente vorhanden (Zeile 306). Kein neuer Import noetig.
+
+## 15. `web/src/hooks/useSettings.ts` — useEnterpriseSettings ohne EE-Lizenz-Flag aktivieren
+- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED` als zusaetzlichen Gate in `shouldFetch` fuer `useEnterpriseSettings()` und `useCustomAnalyticsScript()`. Konstante am Datei-Anfang definieren.
+- VERBOTEN: SWR-Config, API-Keys, DEFAULT_SETTINGS, Return-Shape veraendern
+- MERGE: 2 Stellen: Import+Const (~8 Zeilen nach EE_ENABLED import), `shouldFetch =` (2x, nach `EE_ENABLED || eeEnabledRuntime` ein `|| EXT_BRANDING_ENABLED` anfuegen). Niedriges Merge-Risiko (Upstream hat diese Zeile in PR #9529 stabilisiert, weitere Aenderungen unwahrscheinlich).
+- STATUS: ✅ Gepatcht (2026-04-14, Sync #5). Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag. Unser ext-branding braucht den API-Call aber ohne EE-Lizenz.
+- HINWEIS: **Entkoppelt von EE-Lizenz.** Wir setzen weder `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` noch `LICENSE_ENFORCEMENT_ENABLED` noch `NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES`. Der neue Flag `NEXT_PUBLIC_EXT_BRANDING_ENABLED` ist semantisch klar "VÖB-Branding-Hook aktivieren" und aktiviert keine EE-Features. Build-Arg muss in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` gesetzt sein.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:
