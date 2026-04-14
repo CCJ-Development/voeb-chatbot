@@ -44,7 +44,11 @@ Dieses Runbook beschreibt die Rotation aller PROD-Secrets. Es gilt als Referenz 
 | S3 Access Key | `S3_ACCESS_KEY_ID` | in env-configmap | StackIT Portal |
 | S3 Secret Key | `S3_SECRET_ACCESS_KEY` | in env-configmap | StackIT Portal |
 | Kubeconfig | `STACKIT_KUBECONFIG` | — (fuer CI/CD) | `terraform apply` oder StackIT Portal |
+| **Container Registry User** | `STACKIT_REGISTRY_USER` | `stackit-registry` (als dockerconfigjson, in onyx-dev/onyx-prod) | StackIT Portal → Container Registry → Robot Accounts |
+| **Container Registry Token** | `STACKIT_REGISTRY_PASSWORD` | `stackit-registry` (als dockerconfigjson, in onyx-dev/onyx-prod) | StackIT Portal → Container Registry → Robot Accounts |
 | Let's Encrypt Certs | — | `onyx-prod-tls` | Automatisch (cert-manager) |
+
+> **Wichtiger Hinweis zu Container Registry Secrets:** Diese zwei Secrets muessen **IMMER synchron** in GitHub UND im K8s-Secret gehalten werden. Bei Drift (z.B. nur K8s aktualisiert, GitHub vergessen) scheitert die CI/CD mit `401 Unauthorized` beim `docker login`. Siehe Abschnitt "Container Registry Recovery" unten.
 
 ---
 
@@ -267,10 +271,102 @@ Bei Verdacht auf ein kompromittiertes Secret (z.B. Secret in Git committet, Zugr
 
 ---
 
+## Container Registry Token (StackIT)
+
+### Wann: Bei Ablauf des Robot Account Tokens oder bei CI/CD `401 Unauthorized`
+
+### Hintergrund
+
+Die StackIT Container Registry (Harbor) nutzt **Robot Accounts** fuer CI/CD-Zugriff. Unser Account heisst `robot$voeb-chatbot+github-ci` und hat Push/Pull-Rechte fuer das Projekt `voeb-chatbot`.
+
+Die Credentials sind an **zwei Stellen** hinterlegt und muessen **synchron** sein:
+1. **GitHub Secrets** `STACKIT_REGISTRY_USER` + `STACKIT_REGISTRY_PASSWORD` — fuer CI/CD Docker-Build-Push
+2. **Kubernetes Secret** `stackit-registry` (als `dockerconfigjson`) in den Namespaces `onyx-dev` + `onyx-prod` — fuer Image-Pull beim Pod-Start
+
+### Normal-Rotation (geplant)
+
+```bash
+# 1. Im StackIT Portal → Container Registry → Robot Accounts
+#    → bestehendes Token rotieren oder neuen Robot Account erstellen
+#    → neues Passwort notieren (wird nur einmal angezeigt!)
+
+# 2. GitHub Secrets aktualisieren
+printf '%s' "robot\$voeb-chatbot+github-ci" | gh secret set STACKIT_REGISTRY_USER -R CCJ-Development/voeb-chatbot
+printf '%s' "<neues-token>" | gh secret set STACKIT_REGISTRY_PASSWORD -R CCJ-Development/voeb-chatbot
+
+# 3. Kubernetes Secret in DEV + PROD aktualisieren
+kubectl create secret docker-registry stackit-registry \
+  --docker-server=registry.onstackit.cloud \
+  --docker-username='robot$voeb-chatbot+github-ci' \
+  --docker-password='<neues-token>' \
+  -n onyx-dev \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret docker-registry stackit-registry \
+  --docker-server=registry.onstackit.cloud \
+  --docker-username='robot$voeb-chatbot+github-ci' \
+  --docker-password='<neues-token>' \
+  -n onyx-prod \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# 4. Verifikation: CI/CD neu triggern
+gh workflow run stackit-deploy.yml -f environment=dev --ref main -R CCJ-Development/voeb-chatbot
+```
+
+### Recovery bei Drift (z.B. nur eines der Secrets aktualisiert)
+
+**Symptom:** CI/CD-Build scheitert mit `Error response from daemon: login attempt to https://registry.onstackit.cloud/v2/ failed with status: 401 Unauthorized`, aber DEV/PROD-Pods laufen weiter (Image-Pull funktioniert).
+
+**Ursache:** K8s-Secret enthaelt gueltige Credentials (sonst wuerden Pod-Starts fehlschlagen), GitHub-Secret ist stale.
+
+**Recovery — K8s als Source of Truth:**
+
+```bash
+# 1. Credentials aus dem funktionierenden K8s-Secret extrahieren
+PW=$(kubectl get secret stackit-registry -n onyx-dev \
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); print(d['auths']['registry.onstackit.cloud']['password'])")
+
+USER=$(kubectl get secret stackit-registry -n onyx-dev \
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | \
+  python3 -c "import json,sys; d=json.load(sys.stdin); print(d['auths']['registry.onstackit.cloud']['username'])")
+
+# 2. Lokal verifizieren
+echo "$PW" | docker login registry.onstackit.cloud -u "$USER" --password-stdin
+# Erwartung: "Login Succeeded"
+
+# 3. GitHub Secrets aktualisieren
+printf '%s' "$USER" | gh secret set STACKIT_REGISTRY_USER -R CCJ-Development/voeb-chatbot
+printf '%s' "$PW" | gh secret set STACKIT_REGISTRY_PASSWORD -R CCJ-Development/voeb-chatbot
+
+# 4. CI/CD Re-Run
+gh workflow run stackit-deploy.yml -f environment=dev --ref <branch-or-main> -R CCJ-Development/voeb-chatbot
+```
+
+**Alternativ — GitHub als Source of Truth** (falls K8s-Secret ebenfalls stale ist): Neues Token im StackIT Portal generieren, beide Stellen (GitHub + K8s in DEV und PROD) parallel updaten.
+
+### Bekannte Stolperfallen
+
+- **Registry-Login Race Condition**: Wenn `build-frontend` und `build-backend` parallel laufen, blockt StackIT gelegentlich den zweiten Login mit 401. Quick-Fix: `gh run rerun --failed`. Langfristig: `build-backend needs: build-frontend` im Workflow.
+- **`robot$...` Username in Shell**: Das `$` in `robot$voeb-chatbot+github-ci` muss escaped werden (`\$`) oder in Single-Quotes stehen, sonst wird es als Variable interpretiert.
+- **K8s-Secret-Name**: Im Cluster heisst es `stackit-registry`, nicht `regcred`. Verwechslung moeglich mit Standard-Onyx-Templates.
+- **Dockerconfigjson-Format**: Bei manueller Bearbeitung darauf achten, dass `auths.<registry>.password` klar getrennt von `auths.<registry>.auth` ist (auth ist `base64(user:password)`).
+
+### Erstmalige Geschichte (Sync #5, 2026-04-14)
+
+Beim fuenften Upstream-Merge trat das Drift-Problem erstmals auf:
+- GitHub Secret war seit 2026-02-27 (Projekt-Setup) unveraendert
+- K8s-Secret hatte aktuellere Credentials (Token wurde zwischenzeitlich rotiert)
+- CI/CD Login schlug 5x mit 401 fehl
+- Recovery via K8s-Secret → GitHub-Secret wie oben dokumentiert
+
+---
+
 ## Referenzen
 
 - Helm Deploy Runbook: `docs/runbooks/helm-deploy.md`
 - Betriebskonzept (Secret Management): `docs/betriebskonzept.md`
 - Sicherheitskonzept (SEC-04): `docs/sicherheitskonzept.md`
 - DNS/TLS Runbook: `docs/runbooks/dns-tls-setup.md`
+- Upstream-Sync Runbook: `docs/runbooks/upstream-sync.md`
 - GitHub Secrets verwalten: `gh secret list --env prod -R CCJ-Development/voeb-chatbot`
