@@ -8,6 +8,28 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- [upstream-sync] **Fuenfter Upstream-Merge (2026-04-13/14)** — 344 Commits von `upstream/main` (Chart 0.4.36 → 0.4.44)
+  - **Core-Dateien-Netto:** **15** (vorher 15). Core #13 CustomModal.tsx **entfernt** (Upstream-Fix), Core #15 useSettings.ts **neu**.
+  - **Core #13 entfernt:** `CustomModal.tsx` Patch ist obsolet. Upstream hat den Bug onyx-dot-app/onyx#9592 gefixt (PRs #9958, #10003, #10004, #10009).
+  - **Core #15 NEU:** `web/src/hooks/useSettings.ts` — `NEXT_PUBLIC_EXT_BRANDING_ENABLED` als Client-Side-Gate fuer `useEnterpriseSettings()` ohne EE-Lizenz-Flag zu aktivieren. Upstream PR #9529 (SSR→CSR) hat den API-Call hinter EE-Gate gelegt, was unsere ext-branding Architektur brach.
+  - **Konflikte (7):** 4 trivial (.gitignore, AGENTS.md, README.md, web/Dockerfile), 3 ernsthaft (layout.tsx SSR→CSR #9529, CustomModal.tsx entfernt, AdminSidebar.tsx Opal-Migration #9863/#9866/#9867/#9895/#9906).
+  - **Backend:** Alle 7 Core-Hooks (main.py, multi_llm.py, access.py, persona.py, document_set.py, prompt_utils.py, search_nlp_models.py) auto-merged ohne Konflikt.
+  - **ext-i18n:** 4 neue Multi-Model-Chat-Strings ins Dictionary ("Show response", "Hide response", "Add Model", "Deselect preferred response").
+  - **Alembic:** 11 neue Upstream-Migrationen + 1 modifizierte. Chain: `ff7273065d0d` (ext-branding) umgehaengt von `689433b0d8de` auf neuen Upstream-Head `503883791c39`.
+  - **Persona-Rename:** `is_visible` → `is_listed` (Upstream #9569). `backend/ext/services/analytics.py` Zeile 451 angepasst.
+  - **Group-Permissions Phase 1:** Upstream fuehrt `AccountType`, `Permission`, `PermissionGrant` als neue Schema-Elemente ein (#9547). Additiv, keine Kollision mit ext-rbac.
+  - **seed_default_groups (#9795):** Upstream-Migration `977e834c1427` legt automatisch "Admin" und "Basic" User Groups an. Bestehende Gruppen mit gleichem Namen werden zu "Admin (Custom)" umbenannt. **PROD-Check notwendig:** Existieren solche Gruppen bereits?
+  - **Security-Fixes:** SCIM advisory lock (#10048), MCP OAuth hardening (#10074/#10071/#10066), License seat count excludes service accounts (#10053).
+  - **Neue Features (nicht aktiviert):** Multi-Model Chat (#9855/#9854/#9929), Bifrost Gateway LLM Provider (#9616/#9617), Generic OpenAI Compatible Provider (#9968), Google Drive error resolution (#9842), Slack federated full thread replies (#9940).
+  - **Upstream-Monitoring:** Prometheus Metrics fuer Celery-Worker, API/heavy ServiceMonitors, Grafana Dashboard Provisioning (#9589/#9590/#9602/#9630/#9633/#9654/#9725/#9982/#9983/#10025/#10042). Separate Pruefung ob unser Custom-Monitoring reduziert werden kann (nicht Teil dieses Syncs).
+  - **Post-Merge Fix-Commits (waren erst beim DEV-Deploy sichtbar):**
+    - `fix(ext): current_admin_user in ext/auth.py kapseln` — Upstream PR #9930 hat `current_admin_user` aus `onyx.auth.users` entfernt. Neuer Wrapper `backend/ext/auth.py` mit Original-Admin-Only-Semantik. 7 ext-Router-Imports umgestellt.
+    - `fix(ext): _is_require_permission Sentinel` — Onyx's `check_router_auth` akzeptiert eigene Auth-Dependencies via `fn._is_require_permission = True` Sentinel. Ohne: RuntimeError beim Boot. Attribut am `current_admin_user` Wrapper gesetzt.
+    - `fix(ext-branding): Core #15 useSettings.ts Gate` — Client-Side Flag eingefuehrt, ohne EE-Lizenz-Flags zu aktivieren. Sauber entkoppelt.
+  - **Pre-commit Hook aktualisiert:** `.githooks/pre-commit` Whitelist auf aktuelle 14 Core-Dateien gebracht (vorher: 3 von 14 + 4 nicht-existierende Pfade). Branch-Detection `chore/upstream-sync-*` + `MERGE_HEAD` Check fuer Auto-Bypass.
+  - **Registry-Credentials Drift** (separates Operations-Thema): GitHub Secret `STACKIT_REGISTRY_PASSWORD` war seit 2026-02-27 stale. K8s-Secret `stackit-registry` hatte aktuelle Credentials. Recovery: Password aus K8s in GitHub kopiert. Runbook `docs/runbooks/secret-rotation.md` → Neue Sektion "Container Registry Token (StackIT)" mit Recovery-Verfahren.
+
 ### Fixed
 - [ext-i18n] **ext-Admin-Seiten komplett auf Deutsch + Spacing/Kontrast-Fix** (2026-03-29)
   - Token Usage, Branding, System Prompts: ~115 englische Strings ins Deutsche uebersetzt

@@ -3,6 +3,7 @@ import math
 import mimetypes
 import os
 import zipfile
+from datetime import datetime
 from io import BytesIO
 from typing import Any
 from typing import cast
@@ -21,10 +22,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from onyx.auth.email_utils import send_email
-from onyx.auth.users import current_admin_user
+from onyx.auth.permissions import require_permission
 from onyx.auth.users import current_chat_accessible_user
 from onyx.auth.users import current_curator_or_admin_user
-from onyx.auth.users import current_user
 from onyx.background.celery.tasks.pruning.tasks import (
     try_creating_prune_generator_task,
 )
@@ -104,11 +104,15 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import AccessType
 from onyx.db.enums import ConnectorCredentialPairStatus
 from onyx.db.enums import IndexingMode
+from onyx.db.enums import Permission
 from onyx.db.enums import ProcessingMode
 from onyx.db.federated import fetch_all_federated_connectors_parallel
 from onyx.db.index_attempt import get_index_attempts_for_cc_pair
 from onyx.db.index_attempt import get_latest_index_attempts_by_status
 from onyx.db.index_attempt import get_latest_index_attempts_parallel
+from onyx.db.index_attempt import (
+    get_latest_successful_index_attempts_parallel,
+)
 from onyx.db.models import ConnectorCredentialPair
 from onyx.db.models import FederatedConnector
 from onyx.db.models import IndexAttempt
@@ -185,7 +189,8 @@ def check_google_app_gmail_credentials_exist(
 
 @router.put("/admin/connector/gmail/app-credential")
 def upsert_google_app_gmail_credentials(
-    app_credentials: GoogleAppCredentials, _: User = Depends(current_admin_user)
+    app_credentials: GoogleAppCredentials,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
 ) -> StatusResponse:
     try:
         upsert_google_app_cred(app_credentials, DocumentSource.GMAIL)
@@ -199,7 +204,7 @@ def upsert_google_app_gmail_credentials(
 
 @router.delete("/admin/connector/gmail/app-credential")
 def delete_google_app_gmail_credentials(
-    _: User = Depends(current_admin_user),
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     try:
@@ -227,7 +232,8 @@ def check_google_app_credentials_exist(
 
 @router.put("/admin/connector/google-drive/app-credential")
 def upsert_google_app_credentials(
-    app_credentials: GoogleAppCredentials, _: User = Depends(current_admin_user)
+    app_credentials: GoogleAppCredentials,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
 ) -> StatusResponse:
     try:
         upsert_google_app_cred(app_credentials, DocumentSource.GOOGLE_DRIVE)
@@ -241,7 +247,7 @@ def upsert_google_app_credentials(
 
 @router.delete("/admin/connector/google-drive/app-credential")
 def delete_google_app_credentials(
-    _: User = Depends(current_admin_user),
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     try:
@@ -273,7 +279,8 @@ def check_google_service_gmail_account_key_exist(
 
 @router.put("/admin/connector/gmail/service-account-key")
 def upsert_google_service_gmail_account_key(
-    service_account_key: GoogleServiceAccountKey, _: User = Depends(current_admin_user)
+    service_account_key: GoogleServiceAccountKey,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
 ) -> StatusResponse:
     try:
         upsert_service_account_key(service_account_key, DocumentSource.GMAIL)
@@ -287,7 +294,7 @@ def upsert_google_service_gmail_account_key(
 
 @router.delete("/admin/connector/gmail/service-account-key")
 def delete_google_service_gmail_account_key(
-    _: User = Depends(current_admin_user),
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     try:
@@ -319,7 +326,8 @@ def check_google_service_account_key_exist(
 
 @router.put("/admin/connector/google-drive/service-account-key")
 def upsert_google_service_account_key(
-    service_account_key: GoogleServiceAccountKey, _: User = Depends(current_admin_user)
+    service_account_key: GoogleServiceAccountKey,
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
 ) -> StatusResponse:
     try:
         upsert_service_account_key(service_account_key, DocumentSource.GOOGLE_DRIVE)
@@ -333,7 +341,7 @@ def upsert_google_service_account_key(
 
 @router.delete("/admin/connector/google-drive/service-account-key")
 def delete_google_service_account_key(
-    _: User = Depends(current_admin_user),
+    _: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     try:
@@ -403,7 +411,7 @@ def upsert_gmail_service_account_credential(
 @router.get("/admin/connector/google-drive/check-auth/{credential_id}")
 def check_drive_tokens(
     credential_id: int,
-    user: User = Depends(current_admin_user),
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> AuthStatus:
     db_credentials = fetch_credential_by_id_for_user(credential_id, user, db_session)
@@ -1158,21 +1166,26 @@ def get_connector_indexing_status(
             ),
             (),
         ),
+        # Get most recent successful index attempts
+        (
+            lambda: get_latest_successful_index_attempts_parallel(
+                request.secondary_index,
+            ),
+            (),
+        ),
     ]
 
     if user and user.role == UserRole.ADMIN:
-        # For Admin users, we already got all the cc pair in editable_cc_pairs
-        # its not needed to get them again
         (
             editable_cc_pairs,
             federated_connectors,
             latest_index_attempts,
             latest_finished_index_attempts,
+            latest_successful_index_attempts,
         ) = run_functions_tuples_in_parallel(parallel_functions)
         non_editable_cc_pairs = []
     else:
         parallel_functions.append(
-            # Get non-editable connector/credential pairs
             (
                 lambda: get_connector_credential_pairs_for_user_parallel(
                     user, False, None, True, True, False, True, request.source
@@ -1186,6 +1199,7 @@ def get_connector_indexing_status(
             federated_connectors,
             latest_index_attempts,
             latest_finished_index_attempts,
+            latest_successful_index_attempts,
             non_editable_cc_pairs,
         ) = run_functions_tuples_in_parallel(parallel_functions)
 
@@ -1197,6 +1211,9 @@ def get_connector_indexing_status(
     latest_finished_index_attempts = cast(
         list[IndexAttempt], latest_finished_index_attempts
     )
+    latest_successful_index_attempts = cast(
+        list[IndexAttempt], latest_successful_index_attempts
+    )
 
     document_count_info = get_document_counts_for_all_cc_pairs(db_session)
 
@@ -1206,42 +1223,48 @@ def get_connector_indexing_status(
         for connector_id, credential_id, cnt in document_count_info
     }
 
-    cc_pair_to_latest_index_attempt: dict[tuple[int, int], IndexAttempt] = {
-        (
-            attempt.connector_credential_pair.connector_id,
-            attempt.connector_credential_pair.credential_id,
-        ): attempt
-        for attempt in latest_index_attempts
-    }
+    def _attempt_lookup(
+        attempts: list[IndexAttempt],
+    ) -> dict[int, IndexAttempt]:
+        return {attempt.connector_credential_pair_id: attempt for attempt in attempts}
 
-    cc_pair_to_latest_finished_index_attempt: dict[tuple[int, int], IndexAttempt] = {
-        (
-            attempt.connector_credential_pair.connector_id,
-            attempt.connector_credential_pair.credential_id,
-        ): attempt
-        for attempt in latest_finished_index_attempts
-    }
+    cc_pair_to_latest_index_attempt = _attempt_lookup(latest_index_attempts)
+    cc_pair_to_latest_finished_index_attempt = _attempt_lookup(
+        latest_finished_index_attempts
+    )
+    cc_pair_to_latest_successful_index_attempt = _attempt_lookup(
+        latest_successful_index_attempts
+    )
 
     def build_connector_indexing_status(
         cc_pair: ConnectorCredentialPair,
         is_editable: bool,
     ) -> ConnectorIndexingStatusLite | None:
-        # TODO remove this to enable ingestion API
         if cc_pair.name == "DefaultCCPair":
             return None
 
-        latest_attempt = cc_pair_to_latest_index_attempt.get(
-            (cc_pair.connector_id, cc_pair.credential_id)
-        )
+        latest_attempt = cc_pair_to_latest_index_attempt.get(cc_pair.id)
         latest_finished_attempt = cc_pair_to_latest_finished_index_attempt.get(
-            (cc_pair.connector_id, cc_pair.credential_id)
+            cc_pair.id
+        )
+        latest_successful_attempt = cc_pair_to_latest_successful_index_attempt.get(
+            cc_pair.id
         )
         doc_count = cc_pair_to_document_cnt.get(
             (cc_pair.connector_id, cc_pair.credential_id), 0
         )
 
         return _get_connector_indexing_status_lite(
-            cc_pair, latest_attempt, latest_finished_attempt, is_editable, doc_count
+            cc_pair,
+            latest_attempt,
+            latest_finished_attempt,
+            (
+                latest_successful_attempt.time_started
+                if latest_successful_attempt
+                else None
+            ),
+            is_editable,
+            doc_count,
         )
 
     # Process editable cc_pairs
@@ -1402,6 +1425,7 @@ def _get_connector_indexing_status_lite(
     cc_pair: ConnectorCredentialPair,
     latest_index_attempt: IndexAttempt | None,
     latest_finished_index_attempt: IndexAttempt | None,
+    last_successful_index_time: datetime | None,
     is_editable: bool,
     document_cnt: int,
 ) -> ConnectorIndexingStatusLite | None:
@@ -1435,7 +1459,7 @@ def _get_connector_indexing_status_lite(
             else None
         ),
         last_status=latest_index_attempt.status if latest_index_attempt else None,
-        last_success=cc_pair.last_successful_index_time,
+        last_success=last_successful_index_time,
         docs_indexed=document_cnt,
         latest_index_attempt_docs_indexed=(
             latest_index_attempt.total_docs_indexed if latest_index_attempt else None
@@ -1774,7 +1798,9 @@ def connector_run_once(
 
 @router.get("/connector/gmail/authorize/{credential_id}")
 def gmail_auth(
-    response: Response, credential_id: str, _: User = Depends(current_user)
+    response: Response,
+    credential_id: str,
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
 ) -> AuthUrl:
     # set a cookie that we can read in the callback (used for `verify_csrf`)
     response.set_cookie(
@@ -1788,7 +1814,9 @@ def gmail_auth(
 
 @router.get("/connector/google-drive/authorize/{credential_id}")
 def google_drive_auth(
-    response: Response, credential_id: str, _: User = Depends(current_user)
+    response: Response,
+    credential_id: str,
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
 ) -> AuthUrl:
     # set a cookie that we can read in the callback (used for `verify_csrf`)
     response.set_cookie(
@@ -1806,7 +1834,7 @@ def google_drive_auth(
 def gmail_callback(
     request: Request,
     callback: GmailCallback = Depends(),
-    user: User = Depends(current_user),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     credential_id_cookie = request.cookies.get(_GMAIL_CREDENTIAL_ID_COOKIE_NAME)
@@ -1836,7 +1864,7 @@ def gmail_callback(
 def google_drive_callback(
     request: Request,
     callback: GDriveCallback = Depends(),
-    user: User = Depends(current_user),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> StatusResponse:
     credential_id_cookie = request.cookies.get(_GOOGLE_DRIVE_CREDENTIAL_ID_COOKIE_NAME)
@@ -1865,7 +1893,7 @@ def google_drive_callback(
 
 @router.get("/connector", tags=PUBLIC_API_TAGS)
 def get_connectors(
-    _: User = Depends(current_user),
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> list[ConnectorSnapshot]:
     connectors = fetch_connectors(db_session)
@@ -1880,7 +1908,7 @@ def get_connectors(
 
 @router.get("/indexed-sources", tags=PUBLIC_API_TAGS)
 def get_indexed_sources(
-    _: User = Depends(current_user),
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> IndexedSourcesResponse:
     sources = sorted(
@@ -1892,7 +1920,7 @@ def get_indexed_sources(
 @router.get("/connector/{connector_id}", tags=PUBLIC_API_TAGS)
 def get_connector_by_id(
     connector_id: int,
-    _: User = Depends(current_user),
+    _: User = Depends(require_permission(Permission.BASIC_ACCESS)),
     db_session: Session = Depends(get_session),
 ) -> ConnectorSnapshot | StatusResponse[int]:
     connector = fetch_connector_by_id(connector_id, db_session)
@@ -1921,7 +1949,7 @@ def get_connector_by_id(
 @router.post("/connector-request")
 def submit_connector_request(
     request_data: ConnectorRequestSubmission,
-    user: User = Depends(current_user),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
 ) -> StatusResponse:
     """
     Submit a connector request for Cloud deployments.

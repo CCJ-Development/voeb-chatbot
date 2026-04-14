@@ -363,13 +363,19 @@ export const DE_TRANSLATIONS: Record<string, string> = {
   "More Actions": "Weitere Aktionen",
 
   // =========================================================================
-  // MODEL SELECTOR (LLMPopover.tsx)
+  // MODEL SELECTOR (LLMPopover.tsx) + Multi-Model Chat
   // =========================================================================
 
   "Search models...": "Modelle suchen...",
   "Reasoning": "Reasoning",
   "Vision": "Vision",
   "No models found": "Keine Modelle gefunden",
+
+  // Multi-Model Chat (seit Upstream-Sync #5, 2026-04-13)
+  "Add Model": "Modell hinzufügen",
+  "Show response": "Antwort einblenden",
+  "Hide response": "Antwort ausblenden",
+  "Deselect preferred response": "Bevorzugte Antwort abwählen",
 
   // =========================================================================
   // SETTINGS PAGE (User Settings)

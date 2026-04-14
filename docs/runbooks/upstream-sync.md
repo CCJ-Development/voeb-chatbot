@@ -259,6 +259,166 @@ curl -s https://dev.chatbot.voeb-service.de/api/health
 | 2026-03-06 | 100 | 1 (AGENTS) | ~5 Min | PR #3 |
 | 2026-03-17 | 161 | 3 (AGENTS, CODEOWNERS, AdminSidebar) | ~45 Min | PR #18, AdminSidebar Rewrite |
 | 2026-03-22 | 71 | 0 (alle auto-merged) | ~10 Min | PR #19, Chart 0.4.36, tool_choice-Fix, Hook-System, 8 OpenSearch-Commits |
+| 2026-04-13/14 | 344 | 7 (4 trivial, 3 ernsthaft + 3 Fix-Commits post-Deploy) | ~4-6 Std | PR #20, Chart 0.4.44, SSR→CSR Layout, AdminSidebar Opal, current_admin_user Removal, Core #13 entfernt, Core #15 NEU |
+
+## Recovery-Szenarien
+
+### Szenario A: Alembic parallele Heads — fehlende Migrations nach Deploy
+
+**Symptom:** API-Server startet, aber alle Datenbank-Queries werfen `UndefinedColumn` oder `relation does not exist`. Pod ist Running aber nicht funktional.
+
+**Ursache:** Unsere ext-Chain (z.B. `ff7273065d0d` → ... → `d8a1b2c3e4f5`) setzt auf einem alten Upstream-Head auf. Upstream fuehrt neue Migrations "in der Mitte" ein. Alembic sieht: `current == head`, fuehrt nichts aus → DB-Schema haengt hinterher.
+
+**Bei Sync #5 aufgetreten:** 11 Upstream-Migrations (group_permissions_phase1, seed_default_groups, rename_persona_is_visible_to_is_listed, etc.) wurden nicht ausgefuehrt. Kolumnen `user.account_type`, `persona.is_listed`, Tabelle `permission_grant` fehlten.
+
+**Recovery:**
+
+```bash
+# 1. Pod-Name finden
+POD=$(kubectl get pods -n onyx-dev -l app=api-server -o jsonpath='{.items[0].metadata.name}')
+
+# 2. Aktuellen DB-Head bestaetigen
+kubectl exec -n onyx-dev $POD -- alembic current
+# Output z.B.: d8a1b2c3e4f5 (head)
+
+# 3. DB-State pruefen — fehlen erwartete Schema-Aenderungen?
+kubectl exec -n onyx-dev $POD -- python -c "
+from sqlalchemy import create_engine, text
+import os
+url = f\"postgresql+psycopg2://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}@{os.environ['POSTGRES_HOST']}:{os.environ['POSTGRES_PORT']}/{os.environ['POSTGRES_DB']}\"
+engine = create_engine(url)
+with engine.connect() as conn:
+    # Kandidaten fuer Schema-Sentinels
+    tests = {
+      'user.account_type': \"SELECT 1 FROM information_schema.columns WHERE table_name='user' AND column_name='account_type'\",
+      'persona.is_listed': \"SELECT 1 FROM information_schema.columns WHERE table_name='persona' AND column_name='is_listed'\",
+      'permission_grant table': \"SELECT 1 FROM information_schema.tables WHERE table_name='permission_grant'\",
+    }
+    for name, sql in tests.items():
+        print(f'{name}: {bool(conn.execute(text(sql)).scalar())}')
+"
+
+# 4. Falls Schema-Sentinels False sind: Manuelle Migration
+#    Strategie: alembic_version temporaer auf alten Upstream-Head setzen,
+#    upgrade auf neuen Upstream-Head, dann zurueck auf unseren ext-Head.
+
+# 4a. Aktuellen Head sichern
+CURRENT_HEAD=$(kubectl exec -n onyx-dev $POD -- alembic current 2>&1 | grep -oE '[a-f0-9]{12} \(head\)' | awk '{print $1}')
+echo "Unser Head: $CURRENT_HEAD"
+
+# 4b. Alten Upstream-Head recherchieren (vor dem Sync, war die down_revision der ersten ext-Migration VOR dem Sync)
+#    Sync #5: alter upstream head war 689433b0d8de, neuer ist 503883791c39
+OLD_UPSTREAM_HEAD="689433b0d8de"
+NEW_UPSTREAM_HEAD="503883791c39"
+
+# 4c. alembic_version zurueckstellen
+kubectl exec -n onyx-dev $POD -- python -c "
+from sqlalchemy import create_engine, text
+import os
+url = f\"postgresql+psycopg2://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}@{os.environ['POSTGRES_HOST']}:{os.environ['POSTGRES_PORT']}/{os.environ['POSTGRES_DB']}\"
+engine = create_engine(url)
+with engine.connect() as conn:
+    conn.execute(text(\"UPDATE alembic_version SET version_num = '$OLD_UPSTREAM_HEAD'\"))
+    conn.commit()
+"
+
+# 4d. Upstream-Migrations ausfuehren
+kubectl exec -n onyx-dev $POD -- alembic upgrade $NEW_UPSTREAM_HEAD
+
+# 4e. alembic_version auf unseren echten Head zurueckstellen
+kubectl exec -n onyx-dev $POD -- python -c "
+from sqlalchemy import create_engine, text
+import os
+url = f\"postgresql+psycopg2://{os.environ['POSTGRES_USER']}:{os.environ['POSTGRES_PASSWORD']}@{os.environ['POSTGRES_HOST']}:{os.environ['POSTGRES_PORT']}/{os.environ['POSTGRES_DB']}\"
+engine = create_engine(url)
+with engine.connect() as conn:
+    conn.execute(text(\"UPDATE alembic_version SET version_num = '$CURRENT_HEAD'\"))
+    conn.commit()
+"
+
+# 5. API-Server Pod neustarten, damit er die DB neu evaluiert
+kubectl delete pod -n onyx-dev $POD
+
+# 6. Verifikation
+kubectl get pods -n onyx-dev -l app=api-server
+curl -sS -o /dev/null -w "%{http_code}\n" https://dev.chatbot.voeb-service.de/api/health
+```
+
+**Wichtig vor PROD-Deploy:** Auf PROD **immer** denselben Check vorher machen. Backup der `alembic_version` Tabelle erstellen, falls Rollback noetig wird. PROD-User-Daten nie per Downgrade verlieren.
+
+### Szenario B: Fehlende ext-Router nach Deploy
+
+**Symptom:** Admin-Sidebar zeigt keine ext-Links (Branding, Token, Prompts), API liefert 404 fuer `/api/enterprise-settings`, Logs zeigen nur `Extension health router registered` — andere ext-Router fehlen.
+
+**Ursache:** Upstream hat eine Dependency oder Funktion entfernt, die unsere Router importieren. Der Import scheitert, die Exception wird im `try/except` in `main.py` gefangen, aber nur der **erste** erfolgreiche Router (`health`) ist registriert — alle weiteren brechen auf dem Import-Fehler ab.
+
+**Diagnose:**
+
+```bash
+POD=$(kubectl get pods -n onyx-dev -l app=api-server -o jsonpath='{.items[0].metadata.name}')
+
+# 1. Welche ext-Router wurden registriert?
+kubectl logs -n onyx-dev $POD 2>&1 | grep -iE "extension.*router.*registered"
+# Erwartet: 7-8 Zeilen (health, branding, token, prompts, rbac, doc-access, analytics, audit)
+
+# 2. Isolated Import-Test
+kubectl exec -n onyx-dev $POD -- python -c "
+try:
+    from ext.routers.branding import admin_router
+    print('branding OK')
+except Exception as e:
+    import traceback; traceback.print_exc()
+"
+
+# 3. Wenn ImportError: Neue/entfernte Onyx-Funktion suchen
+kubectl exec -n onyx-dev $POD -- python -c "
+from onyx.auth.users import current_admin_user  # z.B. diese Funktion
+"
+```
+
+**Bei Sync #5 aufgetreten:** Upstream PR #9930 hat `current_admin_user` aus `onyx.auth.users` entfernt. Fix: `backend/ext/auth.py` als Wrapper mit `_is_require_permission = True` Sentinel, alle ext-Router-Imports umgestellt.
+
+**Recovery-Muster:**
+1. Upstream-Funktion identifizieren die nicht mehr existiert
+2. Wrapper in `backend/ext/auth.py` (oder `backend/ext/<module>.py`) implementieren mit alter Semantik
+3. Falls Onyx's `check_router_auth` involviert ist: `_is_require_permission = True` Sentinel auf den Wrapper setzen
+4. Imports in allen betroffenen ext-Routern umstellen
+
+### Szenario C: `useEnterpriseSettings` / Branding-Assets nicht geladen
+
+**Symptom:** Admin-Sidebar zeigt Onyx-Standard-Logo statt VOEB-Branding, "Spending Limits"/"Upgrade Plan" erscheinen, obwohl unsere ext-Config das ausblenden sollte.
+
+**Ursache:** Upstream hat den Client-Side-Call fuer `useEnterpriseSettings()` hinter einen EE-Lizenz-Flag gegatet. Unsere Gate-Condition `extBrandingActive = settings?.enterpriseSettings && !hasSubscription` ist false.
+
+**Diagnose:**
+
+```bash
+# 1. Backend liefert Daten?
+curl -sS https://dev.chatbot.voeb-service.de/api/enterprise-settings
+# Erwartet: JSON mit application_name, use_custom_logo, etc.
+
+# 2. Frontend-Build-Args pruefen
+kubectl get deploy -n onyx-dev onyx-dev-web-server -o yaml | grep -i NEXT_PUBLIC_EXT_BRANDING
+# Erwartet: NEXT_PUBLIC_EXT_BRANDING_ENABLED=true
+```
+
+**Bei Sync #5 aufgetreten:** Upstream PR #9529 (SSR→CSR Migration) hat in `web/src/hooks/useSettings.ts` den Check `shouldFetch = EE_ENABLED || eeEnabledRuntime` eingefuehrt.
+
+**Recovery / Fix:** **NIE EE-Flags aktivieren** (Lizenzrechtlich problematisch). Stattdessen Core-Patch #15 in `web/src/hooks/useSettings.ts`:
+```typescript
+const EXT_BRANDING_ENABLED =
+  process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
+const shouldFetch = EE_ENABLED || eeEnabledRuntime || EXT_BRANDING_ENABLED;
+```
+Plus Build-Arg `NEXT_PUBLIC_EXT_BRANDING_ENABLED=true` in `web/Dockerfile` und `stackit-deploy.yml`.
+
+### Szenario D: Registry-Credentials Drift
+
+**Symptom:** CI/CD `build-backend` oder `build-frontend` scheitert mit `Error response from daemon: login attempt to https://registry.onstackit.cloud/v2/ failed with status: 401 Unauthorized`. DEV/PROD-Pods laufen weiter (Image-Pull OK).
+
+**Ursache:** `STACKIT_REGISTRY_PASSWORD` in GitHub ist veraltet, K8s-Secret hat aktuellere Credentials.
+
+**Recovery:** Siehe `docs/runbooks/secret-rotation.md` → Abschnitt "Container Registry Token (StackIT)" → "Recovery bei Drift".
 
 ## NIEMALS
 

@@ -89,7 +89,7 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**M1-Abnahmeprotokoll (wartet auf VÖB-Termin).** ext-access + ext-audit + ext-analytics PROD LIVE (2026-03-25/26). Alle 10 ext-Module aktiv.
+**Upstream-Sync #5 auf DEV verifiziert (2026-04-14).** 344 Commits, Chart 0.4.44. Core-Dateien 15 net (Core #13 CustomModal entfernt, Core #15 useSettings.ts neu fuer enterpriseSettings-Gate ohne EE-Lizenz-Flag). PR #20 wartet auf Merge nach Niko-Freigabe. 4 Commits gesamt (1 Merge + 3 Fix-Commits: current_admin_user Wrapper, _is_require_permission Sentinel, Core #15). Anschliessend: M1-Abnahmeprotokoll (wartet auf VÖB-Termin) + PROD-Deploy Sync #5 (im naechsten Maintenance-Window — Alembic-Chain-Recovery + seed_default_groups Gruppen-Check vorbereiten).
 
 ## Blocker
 | Blocker | Wartet auf | Impact |

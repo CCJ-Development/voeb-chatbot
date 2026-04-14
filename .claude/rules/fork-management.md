@@ -82,7 +82,7 @@ git merge upstream/main --no-commit --no-ff
 **Erwartete Konflikte (harmlos):**
 - `AGENTS.md`, `.claude/skills` → Unsere Version behalten (`git checkout --ours`)
 - `Chart.yaml`, `Chart.lock` → Upstream übernehmen (`git checkout --theirs`)
-- 14 Core-Dateien → Upstream übernehmen, Patches neu anwenden (siehe unten)
+- 15 Core-Dateien (ab Sync #5, vorher 15 — CORE #13 CustomModal.tsx entfernt da Upstream-Fix) → Upstream übernehmen, Patches neu anwenden (siehe unten)
 - `backend/Dockerfile` → Upstream übernehmen, COPY ext/ neu einfügen (siehe "Zusätzliche Merge-Stellen")
 - `deployment/docker_compose/env.template` → Manuell mergen (wir appenden am Ende, Upstream ändert Mitte)
 
@@ -201,9 +201,61 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Workflow | Branch + PR (#19), Squash Merge |
 | PROD-Deploy | Manueller `helm upgrade` am selben Tag (Chart 0.4.32 → 0.4.36, OpenSearch + ext-i18n) |
 
+## Fuenfter Upstream-Merge (2026-04-13/14) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Upstream-Commits | 344 |
+| Konflikte | 7 (4 trivial: .gitignore, AGENTS.md, README.md, web/Dockerfile; 3 ernsthaft: layout.tsx, CustomModal.tsx, AdminSidebar.tsx) |
+| Backend-Core-Konflikte | 0 (alle 7 Hooks auto-merged) |
+| ext_-Code Konflikte | 0 |
+| ext-Code Anpassung | 1 Zeile: `analytics.py` `is_visible` → `is_listed` (Upstream-Rename #9569) |
+| Alembic-Migrationen | 11 neue Upstream + 1 modifiziert. Chain: `ff7273065d0d` down von `689433b0d8de` auf `503883791c39` umgehaengt |
+| Core #13 entfernt | CustomModal.tsx — Upstream-Bug onyx-dot-app/onyx#9592 gefixt (PR #10009 etc). |
+| Core #15 NEU | useSettings.ts — `NEXT_PUBLIC_EXT_BRANDING_ENABLED` als Gate fuer `useEnterpriseSettings()` ohne EE-Lizenz-Flag. Core-Datei-Zahl: 15 (net). |
+| Chart-Version | 0.4.36 → 0.4.44 (code-interpreter 0.3.1 → 0.3.3) |
+| Helm-Repos | Keine neuen Repos (alle 7 bereits in CI) |
+| Wichtig | SSR→CSR Layout Migration (#9529), AdminSidebar Opal-Refactor, current_admin_user Removal (#9930), Multi-Model Chat Feature, Group-Permissions Phase 1 (additiv, kein Konflikt) |
+| ext-i18n | 4 neue Multi-Model-Strings ins Dictionary ("Show response", "Hide response", "Add Model", "Deselect preferred response") |
+| Neue Dateien in ext/ | `backend/ext/auth.py` (current_admin_user Wrapper mit `_is_require_permission` Sentinel) |
+| Commits auf Sync-Branch | 4 (1 Merge + 3 Fix-Commits nach Deploy-Tests) |
+| Workflow | Branch + PR #20 |
+
+### Fix-Commits nach initialem Merge
+
+Alle drei Fixes wurden erst beim DEV-Deploy sichtbar und waren nicht im initialen Merge vorhersehbar:
+
+| Commit | Thema | Betroffene Dateien |
+|--------|-------|-------------------|
+| `481eb7ccb` | `current_admin_user` in ext/auth.py kapseln | `backend/ext/auth.py` NEU + 7 Router-Imports umgestellt |
+| `8eab7ff2c` | `_is_require_permission = True` Sentinel | `backend/ext/auth.py` (1 Zeile) |
+| `89b2f0ec6` | Core #15 `useSettings.ts` Gate | `useSettings.ts` + Dockerfile + stackit-deploy.yml + Doku |
+
+### Lessons Learned
+
+1. **`current_admin_user` wird in EE-Migrationen gelegentlich entfernt.** Upstream PR #9930 hat es aus `onyx.auth.users` entfernt (Migration zu account-type-Permission-System). Loesung: `backend/ext/auth.py` als Wrapper mit **Original-Admin-Only-Semantik**. Bei zukuenftigen Auth-Refactors ist das die einzige Stelle zum Nachziehen.
+
+2. **`_is_require_permission = True` Sentinel** ist Onyx's offizielle Extension-API fuer eigene Auth-Dependencies. Ohne das Attribut wirft `check_router_auth` beim Boot einen RuntimeError fuer alle Routen die unsere Wrapper nutzen. Siehe `onyx/server/auth_check.py` und `onyx/auth/permissions.py:124`.
+
+3. **SSR→CSR Migration gated `useEnterpriseSettings` hinter EE-Flag.** Upstream PR #9529 fuehrte `shouldFetch = EE_ENABLED || eeEnabledRuntime` ein. Unsere ext-branding Architektur hat keine EE-Lizenz → API-Call wurde nicht gemacht → VOEB-Logo + Branding-Links fehlten. **NIE EE-Flags auf true setzen** (Lizenzrechtliches Problem). Stattdessen: **Core #15 mit eigenem `NEXT_PUBLIC_EXT_BRANDING_ENABLED` Flag**.
+
+4. **Alembic parallele Heads bei jedem Sync** (zweiter Fall, nach Sync #3). Unsere ext-Chain setzt auf dem letzten Upstream-Head auf. Upstream fuegt in der Mitte neue Migrationen ein → unser Code-Head = DB-Head, aber Upstream-Migrations in der Mitte fehlen. **Manuelle Recovery nötig:** `UPDATE alembic_version SET version_num = <alter head>` → `alembic upgrade <neuer upstream head>` → `UPDATE alembic_version SET version_num = <unser head>`. Details in `docs/runbooks/upstream-sync.md`.
+
+5. **Upstream `seed_default_groups` (#9795)** benennt existierende "Admin"/"Basic" Gruppen zu "(Custom)" um. **PROD-Check notwendig** vor Deploy.
+
+6. **`diff3` style zeigt Konflikt-Marker in Symlinks** (CLAUDE.md → AGENTS.md). `git ls-files -u` ist authoritativ, nicht `git status` bei Symlinks.
+
+7. **Bei massiven Refactors (AdminSidebar Opal)** ist `git checkout --theirs` + manuelle Hook-Reinsertion schneller als Marker aufloesen.
+
+8. **StackIT Container Registry Token Drift**: Das GitHub Secret `STACKIT_REGISTRY_PASSWORD` war seit Februar stale (~7 Wochen). K8s-Secret `stackit-registry` in `onyx-dev` hatte die korrekten Credentials. **Root Cause:** Bei Token-Rotation wurde nur das K8s-Secret aktualisiert, nicht das GitHub-Secret. **Recovery:** Password aus K8s-Secret extrahieren und via `gh secret set` in GitHub uebernehmen. Runbook: `docs/runbooks/secret-rotation.md`.
+
+9. **Registry-Login Race Condition** beim parallelen Build von Frontend + Backend (401 Unauthorized). Tritt gelegentlich auf. Quick-Fix: `gh run rerun --failed`. Langfristig: `build-backend needs: build-frontend` im Workflow — Trade-Off ~5 Min laengere Gesamtzeit.
+
+10. **Upstream Metrics-Stack eingefuehrt** (`prometheus-fastapi-instrumentator` + `metrics_server.py`). Die 7 Celery-Worker starten automatisch HTTP-Server auf Ports 9092-9096. Default `PROMETHEUS_METRICS_ENABLED=true`, ServiceMonitors default off. **Kein Konflikt mit unserem Custom-Monitoring**, laeuft passiv mit. Separater Task: Upstream-Monitoring evaluieren und Custom-Setup reduzieren.
+
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 14 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
+Neben den 15 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
 
 ### `backend/Dockerfile` (seit Phase 4a)
 
@@ -277,11 +329,12 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `deployment/docker_compose/env.template` | Append | 30 | Niedrig |
 | `web/Dockerfile` | ARG/ENV | 4 | Niedrig |
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
-| `web/src/sections/modals/llmConfig/CustomModal.tsx` (CORE #13) | UI-Fix | ~25 | Mittel |
-| `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #15) | Early-Return | 1 | Niedrig |
+| `backend/onyx/natural_language_processing/search_nlp_models.py` (CORE #13) | `.lower()` | 1 | Niedrig |
+| `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #14) | Early-Return | 1 | Niedrig |
+| `web/src/hooks/useSettings.ts` (CORE #15) | shouldFetch + EXT_BRANDING_ENABLED | ~8 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
-**Achtung #13:** TEMPORAER — Upstream-Bug onyx-dot-app/onyx#9592. Bei Upstream-Sync pruefen ob Issue gefixt. Falls ja: Patch entfernen, `.original` + `.patch` loeschen, #13 aus core-dateien.md entfernen.
+**Achtung #13:** TEMPORAER — OpenSearch lowercase Index-Name. Bei Upstream-Sync pruefen ob `clean_model_name()` selbst lowercase macht. Falls ja: Patch entfernen.
 
 Alle anderen Dateien (ext/, docs/, .claude/, deployment/helm/values/) existieren nicht in Upstream → Zero Konflikte.
 

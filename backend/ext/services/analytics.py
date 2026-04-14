@@ -448,7 +448,7 @@ def _get_agent_metrics(
     db_session: Session, from_ts: datetime, to_ts: datetime
 ) -> dict:
     total_row = db_session.execute(
-        text("SELECT COUNT(*) FROM persona WHERE is_visible AND NOT deleted"),
+        text("SELECT COUNT(*) FROM persona WHERE is_listed AND NOT deleted"),
     ).fetchone()
 
     rows = db_session.execute(

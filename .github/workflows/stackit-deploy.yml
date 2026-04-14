@@ -108,10 +108,14 @@ jobs:
           fi
 
   # =========================================================
-  # BUILD BACKEND: Parallel mit Frontend
+  # BUILD BACKEND: Sequenziell NACH Frontend
   # =========================================================
+  # Paralleler Login zur StackIT Container Registry fuehrt zu 401 Unauthorized
+  # beim zweiten Job (Sync #5: 5x in einer Session beobachtet). StackIT blockt
+  # offenbar gleichzeitige Logins desselben Robot Accounts.
+  # Trade-off: +~4-5 Min Gesamtzeit, dafuer keine flaky CI-Reruns mehr.
   build-backend:
-    needs: prepare
+    needs: [prepare, build-frontend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -167,6 +171,7 @@ jobs:
             NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED=true
             NEXT_PUBLIC_EXT_I18N_ENABLED=true
             NEXT_PUBLIC_EXT_RBAC_ENABLED=true
+            NEXT_PUBLIC_EXT_BRANDING_ENABLED=true
           tags: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:${{ needs.prepare.outputs.image_tag }}
             ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/onyx-web-server:latest

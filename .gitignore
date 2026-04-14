@@ -60,6 +60,9 @@ node_modules
 # plans
 plans/
 
+# Added context for LLMs
+onyx-llm-context/
+
 # ===========================================================
 # VÖB Fork — Alle Ergänzungen unterhalb dieser Linie
 # Maintainer: Nikolaj Ivanov (CCJ / Coffee Studios)

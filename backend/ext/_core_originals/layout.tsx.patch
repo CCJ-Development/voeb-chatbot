@@ -1,31 +1,46 @@
---- backend/ext/_core_originals/layout.tsx.original	2026-03-22 15:13:48
-+++ web/src/app/layout.tsx	2026-03-22 14:55:16
-@@ -31,6 +31,7 @@
- import { fetchAppSidebarMetadata } from "@/lib/appSidebarSS";
- import StatsOverlayLoader from "@/components/dev/StatsOverlayLoader";
- import AppHealthBanner from "@/sections/AppHealthBanner";
+--- backend/ext/_core_originals/layout.tsx.original	2026-04-13 15:30:00
++++ web/src/app/layout.tsx	2026-04-13 15:29:43
+@@ -19,6 +19,7 @@
+ import CustomAnalyticsScript from "@/providers/CustomAnalyticsScript";
+ import ProductGatingWrapper from "@/providers/ProductGatingWrapper";
+ import SWRConfigProvider from "@/providers/SWRConfigProvider";
 +import { TranslationProvider } from "@/ext/i18n";
  
- const inter = Inter({
+ const hankenGrotesk = Hanken_Grotesk({
    subsets: ["latin"],
-@@ -84,7 +85,7 @@
- 
-   const getPageContent = async (content: React.ReactNode) => (
+@@ -67,7 +68,7 @@
+ }) {
+   return (
      <html
 -      lang="en"
 +      lang="de"
-       className={`${inter.variable} ${hankenGrotesk.variable}`}
+       className={cn(hankenGrotesk.variable, dmMono.variable)}
        suppressHydrationWarning
      >
-@@ -127,14 +128,16 @@
+@@ -101,29 +102,31 @@
            enableSystem
            disableTransitionOnChange
          >
 -          <div className="text-text min-h-screen bg-background">
 -            <TooltipProvider>
 -              <PHProvider>
--                <AppHealthBanner />
--                {content}
+-                <SWRConfigProvider>
+-                  <AppHealthBanner />
+-                  <AppProvider>
+-                    <DynamicMetadata />
+-                    <CustomAnalyticsScript />
+-                    <Suspense fallback={null}>
+-                      <PostHogPageView />
+-                    </Suspense>
+-                    <div id={MODAL_ROOT_ID} className="h-screen w-screen">
+-                      <ProductGatingWrapper>{children}</ProductGatingWrapper>
+-                    </div>
+-                    {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
+-                    {process.env.NEXT_PUBLIC_ENABLE_STATS === "true" && (
+-                      <StatsOverlayLoader />
+-                    )}
+-                  </AppProvider>
+-                </SWRConfigProvider>
 -              </PHProvider>
 -            </TooltipProvider>
 -          </div>
@@ -33,8 +48,23 @@
 +            <div className="text-text min-h-screen bg-background">
 +              <TooltipProvider>
 +                <PHProvider>
-+                  <AppHealthBanner />
-+                  {content}
++                  <SWRConfigProvider>
++                    <AppHealthBanner />
++                    <AppProvider>
++                      <DynamicMetadata />
++                      <CustomAnalyticsScript />
++                      <Suspense fallback={null}>
++                        <PostHogPageView />
++                      </Suspense>
++                      <div id={MODAL_ROOT_ID} className="h-screen w-screen">
++                        <ProductGatingWrapper>{children}</ProductGatingWrapper>
++                      </div>
++                      {process.env.NEXT_PUBLIC_POSTHOG_KEY && <WebVitals />}
++                      {process.env.NEXT_PUBLIC_ENABLE_STATS === "true" && (
++                        <StatsOverlayLoader />
++                      )}
++                    </AppProvider>
++                  </SWRConfigProvider>
 +                </PHProvider>
 +              </TooltipProvider>
 +            </div>
