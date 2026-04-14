@@ -108,10 +108,14 @@ jobs:
           fi
 
   # =========================================================
-  # BUILD BACKEND: Parallel mit Frontend
+  # BUILD BACKEND: Sequenziell NACH Frontend
   # =========================================================
+  # Paralleler Login zur StackIT Container Registry fuehrt zu 401 Unauthorized
+  # beim zweiten Job (Sync #5: 5x in einer Session beobachtet). StackIT blockt
+  # offenbar gleichzeitige Logins desselben Robot Accounts.
+  # Trade-off: +~4-5 Min Gesamtzeit, dafuer keine flaky CI-Reruns mehr.
   build-backend:
-    needs: prepare
+    needs: [prepare, build-frontend]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
