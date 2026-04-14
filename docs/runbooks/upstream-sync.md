@@ -210,13 +210,20 @@ gh pr create --base main --head chore/upstream-sync-YYYY-MM-DD \
 ### 11. DEV deployen und verifizieren
 
 ```bash
-# PR mergen (nach Review) — IMMER --squash (konsistent mit fork-management.md)
-gh pr merge <NR> -R CCJ-Development/voeb-chatbot --squash --delete-branch
+# PR mergen (nach Review)
+# Upstream-Sync-PRs: --merge (keine --squash) um die Commit-Historie
+# der 344+ Upstream-Commits zu erhalten — kritisch fuer merge-base
+# beim naechsten Sync. Immer -R Flag setzen (sonst geht Merge an Upstream!).
+gh pr merge <NR> -R CCJ-Development/voeb-chatbot --merge --delete-branch --admin
 
 # CI/CD triggert auto-deploy auf DEV
 # Alternativ manuell:
 gh workflow run stackit-deploy.yml -f environment=dev -R CCJ-Development/voeb-chatbot
 ```
+
+**Warum `--admin`?** Branch Protection auf `main` verlangt die Status-Checks `helm-validate`, `build-backend`, `build-frontend`. Diese werden aber in `ci-checks.yml` erst auf `push: branches: main` ausgefuehrt — NICHT auf `pull_request`. Resultat: Kein PR erreicht die geforderten Checks im "required" Status, normaler `gh pr merge` scheitert mit `base branch policy prohibits the merge`. Fuer Solo-Dev ist `--admin` der etablierte Workaround (Niko ist Repo-Admin). Die Checks laufen dann nach dem Merge auf main und validieren den Stand nachtraeglich.
+
+**Alternative (zukuenftig erwaegen):** `ci-checks.yml` zusaetzlich auf `pull_request` triggern, damit die Checks BEVOR dem Merge laufen. Trade-off: +~5 Min pro PR, dafuer kein `--admin` mehr notwendig. Nicht kritisch solange Solo-Dev — Entscheidung auf Eis.
 
 **ACHTUNG — Alembic:** `alembic upgrade head` holt eingefuegte Upstream-Migrationen NICHT nach, wenn die DB bereits auf einem spaeteren Head gestempelt ist. Wenn Upstream neue Migrationen in die Chain eingefuegt hat, muessen diese ggf. manuell via SQL ausgefuehrt werden (siehe Sync #3 Lesson Learned in `docs/runbooks/upstream-sync.md` Historische Syncs).
 

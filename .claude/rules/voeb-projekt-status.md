@@ -89,7 +89,8 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**Upstream-Sync #5 auf DEV verifiziert (2026-04-14).** 344 Commits, Chart 0.4.44. Core-Dateien 15 net (Core #13 CustomModal entfernt, Core #15 useSettings.ts neu fuer enterpriseSettings-Gate ohne EE-Lizenz-Flag). PR #20 wartet auf Merge nach Niko-Freigabe. 4 Commits gesamt (1 Merge + 3 Fix-Commits: current_admin_user Wrapper, _is_require_permission Sentinel, Core #15). Anschliessend: M1-Abnahmeprotokoll (wartet auf VÖB-Termin) + PROD-Deploy Sync #5 (im naechsten Maintenance-Window — Alembic-Chain-Recovery + seed_default_groups Gruppen-Check vorbereiten).
+**Upstream-Sync #5 auf main gemerged (2026-04-14, Merge-Commit `4633fb31f`).** 344 Upstream-Commits + 7 VÖB-Commits (1 Merge + 3 Fix-Commits + 2 Doku + 1 CI-Race-Fix). Chart 0.4.44. Core-Dateien 15 net (Core #13 CustomModal entfernt wg Upstream-Fix onyx-dot-app/onyx#9592, Core #15 useSettings.ts neu fuer enterpriseSettings-Gate ohne EE-Lizenz-Flag). DEV deployed und verifiziert. CI/CD Race Condition (Registry 401 bei parallelen Builds) behoben durch `build-backend needs: build-frontend`.
+**Offen:** PROD-Deploy Sync #5 (naechstes Maintenance-Window — Alembic-Chain-Recovery via upstream-sync.md Szenario A vorbereiten, seed_default_groups Gruppen-Check auf PROD). M1-Abnahmeprotokoll wartet weiter auf VÖB-Termin.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
