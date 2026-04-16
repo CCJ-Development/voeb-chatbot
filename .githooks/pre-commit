@@ -37,6 +37,7 @@ ALLOWED_CORE_FILES=(
   "web/src/components/auth/AuthFlowContainer.tsx"                  # #9  Login Icon + Text
   "web/src/sections/sidebar/AdminSidebar.tsx"                      # #10 Admin Sidebar
   "web/src/refresh-components/popovers/ActionsPopover/index.tsx"   # #14 Actions-Popover
+  "web/src/hooks/useSettings.ts"                                 # #15 useEnterpriseSettings Gate
 )
 
 CHANGED_FILES=$(git diff --cached --name-only)

@@ -89,8 +89,8 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**Upstream-Sync #5 auf main gemerged (2026-04-14, Merge-Commit `4633fb31f`).** 344 Upstream-Commits + 7 VÖB-Commits (1 Merge + 3 Fix-Commits + 2 Doku + 1 CI-Race-Fix). Chart 0.4.44. Core-Dateien 15 net (Core #13 CustomModal entfernt wg Upstream-Fix onyx-dot-app/onyx#9592, Core #15 useSettings.ts neu fuer enterpriseSettings-Gate ohne EE-Lizenz-Flag). DEV deployed und verifiziert. CI/CD Race Condition (Registry 401 bei parallelen Builds) behoben durch `build-backend needs: build-frontend`.
-**Offen:** PROD-Deploy Sync #5 (naechstes Maintenance-Window — Alembic-Chain-Recovery via upstream-sync.md Szenario A vorbereiten, seed_default_groups Gruppen-Check auf PROD). M1-Abnahmeprotokoll wartet weiter auf VÖB-Termin.
+**Monitoring-Optimierung Phase 1-6 abgeschlossen (2026-04-16).** Trigger: PG-PROD-Outage (31 Min, 2026-04-15) nicht durch Monitoring erkannt. Fixes: Alert Fatigue eliminiert (repeat_interval 4h/24h, info→null, Noise-Alerts silenced), `PostgresDown` Alert (`pg_up == 0`, 1 Min), Deep-Health-Endpoint `/ext/health/deep` (DB+Redis+OpenSearch), Readiness-Probe umgestellt, Blackbox-Probe auf Deep-Health, externer GitHub Actions Health-Monitor (cron 5 Min), cert-manager-cainjector NetworkPolicy gefixt (35d CrashLoop behoben). DEV verifiziert. Teams-Channel `voeb-chatbot-prod-alerts` ist still — jede neue Nachricht = echtes Problem.
+**Offen:** PROD-Deploy Sync #5 + Monitoring-Code (naechstes Maintenance-Window — Alembic-Chain-Recovery, seed_default_groups Check, Deep-Health + Readiness live schalten, Blackbox + Helm monitoring upgrade). M1-Abnahmeprotokoll wartet auf VÖB-Termin.
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
