@@ -1,0 +1,54 @@
+# ===========================================================
+# External Health Monitor — Unabhaengige Verfuegbarkeitspruefung
+# ===========================================================
+# Pingt PROD alle 5 Min von GitHub Actions (extern, ausserhalb unseres Clusters).
+# Bei Ausfall: Teams-Notification in voeb-chatbot-prod-alerts.
+#
+# Warum GitHub Actions statt UptimeRobot:
+# - Kein externer Dienst, keine DSGVO-Diskussion
+# - Kostenlos (GitHub Free Tier: 2000 Min/Monat, dieser Job braucht ~30 Min/Monat)
+# - Infrastruktur existiert bereits
+#
+# Phase 6 aus plans/monitoring-optimization.md (2026-04-16).
+# ===========================================================
+
+name: Health Monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check PROD Deep Health
+        id: health
+        run: |
+          HTTP_CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+            --max-time 10 \
+            "https://chatbot.voeb-service.de/api/ext/health/deep" 2>/dev/null || echo "000")
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+          echo "HTTP: $HTTP_CODE"
+          cat /tmp/health.json 2>/dev/null || echo "(no response body)"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "status=FAIL" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=OK" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Alert Teams on failure
+        if: steps.health.outputs.status == 'FAIL'
+        run: |
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "title": "[EXTERNAL] PROD Health Check FAILED",
+              "text": "GitHub Actions Health Monitor: chatbot.voeb-service.de/api/ext/health/deep returned HTTP ${{ steps.health.outputs.http_code }}. Pruefe sofort: kubectl --context vob-prod get pods -n onyx-prod"
+            }' \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}" || echo "Teams notification failed"

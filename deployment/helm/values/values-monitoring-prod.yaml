@@ -93,8 +93,10 @@ prometheus:
         params:
           module: ["http_2xx"]
         static_configs:
+          # Phase 5 (2026-04-16): Von /api/health auf /api/ext/health/deep umgestellt.
+          # /api/health ist blind (immer 200). /api/ext/health/deep testet DB+Redis+OpenSearch.
           - targets:
-              - "https://chatbot.voeb-service.de/api/health"
+              - "https://chatbot.voeb-service.de/api/ext/health/deep"
             labels:
               environment: "prod"
               probe_type: "health"
@@ -207,14 +209,30 @@ alertmanager:
       group_by: ["alertname", "namespace"]
       group_wait: 30s
       group_interval: 5m
-      repeat_interval: 4h
+      # Alert Fatigue Fix (2026-04-16): Gleicher Alert postet sich nicht
+      # mehr alle 1-4h erneut. Einmal bei Fire + einmal bei Resolve.
+      # Backup: Externes Monitoring (UptimeRobot) als unabhaengige Sicht.
+      repeat_interval: 24h
       receiver: "teams-prod"
       routes:
         - match:
             severity: critical
-          repeat_interval: 1h
+          repeat_interval: 4h
           receiver: "teams-prod"
+        # info-Alerts: Nur in Grafana, NICHT in Teams (Alert Fatigue Praevention)
+        - match:
+            severity: info
+          receiver: "null"
+        # Watchdog Deadman Switch: Feuert dauerhaft (beabsichtigt), nicht in Teams
+        - match:
+            alertname: Watchdog
+          receiver: "null"
+        # InfoInhibitor: Internes Prometheus-Operator Konstrukt, nicht in Teams
+        - match:
+            alertname: InfoInhibitor
+          receiver: "null"
     receivers:
+      - name: "null"
       - name: "teams-prod"
         msteams_configs:
           # PROD: Separater Teams-Kanal (Webhook-URL hier eintragen)
@@ -443,14 +461,19 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "OpenSearch Exporter nicht erreichbar"
 
+          # OpenSearchUnassignedShards: Bei Single-Node-Setup sind Replica-Shards
+          # IMMER unassigned (erwartet, dokumentiert in voeb-projekt-status.md als
+          # "Cluster yellow"). Threshold auf >20 gesetzt damit nur unerwartete
+          # NEUE unassigned Shards (z.B. durch Index-Korruption) auffallen.
+          # Alert Fatigue Fix 2026-04-16: War vorher >0, feuerte permanent.
           - alert: OpenSearchUnassignedShards
-            expr: elasticsearch_cluster_health_unassigned_shards{job="opensearch-prod"} > 0
+            expr: elasticsearch_cluster_health_unassigned_shards{job="opensearch-prod"} > 20
             for: 30m
             labels:
               severity: warning
             annotations:
-              summary: "OpenSearch hat unassigned Shards ({{ $value }})"
-              description: "Erwartet bei Single-Node (Replicas). Pruefen ob neue unassigned Shards."
+              summary: "OpenSearch hat ungewoehnlich viele unassigned Shards ({{ $value }})"
+              description: "Bei Single-Node sind einige unassigned normal. >20 deutet auf Index-Korruption oder neues Problem."
 
       # --- Security Alerts (M1, Sprint 3) ---
       - name: voeb-security.rules
@@ -609,7 +632,7 @@ additionalPrometheusRulesMap:
       # --- Exporter Alert Rules ---
       - name: voeb-exporter.rules
         rules:
-          # 10. PG Exporter nicht erreichbar
+          # 10. PG Exporter nicht erreichbar (Meta-Check: Exporter-Pod lebt nicht)
           - alert: PGExporterDown
             expr: up{job=~"postgres-.*"} == 0
             for: 2m
@@ -618,6 +641,20 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "PostgreSQL Exporter nicht erreichbar ({{ $labels.environment }})"
               description: "Scrape-Target {{ $labels.job }} antwortet seit 2 Minuten nicht."
+
+          # 10b. PostgreSQL Instance nicht erreichbar (DB-Level-Check)
+          # Alert Fatigue Fix 2026-04-16: pg_up ist die korrekte Metric.
+          # up{job=~"postgres-.*"} prueft nur ob der Exporter-Pod scrapeable ist,
+          # nicht ob die DB antwortet. Bei PG-Outage am 2026-04-15 war up=1
+          # (Exporter lief) aber pg_up=0 (DB unerreichbar).
+          - alert: PostgresDown
+            expr: pg_up{job=~"postgres-.*"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL-Instance nicht erreichbar"
+              description: "pg-exporter meldet keine DB-Verbindung. Connection refused oder Auth-Fehler. Siehe docs/runbooks/incident-pg-down.md"
 
           # 11. Redis Exporter nicht erreichbar
           - alert: RedisExporterDown

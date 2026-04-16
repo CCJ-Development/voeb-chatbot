@@ -29,7 +29,14 @@ def register_ext_routers(application: FastAPI) -> None:
     from ext.routers.health import router as ext_health_router
 
     include_router_with_global_prefix_prepended(application, ext_health_router)
-    logger.info("Extension health router registered")
+
+    # /ext/health/deep ist PUBLIC (kein Auth) — genutzt von Kubernetes Readiness,
+    # Blackbox Monitoring, UptimeRobot. Muss vor check_router_auth registriert sein.
+    from onyx.server.auth_check import PUBLIC_ENDPOINT_SPECS
+
+    PUBLIC_ENDPOINT_SPECS.append(("/ext/health/deep", {"GET"}))
+
+    logger.info("Extension health router registered (incl. /ext/health/deep public)")
 
     # ext-branding: Whitelabel/Branding
     from ext.config import EXT_BRANDING_ENABLED
