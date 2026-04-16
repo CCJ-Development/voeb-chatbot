@@ -93,8 +93,10 @@ prometheus:
         params:
           module: ["http_2xx"]
         static_configs:
+          # Phase 5 (2026-04-16): Von /api/health auf /api/ext/health/deep umgestellt.
+          # /api/health ist blind (immer 200). /api/ext/health/deep testet DB+Redis+OpenSearch.
           - targets:
-              - "https://chatbot.voeb-service.de/api/health"
+              - "https://chatbot.voeb-service.de/api/ext/health/deep"
             labels:
               environment: "prod"
               probe_type: "health"
