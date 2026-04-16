@@ -23,15 +23,17 @@ api:
   image:
     repository: registry.onstackit.cloud/voeb-chatbot/onyx-backend
   # --- Health Probes ---
-  # /health ist PUBLIC_ENDPOINT (keine Auth), existiert bereits in Onyx FOSS.
-  # Konservative Timeouts: Pod wird erst nach 5 Fehlschlägen (75s) neugestartet.
+  # Readiness: /ext/health/deep testet DB + Redis + OpenSearch (Phase 2, 2026-04-16).
+  # Bei Dependency-Ausfall → Pod wird aus Service entfernt → User bekommt 503 statt White-Screen.
+  # Liveness: /health (Onyx-Default, immer 200) — Pod wird NICHT gecrasht bei DB-Ausfall.
+  # WICHTIG: Liveness NICHT auf /ext/health/deep umstellen — sonst CrashLoop-Kaskade bei DB-Outage.
   readinessProbe:
     httpGet:
-      path: /health
+      path: /ext/health/deep
       port: 8080
     initialDelaySeconds: 30
-    periodSeconds: 10
-    failureThreshold: 6
+    periodSeconds: 15
+    failureThreshold: 3
     timeoutSeconds: 5
   livenessProbe:
     httpGet:
