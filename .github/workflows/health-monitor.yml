@@ -30,9 +30,18 @@ jobs:
       - name: Check PROD Deep Health
         id: health
         run: |
+          # Primaer: /api/ext/health/deep (testet DB+Redis+OpenSearch, ab PROD-Deploy Sync #5)
+          # Fallback: /api/health (immer 200, aber beweist dass API-Server lebt)
+          # Sobald PROD den Deep-Health-Endpoint hat, den Fallback entfernen.
           HTTP_CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
             --max-time 10 \
             "https://chatbot.voeb-service.de/api/ext/health/deep" 2>/dev/null || echo "000")
+          if [ "$HTTP_CODE" = "404" ]; then
+            echo "Deep health not yet deployed on PROD, falling back to /api/health"
+            HTTP_CODE=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+              --max-time 10 \
+              "https://chatbot.voeb-service.de/api/health" 2>/dev/null || echo "000")
+          fi
           echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
           echo "HTTP: $HTTP_CODE"
           cat /tmp/health.json 2>/dev/null || echo "(no response body)"
