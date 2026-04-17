@@ -169,20 +169,23 @@ celery_worker_docfetching:
   resources:
     requests:
       cpu: 500m
-      memory: 1Gi
+      memory: 512Mi
     limits:
       cpu: 1000m
-      memory: 4Gi
+      # Optimierung 2026-04-17: 30d-Peak nur 224 MiB. 2 GiB = 9x Peak.
+      # War 4 GiB (18x ueberprovisioniert). Spart 2 GiB fuer API-Server OOM-Fix.
+      memory: 2Gi
 
 celery_worker_docprocessing:
   replicaCount: 1
   resources:
     requests:
       cpu: 500m
-      memory: 1Gi
+      memory: 512Mi
     limits:
       cpu: 1000m
-      memory: 4Gi
+      # Optimierung 2026-04-17: 30d-Peak nur 225 MiB. 2 GiB = 9x Peak.
+      memory: 2Gi
 
 celery_worker_monitoring:
   replicaCount: 1
@@ -270,10 +273,13 @@ api:
   resources:
     requests:
       cpu: 500m
-      memory: 512Mi
+      memory: 1Gi
     limits:
       cpu: 1000m
-      memory: 2Gi
+      # OOM-Fix 2026-04-17: API-Server wurde bei grossen LLM-Requests (100k+ Tokens)
+      # OOM-killed (Exit Code 137). Peak-Verbrauch ~1.5 GiB, Bursts ueber 2 GiB.
+      # 30d-Peak laut Prometheus: 1514 MiB. 4 GiB gibt genug Headroom.
+      memory: 4Gi
 
 # --- Frontend: HA ---
 webserver:
