@@ -1,12 +1,12 @@
 # StackIT Implementierungsplan — VÖB Service Chatbot
 
-**Stand**: März 2026
+**Stand**: April 2026
 **Erstellt von**: Nikolaj Ivanov (CCJ / Coffee Studios)
 **Bezug**: [Technische Referenz](stackit-infrastruktur.md) | [Meilensteinplan](../abnahme/meilensteinplan.md)
 
-> **Scope dieses Plans: DEV + TEST Environments.**
-> Phase 1–6: DEV (abgeschlossen). Phase 7: TEST (abgeschlossen, LIVE seit 2026-03-03).
-> PROD-Spezifikationen sind in der [Technischen Referenz](stackit-infrastruktur.md) dokumentiert.
+> **Scope dieses Plans: DEV + TEST Environments (historisch).**
+> Phase 1–6: DEV (abgeschlossen, LIVE). Phase 7: TEST war LIVE 2026-03-03, **seit 2026-03-19 dauerhaft heruntergefahren** (0 Pods; Helm Release + PVCs + Secrets bleiben erhalten). Live-Environments heute: **nur DEV + PROD**.
+> PROD-Spezifikationen sind in der [Technischen Referenz](stackit-infrastruktur.md) dokumentiert. PROD aktueller Stand: Chart 0.4.44, Helm Rev 18 (Sync #5 + Monitoring-Optimierung + OOM-Fix deployed 2026-04-17).
 > Architekturentscheidung zur Umgebungstrennung: [ADR-004](../adr/adr-004-umgebungstrennung-dev-test-prod.md)
 
 ---
@@ -62,7 +62,7 @@ deployment/
       values-common.yaml              ← PG aus, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an
       values-dev.yaml                 ← 1 Replica pro Service, 8 Celery-Worker (Standard Mode)
       values-test.yaml                ← NEU — TEST analog DEV, eigene Credentials
-      values-prod.yaml              ← PROD: Deployed (2026-03-11, 20 Pods, Helm Rev 4+)
+      values-prod.yaml              ← PROD: Deployed (2026-03-11, 20 Pods, **Chart 0.4.44, Helm Rev 18** nach Sync #5 2026-04-17)
 
 .github/workflows/
   stackit-deploy.yml                  ← NEU (neben bestehenden Workflows)
@@ -502,9 +502,9 @@ Gleicher Provider, gleiche API Base, gleicher Auth Token. Separater Provider-Ein
 
 ---
 
-## Phase 7: TEST-Umgebung aufsetzen
+## Phase 7: TEST-Umgebung aufsetzen (historisch)
 
-> **Status**: ✅ TEST LIVE (2026-03-03). ADR-004 akzeptiert. 15 Pods Running, Health Check OK, UI unter `http://188.34.118.201`.
+> **Status**: ⏸️ TEST war LIVE 2026-03-03 bis 2026-03-19 (15 Pods, HTTPS `https://test.chatbot.voeb-service.de`). **Seit 2026-03-19 dauerhaft heruntergefahren** (0 Pods, Kostenoptimierung + vereinfachte Pipeline). Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich via `kubectl scale` oder `helm upgrade`. Scale-to-Zero CronJobs wurden entfernt. Die folgende Anleitung bleibt als historische Referenz erhalten.
 > **Bezug**: [ADR-004: Umgebungstrennung](../adr/adr-004-umgebungstrennung-dev-test-prod.md)
 
 ### 7.1 Node Pool skalieren (1 → 2 Nodes)
@@ -670,7 +670,7 @@ Nach erfolgreichem Deploy: Gleiche LLM-Provider in der TEST Admin UI konfigurier
 
 | Schritt | Wann | Was | Status |
 |---------|------|-----|--------|
-| TEST Environment | Nach DEV-Validierung | Phase 7: Node Pool skalieren, PG + Bucket + Namespace + Helm | ✅ LIVE (2026-03-03) |
+| TEST Environment | Nach DEV-Validierung | Phase 7: Node Pool skalieren, PG + Bucket + Namespace + Helm | ⏸️ War LIVE 2026-03-03 bis 2026-03-19, dauerhaft heruntergefahren |
 | Embedding-Modell | Parallel zu TEST | Qwen3-VL-Embedding 8B in Admin UI konfigurieren | ✅ DEV + TEST aktiv (TEST seit 2026-03-08, DEV seit 2026-03-12) |
 | Branding | Nach TEST-Setup | Logo-Dateien ersetzen, ext/-Komponenten | ✅ Deployed (DEV+TEST, 2026-03-08) |
 | Entra ID (Auth) | Sobald Credentials von VÖB | `AUTH_TYPE: oidc` in Helm Values | ✅ LIVE (DEV 2026-03-23, PROD 2026-03-24) |

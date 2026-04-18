@@ -1,8 +1,8 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-22
-**Version**: 0.8
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.9
 
 ---
 
@@ -197,7 +197,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 |----------|---------|-----------|-------|-----------|--------|
 | DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). HTTPS LIVE (DNS A-Record aktualisiert 2026-03-22) |
 | TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | **Dauerhaft heruntergefahren** (seit 2026-03-19). 0 Pods. Helm Release + PVCs + Secrets erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`. |
-| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 20 Pods. OpenSearch deployed + Retrieval aktiv (2026-03-22). Chart 0.4.36, Image df049fa, Helm Rev 4 |
+| PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 20 Pods. Chart 0.4.44, Helm Rev 18 (Sync #5 + Monitoring-Optimierung + OOM-Fix deployed 2026-04-17). OpenSearch primary Index, API-Server 4Gi Memory (nach OOM-Fix), docfetching + docprocessing 2Gi. Monitoring Helm Rev 6 mit Alert Fatigue Fix + `PostgresDown` Alert + Deep-Health-Endpoint `/api/ext/health/deep`. |
 
 **Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record `188.34.118.222` durch GlobVill aktualisiert). PROD HTTPS LIVE seit 2026-03-17. **TEST dauerhaft heruntergefahren seit 2026-03-19** (0 Pods, Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich). Scale-to-Zero CronJobs wurden entfernt (nicht mehr noetig).
 
@@ -257,13 +257,16 @@ Aktivierung in `deployment/helm/values/values-{env}.yaml` oder `deployment/docke
 
 ### Datenbank
 
-Alle Extension-Tabellen nutzen das Prefix `ext_` (z.B. `ext_branding_config`, `ext_token_usage`, `ext_prompt_templates`, `ext_audit_log`). Migrationen liegen in `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt). Alembic-Chain: `a3b8d9e2f1c4` → `ff7273065d0d` (branding) → `b3e4a7d91f08` (token) → `c7f2e8a3d105` (prompts) → `d8a1b2c3e4f5` (audit).
+Alle Extension-Tabellen nutzen das Prefix `ext_` (z.B. `ext_branding_config`, `ext_token_usage`, `ext_prompt_templates`, `ext_audit_log`). Migrationen liegen in `backend/alembic/versions/` (Onyx Alembic wird mitgenutzt). Alembic-Chain (nach Sync #5 PROD-Rollout 2026-04-17): `503883791c39` (Upstream-Head) → `ff7273065d0d` (ext-branding) → `b3e4a7d91f08` (ext-token) → `c7f2e8a3d105` (ext-prompts) → `d8a1b2c3e4f5` (ext-audit, aktueller DB-Head).
 
 ### Weitere Extensions
 
-- **ext-analytics** — ⏭️ ÜBERSPRUNGEN (Funktionalität bereits in ext-token enthalten)
-- **ext-rbac** — ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests)
+- **ext-analytics** — ✅ Implementiert (2026-03-26, Grafana Dashboard + 4 API-Endpoints, 9 Tests, Feature Flag `EXT_ANALYTICS_ENABLED`, DEV + PROD live)
+- **ext-rbac** — ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests, Core #10 + #11 + #12 gepatcht)
 - **ext-access** — ✅ Implementiert (2026-03-25, Core #3 gepatcht, eigener Celery-Task, 11 Tests)
+- **ext-i18n** — ✅ Implementiert (2026-03-22, ~250 Core-UI-Strings + 115 Admin-Strings, Drei-Schichten-Architektur)
+- **ext-audit** — ✅ Implementiert (2026-03-25, DB-Tabelle `ext_audit_log`, 15 Hooks, 13 Tests, DSGVO IP-Anonymisierung)
+- **ext-auth** — ✅ Wrapper eingefuehrt (2026-04-14 via Sync #5, `backend/ext/auth.py`, kompensiert Upstream-Entfernung von `current_admin_user`)
 
 ### Referenzen
 
@@ -1058,13 +1061,14 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-03-22
-**Version**: 0.8
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.9
 
 ### Versionshistorie
 
 | Version | Datum | Autor | Aenderungen |
 |---------|-------|-------|-------------|
+| 0.9 | 2026-04-17 | COFFEESTUDIOS | **Sync #5 + Monitoring-Optimierung + OOM-Fix PROD deployed.** Chart 0.4.36 → **0.4.44**, Helm Rev 4 → **Rev 18**. PROD API-Server 2Gi → **4Gi** Memory, docfetching + docprocessing 4Gi → 2Gi. Alembic-Chain-Recovery: 11 Upstream-Migrationen via 3-Phasen-Rotation (`689433b0d8de` → `503883791c39` → `d8a1b2c3e4f5`). Neue Default-UserGroups "Admin"/"Basic" via Upstream `seed_default_groups` (VÖB-Gruppen intakt). Monitoring Helm Rev 6 (`--force-replace --server-side=false`): Alert Fatigue Fix, `PostgresDown` Alert, Deep-Health-Endpoint `/api/ext/health/deep` als Readiness-Probe + Blackbox, externer GitHub Actions Health-Monitor. 15 Core-Dateien (Core #13 entfernt, Core #15 neu). `backend/ext/auth.py` NEU (Wrapper fuer `current_admin_user`, Upstream PR #9930). Runbook `docs/runbooks/prod-deploy.md`. |
 | 0.8 | 2026-03-22 | COFFEESTUDIOS | PROD 20 Pods (OpenSearch deployed + Retrieval aktiv), Vespa PROD 100m/512Mi Req / 4Gi Limit, DEV HTTPS LIVE (DNS aktualisiert), ext-i18n deployed (DEV + PROD), Chart 0.4.36 / Image df049fa / Helm Rev 4 |
 | 0.7.1 | 2026-03-19 | COFFEESTUDIOS | TEST dauerhaft heruntergefahren (0 Pods), Scale-to-Zero CronJobs entfernt |
 | 0.7 | 2026-03-19 | COFFEESTUDIOS | OpenSearch aktiviert, Vespa Zombie-Mode, DEV HTTP-Workaround |

@@ -20,18 +20,24 @@ git diff main..upstream/main --stat | tail -5               # Geaenderte Dateien
 
 ### 2. Hook-Dateien auf Konflikte pruefen
 
-Unsere 8 gepatchten Core-Dateien (MUESSEN nach jedem Sync intakt sein):
+Unsere 14 gepatchten Core-Dateien (Stand nach Sync #5, nur #5 `header/` ist offen). MUESSEN nach jedem Sync intakt sein:
 
 ```bash
 for FILE in \
   "backend/onyx/main.py" \
   "backend/onyx/llm/multi_llm.py" \
+  "backend/onyx/access/access.py" \
   "backend/onyx/chat/prompt_utils.py" \
+  "backend/onyx/db/persona.py" \
+  "backend/onyx/db/document_set.py" \
+  "backend/onyx/natural_language_processing/search_nlp_models.py" \
+  "web/src/app/layout.tsx" \
   "web/src/lib/constants.ts" \
   "web/src/app/auth/login/LoginText.tsx" \
   "web/src/components/auth/AuthFlowContainer.tsx" \
   "web/src/sections/sidebar/AdminSidebar.tsx" \
-  "web/src/app/layout.tsx"; do
+  "web/src/refresh-components/popovers/ActionsPopover/index.tsx" \
+  "web/src/hooks/useSettings.ts"; do
   CHANGES=$(git diff main..upstream/main -- "$FILE" | wc -l)
   if [ "$CHANGES" -gt 0 ]; then
     echo "KONFLIKT-RISIKO: $FILE ($CHANGES diff-Zeilen)"

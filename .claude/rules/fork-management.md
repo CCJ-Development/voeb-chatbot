@@ -92,7 +92,9 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 11 von 12 gepatcht: main.py, multi_llm.py, access.py, prompt_utils.py, constants.ts, LoginText.tsx, AuthFlowContainer.tsx, AdminSidebar.tsx, layout.tsx, persona.py, document_set.py — die 1 ungepatchte: header/ (#5)):
+Fuer JEDE gepatchte Core-Datei (aktuell 14 von 15 gepatcht — nur #5 `header/` offen):
+- Backend: `main.py`, `multi_llm.py`, `access.py`, `prompt_utils.py`, `persona.py`, `document_set.py`, `search_nlp_models.py`
+- Frontend: `layout.tsx`, `constants.ts`, `LoginText.tsx`, `AuthFlowContainer.tsx`, `AdminSidebar.tsx`, `ActionsPopover/index.tsx`, `useSettings.ts`
 
 ```bash
 # Beispiel Backend-Datei:
@@ -255,7 +257,18 @@ Alle drei Fixes wurden erst beim DEV-Deploy sichtbar und waren nicht im initiale
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 15 Core-Dateien ändern wir 2 weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen:
+Neben den 15 Core-Dateien (Stand nach Sync #5: 14 gepatcht, nur #5 header/ offen — Core #13 CustomModal.tsx entfernt, Core #15 useSettings.ts NEU) ändern wir einige weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen.
+
+Zusätzlich gibt es **eine neue ext/-Datei seit Sync #5**, die bei jedem Sync evaluiert werden muss:
+
+### `backend/ext/auth.py` (NEU seit Sync #5, 2026-04-14)
+
+Wrapper fuer `current_admin_user` nach Upstream PR #9930 (current_admin_user aus `onyx.auth.users` entfernt). Muss bei zukuenftigen Auth-Refactors nachgezogen werden.
+
+- **Import in allen ext-Routern:** `from ext.auth import current_admin_user` (statt `from onyx.auth.users import current_admin_user`)
+- **Sentinel:** `current_admin_user._is_require_permission = True` — ohne das Attribut crasht `check_router_auth` beim API-Boot
+- **Semantik:** Original-Admin-Only (nicht das neue account-type-Permission-System)
+- **Risiko:** Niedrig — isolierter Wrapper, nur anpassen wenn Upstream die Semantik von Admin-Checks grundlegend aendert
 
 ### `backend/Dockerfile` (seit Phase 4a)
 
@@ -362,7 +375,7 @@ Nach jedem Upstream-Sync: Dictionary (`web/src/ext/i18n/translations.ts`) pruefe
 **Geschaetzter Aufwand:** ~1 Stunde pro Sync.
 
 ## Warum "Extend, don't modify" funktioniert
-- Max 14 vorhersagbare Core-Konflikte + 4 bekannte Infra-Stellen
+- Max 15 vorhersagbare Core-Konflikte + 4 bekannte Infra-Stellen
 - Unser ext_-Code: Zero Konflikte (Ordner existiert nicht in Upstream)
 - Unsere Infra (Terraform, Helm Values, CI/CD): Zero Konflikte (Pfade existieren nicht in Upstream)
 - Unsere Docs: Zero Konflikte (existieren nicht in Upstream)

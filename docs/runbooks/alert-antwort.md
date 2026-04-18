@@ -1,19 +1,22 @@
 # Runbook: Alert-Antwort
 
 > **Zweck:** Handlungsanweisungen fuer jeden Custom-Alert des VÖB Chatbot Monitorings.
-> **Scope:** Nur eigene Custom-Alerts (22 Regeln). Standard kube-prometheus-stack Alerts (KubeDeploymentReplicasMismatch etc.) sind nicht abgedeckt.
+> **Scope:** Eigene Custom-Alerts (37 Alerting Rules, inkl. `PostgresDown` seit 2026-04-16). Standard kube-prometheus-stack Alerts sind nicht abgedeckt (werden durch Alert Fatigue Fix 2026-04-16 weitgehend gesilenced bzw. auf `null` geroutet).
 > **Voraussetzung:** Kubeconfig muss fuer den jeweiligen Cluster konfiguriert sein.
-> - DEV/TEST: `~/.kube/config` (Cluster `vob-devtest`)
-> - PROD: `KUBECONFIG=~/.kube/config-prod` vor jedem Befehl
+> - DEV: `~/.kube/config` (Cluster `vob-chatbot`, TEST heruntergefahren seit 2026-03-19)
+> - PROD: `kubectl --context vob-prod` oder `KUBECONFIG=~/.kube/config-prod` vor jedem Befehl
 >
 > **Grafana-Zugang:**
 > ```bash
-> # DEV/TEST:
+> # DEV:
 > kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 > # PROD:
-> KUBECONFIG=~/.kube/config-prod kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
-> # → http://localhost:3001 (admin / Passwort aus K8s Secret)
+> kubectl --context vob-prod port-forward -n monitoring svc/monitoring-grafana 3001:80
+> # → http://localhost:3001 (admin / Passwort aus K8s Secret `monitoring-grafana`)
 > ```
+>
+> **Grundprinzip nach Alert Fatigue Fix (2026-04-16):** Teams-Channel `voeb-chatbot-prod-alerts` ist **STILL**. Jede neue Nachricht = echtes Problem. Kein Noise mehr durch `severity: info`, `Watchdog`, `InfoInhibitor` (alle auf `receiver: null` geroutet).
+>
 > **Konzept:** `docs/referenz/monitoring-konzept.md`
 
 ---
@@ -805,6 +808,101 @@ KUBECONFIG=~/.kube/config-prod kubectl describe cronjob pg-backup-check -n monit
 
 ---
 
+## Alert: PostgresDown (NEU 2026-04-16)
+
+**Regel:**
+```yaml
+- alert: PostgresDown
+  expr: pg_up{job=~"postgres-.*"} == 0
+  for: 1m
+  labels:
+    severity: critical
+```
+
+**Hintergrund:** Nach PG-PROD-Outage am 2026-04-15 eingefuehrt. Der bisherige `up{job=~"postgres-.*"}` prueft nur den Exporter-Pod, nicht die DB selbst. `pg_up` wird vom postgres_exporter aktiv ueber eine DB-Verbindung ermittelt → echter DB-Ausfall-Indikator.
+
+**Response (PROD):**
+```bash
+# 1. Schnell-Status pruefen
+kubectl --context vob-prod exec -n monitoring prometheus-monitoring-kube-prometheus-prometheus-0 -c prometheus -- \
+  wget -qO- 'http://localhost:9090/api/v1/query?query=pg_up'
+
+# 2. postgres_exporter Logs
+kubectl --context vob-prod logs -n monitoring -l app.kubernetes.io/name=prometheus-postgres-exporter --tail=50
+
+# 3. Bei persistent pg_up=0 → StackIT Portal (Manage PostgreSQL Flex) pruefen
+#    Instance-Status, Connection-Count, letzte Backups, Maintenance-Fenster
+```
+
+**Runbook-Referenzen:**
+- PG-Troubleshooting: `docs/runbooks/stackit-postgresql.md`
+- Rollback: `docs/runbooks/rollback-verfahren.md` (Szenario "Datenbank nicht erreichbar")
+
+**Eskalation:** Ausfall >5 Min → Niko (StackIT Portal + DNS-A-Record pruefen).
+
+---
+
+## Alert Fatigue Fix (2026-04-16)
+
+**Kontext:** Teams-Channel wurde vor der Aenderung durch Alert-Flut ignoriert. Nach Fix ist der Channel STILL — das ist beabsichtigt.
+
+**Angepasste Parameter in `values-monitoring-prod.yaml`:**
+
+| Parameter | Vorher | Nachher |
+|-----------|--------|---------|
+| `route.repeat_interval` (default) | 4h | **24h** |
+| Critical-Route `repeat_interval` | 1h | **4h** |
+| `severity: info` Routing | → teams-prod | **→ null** (nur in Grafana sichtbar) |
+| `Watchdog` (Deadman Switch, dauerhaft firing) | → teams-prod | **→ null** |
+| `InfoInhibitor` (Prometheus-Operator intern) | → teams-prod | **→ null** |
+| `OpenSearchUnassignedShards` | `>0` | **`>20`** (Single-Node = unassigned Replicas erwartet) |
+
+**Aktive Silences (Stand 2026-04-17):**
+
+```bash
+# Silences anzeigen:
+kubectl --context vob-prod exec -n monitoring alertmanager-monitoring-kube-prometheus-alertmanager-0 -c alertmanager -- \
+  amtool silence query --alertmanager.url=http://localhost:9093
+```
+
+| Alert | Match | Ablauf | Begruendung |
+|-------|-------|--------|-------------|
+| `SLOAvailabilityBreach` | alertname | 2026-05-16 | 30d-Window rollt durch nach PG-Outage 2026-04-15 + Helm-Upgrade 2026-03-29 |
+| `SLOAvailabilityBudgetLow` | alertname | 2026-05-16 | haengt von `SLOAvailabilityBreach` ab |
+| `KubeCPUOvercommit` | alertname | 2026-06-25 | False Positive: CPU Requests 78% aber tatsaechliche Nutzung <5% |
+| `KubeCPUOvercommit` (2. Entry) | alertname | 2026-05-16 | Kurzfrist-Abdeckung waehrend Kapazitaetsbewertung |
+
+**Silence verlaengern:**
+```bash
+kubectl --context vob-prod exec -n monitoring alertmanager-... -c alertmanager -- \
+  amtool silence add alertname=<NAME> --comment="<GRUND>" --duration=30d --author=niko
+```
+
+---
+
+## Deep-Health-Endpoint (NEU 2026-04-16)
+
+Public Endpoint unter `/api/ext/health/deep` in `backend/ext/routers/health.py`.
+
+**Was wird geprueft:** PostgreSQL + Redis + OpenSearch Konnektivitaet. Typische Antwortzeit 47ms.
+
+**Nutzer:**
+- **Readiness-Probe** (Helm `values-*.yaml`) — Pod wird aus Service-Loadbalancing entfernt bei Deep-Health-Fehler
+- **Blackbox-Probe** von Prometheus (Probe-Ziel in `blackbox-exporter-prod.yaml`)
+- **GitHub Actions Health-Monitor** (cron 5 Min, ausserhalb Cluster, Alert via Teams Webhook)
+
+**Manueller Test:**
+```bash
+curl -sS https://chatbot.voeb-service.de/api/ext/health/deep
+# Erwartet: {"status":"ok","checks":{"postgres":{"status":"ok"},"redis":{"status":"ok"},"opensearch":{"status":"ok"}},"elapsed_ms":47}
+```
+
+**Bei Fehlschlag:** Response-JSON zeigt welche Abhaengigkeit ausfaellt → direkt zum entsprechenden Runbook (`stackit-postgresql.md`, `opensearch-troubleshooting.md`, Redis-Pod-Logs).
+
+**Liveness-Probe** bleibt auf `/api/health` (prueft nur Python-Prozess, schneller Exit bei Deadlock).
+
+---
+
 *Dieses Runbook wird aktualisiert wenn neue Alerts hinzugefuegt werden oder sich Diagnose-Verfahren aendern.*
-*Letzte Aktualisierung: 2026-03-22 (COFFEESTUDIOS)*
+*Letzte Aktualisierung: 2026-04-17 (COFFEESTUDIOS) — PostgresDown Alert, Alert Fatigue Fix, Deep-Health-Endpoint, Silences dokumentiert*
 *Referenz: `docs/referenz/monitoring-konzept.md`*

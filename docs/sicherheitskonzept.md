@@ -1,9 +1,9 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-03-22
-**Version**: 0.8
-**Nächste Überprüfung**: 2026-04-19
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.9
+**Nächste Überprüfung**: 2026-07-17
 
 ---
 
@@ -64,7 +64,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 
 | Anforderung | Status | Details |
 |-------------|--------|---------|
-| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV+TEST+PROD) | TLSv1.3 / ECDSA P-384 auf allen Environments. DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record auf `188.34.118.222` aktualisiert). |
+| Verschlüsselte Datenübertragung (TLS 1.2+) | IMPLEMENTIERT (DEV + PROD) | TLSv1.3 / ECDSA P-384 auf beiden Live-Environments (DEV seit 2026-03-22, PROD seit 2026-03-17). cert-manager auto-renewal abgesichert (NetworkPolicy-Fix 2026-04-16 fuer cert-manager-cainjector). TEST dauerhaft heruntergefahren seit 2026-03-19. |
 | Sichere Verwaltung von Credentials | IMPLEMENTIERT | Kubernetes Secrets + GitHub Actions Secrets (environment-getrennt) |
 | Zugriffskontrollen (Authentifizierung) | IMPLEMENTIERT | Entra ID OIDC aktiv (DEV seit 2026-03-23, PROD seit 2026-03-24). TEST heruntergefahren. |
 | Datenbankzugriffskontrolle | IMPLEMENTIERT | PostgreSQL ACL auf Cluster-Egress-IP eingeschränkt (SEC-01). PROD: Egress `188.34.73.72/32` + Admin-IP |
@@ -833,12 +833,14 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | DSGVO | Direkt anwendbar | Keine Drittland-Übermittlung | ERFÜLLT (LLM auf StackIT, kein OpenAI) |
 | DSGVO | Direkt anwendbar | Löschkonzept | GEPLANT (Onyx unterstützt User-Löschung nativ) |
 | DSGVO | Direkt anwendbar | VVT (Verzeichnis der Verarbeitungstätigkeiten, Art. 30) | GEPLANT |
-| DSGVO | Direkt anwendbar | DSFA (Datenschutz-Folgenabschätzung, Art. 35) | GEPLANT (DSK Muss-Liste Nr. 10 — Pflicht bei KI + PII) |
-| DSGVO | Direkt anwendbar | Datenschutzerklärung | [AUSSTEHEND -- Klärung mit VÖB] |
-| DSGVO | Direkt anwendbar | AVV mit StackIT (Art. 28) | [AUSSTEHEND -- Klärung mit VÖB] |
+| DSGVO | Direkt anwendbar | DSFA (Datenschutz-Folgenabschätzung, Art. 35) | ENTWURF IN ARBEIT (Pflicht bei KI + PII per DSK Muss-Liste Nr. 10; finalisiert mit VÖB-DSB vor M5) |
+| DSGVO | Direkt anwendbar | Datenschutzerklärung | IN ARBEIT (VÖB-seitig, wird im M5-Abnahmepaket bereitgestellt) |
+| DSGVO | Direkt anwendbar | AVV mit StackIT (Art. 28) | ✅ VORHANDEN (VÖB ↔ StackIT, bestätigt 2026-03-25) |
+| DSGVO | Direkt anwendbar | AVV mit CCJ (Art. 28) | ✅ VORHANDEN (VÖB ↔ CCJ, bestätigt 2026-03-25) |
+| DSGVO | Direkt anwendbar | AVV mit Microsoft für Entra ID (Art. 28) | ✅ VORHANDEN (VÖB ↔ Microsoft, bestätigt 2026-03-25) |
 | EU AI Act | Direkt anwendbar | KI-Kompetenz (Art. 4) — seit 02.02.2025 in Kraft | OFFEN (mit VÖB klären) |
 | EU AI Act | Direkt anwendbar | Transparenzpflicht (Art. 50) — Deadline 02.08.2026 | TEILWEISE (ext-branding Disclaimer vorhanden, expliziter KI-Hinweis prüfen) |
-| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV+TEST+PROD, alle Environments HTTPS LIVE) |
+| BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV + PROD, beide Live-Environments HTTPS LIVE; TEST dauerhaft heruntergefahren) |
 | BAIT | Freiwillig | Zugangskontrolle | UMGESETZT (Entra ID OIDC auf DEV + PROD seit 2026-03-24, TEST heruntergefahren) |
 | BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 7 Policies onyx-prod seit 2026-03-24, 13 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress) |
 | BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
@@ -1201,7 +1203,7 @@ Phase 6: NACHBEREITUNG
 |-----------|-----|------|------|
 | SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster (`vob-prod`, ADR-004) |
 | K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
-| Node Pool | `devtest` (2 Nodes, g1a.8d) | `devtest` (shared) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
+| Node Pool | `devtest` (2 Nodes, g1a.4d, downgraded 2026-03-16) | `devtest` (shared, 0 Pods seit 2026-03-19) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
 | Pods | 16 | 15 | 20 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA 3-Node (`vob-prod`) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
@@ -1299,6 +1301,13 @@ configMap:
 ---
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Version**: 0.6
-**Letzte Aktualisierung**: 2026-03-12
-**Nächste Überprüfung**: 2026-04-12
+**Version**: 0.9
+**Letzte Aktualisierung**: 2026-04-17
+**Nächste Überprüfung**: 2026-07-17
+
+### Versionshistorie
+
+| Version | Datum | Aenderung |
+|---------|-------|-----------|
+| 0.9 | 2026-04-17 | **Sync #5 + Monitoring-Optimierung + PROD-Rollout dokumentiert.** Upstream PR #9930 entfernte `current_admin_user` → Wrapper in `backend/ext/auth.py` mit `_is_require_permission = True` Sentinel (Onyx Extension-API). Security-Fixes aus Sync #5: SCIM advisory lock (#10048), MCP OAuth hardening (#10074/#10071/#10066), License seat count excludes service accounts (#10053). Monitoring-Optimierung: Alert Fatigue Fix reduziert Risiko ignorierter Security-Alerts; Deep-Health-Endpoint `/api/ext/health/deep` prueft DB+Redis+OpenSearch (public, keine sensitiven Daten); cert-manager-cainjector NetworkPolicy-Fix (ipBlock statt namespaceSelector) sichert TLS-Renewal ab. Core-Dateien: **15** (Core #13 `CustomModal.tsx` entfernt wegen Upstream-Fix, Core #15 `useSettings.ts` neu als Client-Side-Gate fuer ext-branding ohne EE-Lizenz-Flag). Upstream `seed_default_groups` Migration legt 2 neue Default-UserGroups an (Admin id 54, Basic id 55) — kein Namens-Konflikt mit 20 VÖB-Abteilungsgruppen, 91/95 User automatisch in "Basic". PROD-Stand: Chart 0.4.44, Helm Rev 18. |
+| 0.8 | 2026-03-22 | OpenSearch PROD, ext-i18n deployed, TLS DEV/PROD LIVE |

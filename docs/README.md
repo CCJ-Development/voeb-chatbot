@@ -70,6 +70,22 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | [ext-custom-prompts.md](./technisches-feinkonzept/ext-custom-prompts.md) | Final | Custom System Prompts (Phase 4d) |
 | [monitoring-exporter.md](./technisches-feinkonzept/monitoring-exporter.md) | Final | PostgreSQL + Redis Exporter (Monitoring) |
 
+## Extension-Module (Stand 2026-04-17)
+
+Alle 9 ext-Module (Phase 4a-4i) sind deployed auf DEV + PROD. Chart-Version 0.4.44.
+
+| Phase | Modul | Status | Feature Flag |
+|-------|-------|--------|-------------|
+| 4a | `ext-framework` | Deployed | `EXT_ENABLED` |
+| 4b | `ext-branding` | Deployed (2026-03-08) | `EXT_BRANDING_ENABLED` + `NEXT_PUBLIC_EXT_BRANDING_ENABLED` |
+| 4c | `ext-token` | Deployed (2026-03-09) | `EXT_TOKEN_LIMITS_ENABLED` |
+| 4d | `ext-prompts` | Deployed (2026-03-09) | `EXT_CUSTOM_PROMPTS_ENABLED` |
+| 4e | `ext-analytics` | Deployed (2026-03-26) | `EXT_ANALYTICS_ENABLED` |
+| 4f | `ext-rbac` | Deployed (2026-03-23) | `EXT_RBAC_ENABLED` + `NEXT_PUBLIC_EXT_RBAC_ENABLED` |
+| 4g | `ext-access` | Deployed (2026-03-25) | `EXT_DOC_ACCESS_ENABLED` |
+| 4h | `ext-i18n` | Deployed (2026-03-22) | `NEXT_PUBLIC_EXT_I18N_ENABLED` |
+| 4i | `ext-audit` | Deployed (2026-03-25) | `EXT_AUDIT_ENABLED` |
+
 ## Environments
 
 | Environment | Status | URL / IP | Cluster |
@@ -86,4 +102,4 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für de
 | Projektmanagement | CCJ / Coffee Studios | Benito-Miguel Schwankhart |
 | Auftraggeber | VÖB | Luca Koenes |
 
-Letzte Aktualisierung: 2026-03-25
+Letzte Aktualisierung: 2026-04-17

@@ -8,6 +8,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Deployed
+- [prod-rollout] **PROD-Rollout Sync #5 + Monitoring-Optimierung (2026-04-17)** — Kompletter 6-Schritte-Rollout in ~15 Min, keine Downtime
+  - **Schritt 1 — OOM-Fix:** API-Server 2→4Gi, docfetching/docprocessing 4→2Gi via `kubectl patch`. OOMKilled-Restart-Loop (9+7 Restarts auf Pod-Ebene) gestoppt. Netto 0 GiB zusaetzlich (Peaks docfetching/docprocessing nur ~225 MiB).
+  - **Schritt 2 — CI/CD Deploy:** `stackit-deploy.yml` (Run 24584226916), Helm Rev 17 → 18, Chart 0.4.36 → 0.4.44. Build + Deploy in ~7 Min. Deployed: Sync #5 + Deep-Health-Endpoint `/ext/health/deep` + Readiness-Probe auf Deep-Health + `backend/ext/auth.py` Wrapper + Core #15 (useSettings.ts) + values-prod.yaml Memory-Anpassungen.
+  - **Schritt 3 — Alembic-Chain-Recovery:** 11 Upstream-Migrationen manuell nachgezogen (3-Phasen-Rotation: `UPDATE alembic_version = '689433b0d8de'` → `alembic upgrade 503883791c39` → `UPDATE alembic_version = 'd8a1b2c3e4f5'`). Neue Schema-Elemente live: `user.account_type`, `persona.is_listed` (ex `is_visible`), `permission_grant` Tabelle, `AccountType`-Enum. **2 neue Default-UserGroups** ("Admin" id 54, "Basic" id 55) — kein Namens-Konflikt mit 20 VÖB-Abteilungsgruppen, 91/95 User automatisch der "Basic"-Gruppe zugewiesen.
+  - **Schritt 4 — API-Server Rolling-Restart:** Rollout Status OK, 2 neue Pods (0 Restarts).
+  - **Schritt 5 — Helm monitoring Rev 6:** `helm upgrade --force-replace --server-side=false` loest kubectl-replace Ownership-Konflikte. Cleanup der failed Release-Secrets v5+v6+v7. Alert Fatigue Fix offiziell via Helm (repeat_interval 4h/24h, `severity: info`/`Watchdog`/`InfoInhibitor` → null) und `PostgresDown` Alert (`pg_up{job=~"postgres-.*"} == 0` for 1m, severity=critical) sind jetzt Helm-gemanaged statt nur kubectl-replace.
+  - **Schritt 6 — Smoke-Test:** `/api/health` 200, `/api/ext/health/deep` 200 (postgres+redis+opensearch), `/api/enterprise-settings` VÖB-Branding aktiv, 26 Prometheus-Targets UP, `pg_up=1`, 6 Grafana-Dashboards vorhanden, 4 Blackbox-Probes success=1, Loki+Promtail stabil. Browser-Test (Login via Entra ID, Chat, Admin-Sidebar, File-Upload) abgenommen.
+  - **Runbook:** Kompletter Ablauf als wiederverwendbares Template unter `docs/runbooks/prod-deploy.md` archiviert (fuer Sync #6+ nutzbar).
+
 ### Changed
 - [upstream-sync] **Fuenfter Upstream-Merge (2026-04-13/14)** — 344 Commits von `upstream/main` (Chart 0.4.36 → 0.4.44)
   - **Core-Dateien-Netto:** **15** (vorher 15). Core #13 CustomModal.tsx **entfernt** (Upstream-Fix), Core #15 useSettings.ts **neu**.

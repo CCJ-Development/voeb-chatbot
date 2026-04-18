@@ -11,12 +11,31 @@ paths:
 # Core-Dateien: Was darf geändert werden
 
 **NUR DIESE 15 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
-**#1-#10:** 9 von 10 gepatcht (#5 header/ noch offen).
-**#14:** Gepatcht (2026-03-26). ActionsPopover fuer Basic User ausgeblendet.
-**#3:** Gepatcht (ext-access, 2026-03-25). 3 Hooks fuer gruppen-basierte Dokumentzugriffskontrolle.
-**#11-#12:** Aktiv gepatcht (ext-rbac, 2026-03-23).
-**#13:** Gepatcht (2026-03-24). OpenSearch Index-Name lowercase Fix.
-**#15:** Gepatcht (2026-04-14, Sync #5). useSettings.ts — NEXT_PUBLIC_EXT_BRANDING_ENABLED als Client-Side-Gate fuer useEnterpriseSettings ohne EE-Lizenz-Flag.
+
+**Status (Stand 2026-04-17):** 14 von 15 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
+
+**Historie Sync #5 (2026-04-14):**
+- Core #13 `CustomModal.tsx` **entfernt** — Upstream-Bug (onyx-dot-app/onyx#9592) gefixt via PRs #10009 ff.
+- Core #15 `useSettings.ts` **neu** — Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag, Gate fuer ext-branding ohne EE-Lizenz.
+
+**Uebersicht:**
+| # | Datei | Status | Letzte Patch-Aenderung |
+|---|-------|--------|-----------------------|
+| 1 | `backend/onyx/main.py` | Gepatcht | Phase 4a |
+| 2 | `backend/onyx/llm/multi_llm.py` | Gepatcht | ext-token |
+| 3 | `backend/onyx/access/access.py` | Gepatcht | 2026-03-25 (ext-access) |
+| 4 | `web/src/app/layout.tsx` | Gepatcht | 2026-03-22 (ext-i18n) |
+| 5 | `web/src/components/header/` | **OFFEN** | — |
+| 6 | `web/src/lib/constants.ts` | Gepatcht | ext-branding |
+| 7 | `backend/onyx/chat/prompt_utils.py` | Gepatcht | ext-prompts |
+| 8 | `web/src/app/auth/login/LoginText.tsx` | Gepatcht | 2026-03-08 (ext-branding) |
+| 9 | `web/src/components/auth/AuthFlowContainer.tsx` | Gepatcht | 2026-03-08 (ext-branding) |
+| 10 | `web/src/sections/sidebar/AdminSidebar.tsx` | Gepatcht | 2026-03-23 (ext-rbac) |
+| 11 | `backend/onyx/db/persona.py` | Gepatcht | 2026-03-23 (ext-rbac) |
+| 12 | `backend/onyx/db/document_set.py` | Gepatcht | 2026-03-23 (ext-rbac) |
+| 13 | `backend/onyx/natural_language_processing/search_nlp_models.py` | Gepatcht | 2026-03-24 (OpenSearch lowercase) |
+| 14 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` | Gepatcht | 2026-03-26 |
+| 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-14 (Sync #5) |
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError

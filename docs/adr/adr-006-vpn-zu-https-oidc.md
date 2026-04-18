@@ -1,9 +1,10 @@
 # ADR-006: HTTPS + OIDC statt VPN-Tunnel
 
-**Status**: Proposed
-**Datum**: 2026-03-14
+**Status**: Akzeptiert (umgesetzt)
+**Datum**: 2026-03-14 (Entscheidung) / 2026-03-24 (PROD-Go-Live)
 **Author**: CCJ / Coffee Studios (Nikolaj Ivanov)
 **Bezug**: Kickoff-Meeting (2026-01-24, KICKOFF-006: "VPN-Tunnel zu StackIT")
+**Umsetzung**: HTTPS LIVE seit 2026-03-09 (DEV) / 2026-03-17 (PROD). Entra ID OIDC aktiv seit 2026-03-23 (DEV) / 2026-03-24 (PROD).
 
 ---
 

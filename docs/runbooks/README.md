@@ -24,6 +24,10 @@ Verifizierte Step-by-Step-Anleitungen für Setup, Deployment und Betrieb der Sta
 | 14 | [ext-access-aktivierung.md](./ext-access-aktivierung.md) | ✅ Neu (2026-03-25) | ext-access: Flag, Deploy, Resync, Funktionstest, Rollback |
 | 15 | [loki-troubleshooting.md](./loki-troubleshooting.md) | ✅ Neu (2026-03-25) | Loki: Log-Suche, Promtail, Retention, Troubleshooting |
 | 16 | [llm-provider-management.md](./llm-provider-management.md) | ✅ Neu (2026-03-24) | LLM-Provider Verwaltung: Hinzufuegen, Entfernen, Troubleshooting |
+| 17 | [ext-analytics-verwaltung.md](./ext-analytics-verwaltung.md) | ✅ Neu (2026-03-26) | ext-analytics: Grafana Dashboard, Endpoints, Datenquelle |
+| 18 | [prod-deploy.md](./prod-deploy.md) | ✅ Neu (2026-04-17) | PROD-Rollout: Deploy-Checkliste, OOM-Fix, Alembic-Recovery, Smoke-Test |
+
+**Gesamt: 18 Runbooks.**
 
 ## Konventionen
 

@@ -1,11 +1,12 @@
 # Monitoring-Konzept — VÖB Service Chatbot
 
-> **Status:** ✅ Erweitert (2026-03-25) — Monitoring-Audit + 3 Sprints: cert-manager Scrape, SLO Dashboard, Blackbox Probes, OpenSearch Exporter, Security Alerts, Loki Log-Aggregation. 25 Targets, 46 VÖB Rules, 4 Dashboards (PG, Redis, SLO, Audit-Log), 5/5 externe Deps.
-> **Entscheidung:** Self-Hosted kube-prometheus-stack + Loki (Niko, 2026-03-10 / erweitert 2026-03-25)
-> **Scope:** PROD (eigener Cluster vob-prod). DEV deployed (shared Cluster). TEST heruntergefahren.
+> **Status:** ✅ Phase 1-6 Optimierung auf DEV implementiert + verifiziert (2026-04-15/16 via Commit `f39b1b9b9`), PROD-Deploy gemeinsam mit Sync #5 am 2026-04-17 (Monitoring Helm Rev 6 via `--force-replace --server-side=false`). Stand PROD: **26 Prometheus-Targets UP**, 46+1 VÖB Rules (inkl. neuer `PostgresDown`), **29 Grafana-Dashboards** (6 custom: PG, Redis, Analytics, Audit-Log, SLO, Token). 4 Blackbox-Probes alle success=1 (LLM, OIDC, S3, **Deep-Health**). Loki Log-Aggregation aktiv.
+> **Entscheidung:** Self-Hosted kube-prometheus-stack + Loki (Niko, 2026-03-10 / erweitert 2026-03-25 / optimiert 2026-04-16 nach PG-Outage)
+> **Scope:** PROD (eigener Cluster vob-prod). DEV deployed (shared Cluster). TEST heruntergefahren seit 2026-03-19.
 > **Compliance:** BSI DER.1 (Detektion), BSI OPS.1.1.5 (Protokollierung), DSGVO Art. 5 (Rechenschaftspflicht), orientiert an BAIT Kap. 5 (freiwillig)
-> **Helm Releases:** `monitoring` (kube-prometheus-stack) + `loki` (loki-stack) in Namespace `monitoring`
+> **Helm Releases:** `monitoring` (kube-prometheus-stack **Rev 6** seit 2026-04-17) + `loki` (loki-stack) in Namespace `monitoring`
 > **Charts:** `prometheus-community/kube-prometheus-stack` 82.10.3 + `grafana/loki-stack` 2.10.3
+> **Aktuelle Alerts (Stand 2026-04-17):** Teams-Channel `voeb-chatbot-prod-alerts` **STILL** — jede neue Nachricht = echtes Problem. 4 aktive Silences mit Ablaufdatum + Begruendung.
 
 ---
 
@@ -658,6 +659,135 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 
 ---
 
+## 5b. Upstream-Metrics-Stack (neu seit Sync #5, 2026-04-14)
+
+Upstream hat mit Sync #5 einen eigenen Metrics-Stack eingefuehrt, der **parallel zu unserem Custom-Monitoring** laeuft.
+
+**Komponenten:**
+- `prometheus-fastapi-instrumentator` als Python-Dependency — instrumentiert FastAPI-Routen automatisch (HTTP-Metriken: `http_requests_total`, `http_request_duration_seconds`, `http_requests_inprogress`)
+- `backend/onyx/utils/metrics_server.py` — startet HTTP-Server fuer Metrics-Scraping in Celery-Workern
+- 7 Celery-Worker starten automatisch HTTP-Server auf Ports **9092-9096** (docfetching, docprocessing, primary, light, heavy, kg_processing, monitoring)
+- API-Server + heavy Celery haben ServiceMonitor-Templates im Onyx Helm Chart (Default **aus**)
+
+**Konfiguration:**
+- `PROMETHEUS_METRICS_ENABLED=true` (Default in Onyx Helm Chart, aktiv auf PROD)
+- `PROMETHEUS_METRICS_PORT` ueberschreibbar pro Worker-Typ
+- ServiceMonitors: Default off (kein Konflikt mit unserer `03-allow-scrape-egress.yaml` NetworkPolicy)
+
+**Status 2026-04-17:**
+- ✅ Metrics-Server laeuft in allen 7 Celery-Worker-Pods (Ports 9092-9096)
+- ✅ Default-Endpoints verfuegbar (`:9092/metrics` etc.) aber **nicht von Prometheus gescraped** (ServiceMonitors off)
+- ⚠️ **Evaluation offen:** Kann unser Custom-Monitoring-Setup (kube-prometheus-stack + Custom ServiceMonitors) reduziert werden wenn wir Upstream-Metrics nutzen? Pro/Contra:
+  - **Pro:** Weniger Maintenance, automatisch neue Metriken bei Upstream-Sync
+  - **Contra:** Wir verlieren VÖB-spezifische Labels + custom Dashboards, Upstream-Metriken sind generisch
+  - **Entscheidung aufgeschoben** (Task fuer naechstes Maintenance-Fenster)
+
+**Kein Konflikt mit bestehendem Setup:** Upstream-Metrics-Stack laeuft **passiv** mit, verbraucht minimal Ressourcen (< 50 MiB RAM pro Worker), erzeugt keinen Netzwerk-Traffic (ServiceMonitors off).
+
+**Referenzen:**
+- `docs/METRICS.md` — Onyx-FOSS Upstream-Dokumentation (READ-ONLY)
+- `backend/onyx/utils/metrics_server.py` — Upstream-Code
+- `fork-management.md` Lesson #10 — Sync #5 Lesson Learned
+
+---
+
+## 5a. Phase 1-6 Optimierung (2026-04-15/16) — nach PG-Outage
+
+**Trigger:** PG-PROD-Outage am 2026-04-15 (31 Min). Das alte `/api/health` pruefte die DB **NICHT** (liefert 200 solange der Python-Prozess lebt), Teams-Alerts blieben praktisch unbemerkt durch Alert Fatigue.
+
+### Phase 1: Alert Fatigue Fix (2026-04-16)
+
+**Alertmanager-Config angepasst (`values-monitoring-prod.yaml`):**
+- `repeat_interval`: 24h (default) / 4h (critical) — vorher 4h / 1h
+- Neue Routen in `route.routes[]`:
+  - `match.severity: info` → `receiver: "null"` (nicht in Teams)
+  - `match.alertname: Watchdog` → `receiver: "null"` (Deadman Switch, beabsichtigt dauerhaft firing)
+  - `match.alertname: InfoInhibitor` → `receiver: "null"` (internes Prometheus-Operator-Konstrukt)
+- 4 aktive Silences (alle mit Ablaufdatum + Begruendungs-Comment):
+  - `SLOAvailabilityBreach` bis 2026-05-16 (30d-Window rollt durch nach PG-Outage)
+  - `SLOAvailabilityBudgetLow` bis 2026-05-16 (haengt von obigem ab)
+  - `KubeCPUOvercommit` bis 2026-06-25 (False Positive: Requests 78% aber tatsaechliche Nutzung <5%)
+- `OpenSearchUnassignedShards` Threshold von `>0` auf `>20` (Single-Node OpenSearch = unassigned Replicas erwartet)
+
+**Prinzip:** Teams-Channel `voeb-chatbot-prod-alerts` ist **STILL**. Jede neue Nachricht = sofort handeln.
+
+### Phase 2: PostgresDown Alert (2026-04-16)
+
+Neue PrometheusRule in `monitoring-kube-prometheus-voeb-chatbot-alerts`:
+```yaml
+- alert: PostgresDown
+  expr: pg_up{job=~"postgres-.*"} == 0
+  for: 1m
+  labels:
+    severity: critical
+  annotations:
+    summary: "PostgreSQL-Instance nicht erreichbar"
+    description: "pg-exporter meldet keine DB-Verbindung."
+```
+
+**Warum:** Das bisherige `up{job=~"postgres-.*"}` prueft nur den Exporter-Pod, nicht die DB selbst. Wenn der Exporter-Pod lebt aber die DB tot ist (z.B. PG-Outage 2026-04-15), feuert `up` nicht. `pg_up` wird vom postgres_exporter aktiv ueber eine DB-Verbindung ermittelt → echter DB-Ausfall-Indikator.
+
+### Phase 3: Deep-Health-Endpoint (2026-04-16)
+
+Neuer Endpoint in `backend/ext/routers/health.py`:
+
+```python
+@router.get("/health/deep")
+def deep_health():
+    # Prueft PostgreSQL + Redis + OpenSearch Konnektivitaet
+    # Typische Antwortzeit: 47ms
+    # Public (keine sensitiven Daten, aber mit Timeout-Guards)
+```
+
+Response: `{"status":"ok","checks":{"postgres":{"status":"ok"},"redis":{"status":"ok"},"opensearch":{"status":"ok","detail":"reachable (auth required)"}},"elapsed_ms":47}`
+
+### Phase 4: Readiness-Probe auf Deep-Health (2026-04-16)
+
+`values-prod.yaml` / `values-common.yaml`:
+- **Liveness** bleibt auf `/api/health` (prueft Python-Prozess, schneller Exit bei Deadlock)
+- **Readiness** wird auf `/api/ext/health/deep` umgestellt (prueft DB+Redis+OpenSearch)
+
+Effekt: Pod wird aus dem Service-Loadbalancing entfernt wenn eine kritische Abhaengigkeit ausfaellt — Traffic-Drain passiert automatisch.
+
+### Phase 5: Blackbox-Probe auf Deep-Health (2026-04-16)
+
+`blackbox-exporter-prod.yaml` um neues Probe-Ziel erweitert:
+- **LLM:** `https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1/models`
+- **S3 Object Storage:** `https://object.storage.eu01.onstackit.cloud`
+- **OIDC:** `https://login.microsoftonline.com/<TENANT_ID>/v2.0/.well-known/openid-configuration`
+- **Deep-Health PROD:** `https://chatbot.voeb-service.de/api/ext/health/deep` (NEU)
+
+Alle 4 bei Stand 2026-04-17: `probe_success = 1`.
+
+### Phase 6: Externer GitHub Actions Health-Monitor (2026-04-16)
+
+Neuer Workflow `.github/workflows/health-monitor.yml`:
+- Cron: `*/5 * * * *` (alle 5 Min)
+- Pingt `/api/ext/health/deep` von `ubuntu-latest` Runner (ausserhalb Cluster)
+- Bei Fehler → Teams-Webhook (GitHub Secret `TEAMS_WEBHOOK_URL`)
+- Erkennt Netzwerk-/DNS-/Ingress-Probleme die interne Probes nicht sehen
+
+### cert-manager-cainjector NetworkPolicy-Fix (2026-04-16)
+
+Kollateral-Fund beim Audit: cert-manager-cainjector war **35 Tage in CrashLoop** (3623 Restarts). Ursache: falsche NetworkPolicy `03-allow-k8s-api-egress.yaml`:
+- Vorher: `namespaceSelector: kube-system` (externer K8s API Server ist nicht in kube-system!)
+- Nachher: `ipBlock: 192.214.168.128/32` (tatsaechliche StackIT-K8s-API-IP)
+
+TLS-Renewal fuer `chatbot.voeb-service.de` im Mai 2026 ist jetzt abgesichert.
+
+### Infrastruktur-Stand nach Phase 1-6
+
+- **Prometheus-Targets:** 26 UP (vorher 25), 0 DOWN
+- **Alerting Rules:** 171 total (131 kube-prometheus-stack + 37 VÖB custom Alerting + 3 Recording). Neu: `PostgresDown`.
+- **Grafana-Dashboards:** 29 total (23 Standard + **6 VÖB-Custom**: PostgreSQL, Redis, Analytics Overview, Audit-Log, SLA/SLO, Token/LLM Usage)
+- **Datasources:** 4 (Prometheus default, Alertmanager, **Loki**, **PostgreSQL**)
+- **NetworkPolicies:** 14 (monitoring-NS) + 6 (cert-manager-NS) + 8 (onyx-prod-NS) — Zero-Trust Baseline
+- **Blackbox-Probes:** 4/4 success=1 (inkl. neue Deep-Health-Probe)
+- **Loki:** 30d Retention, 20Gi PVC, Promtail DaemonSet (2 Nodes)
+- **Helm:** Monitoring Rev 6 (2026-04-17 via `--force-replace --server-side=false` um kubectl-replace Ownership-Konflikte aufzuloesen)
+
+---
+
 ## 6. Maintenance
 
 | Aufgabe | Frequenz | Aufwand |
@@ -666,6 +796,8 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | Prometheus Storage prüfen | Monatlich (via Grafana) | 5 Min |
 | Alert-Rules anpassen | Bei Bedarf | 15 Min |
 | Grafana Dashboards updaten | Bei Bedarf | 15 Min |
+| Silences pruefen/verlaengern | Monatlich | 10 Min |
+| Deep-Health-Latenz monitoren | Kontinuierlich (Dashboard) | 0 (automatisch) |
 
 **Geschätzter laufender Aufwand:** ~2h/Quartal
 
@@ -965,7 +1097,7 @@ Prometheus Targets:
   postgres-prod    UP
   redis-prod       UP
 
-# Zustand PROD (onyx-prod Namespace): 20 Pods Running (Helm Rev 4)
+# Zustand PROD (onyx-prod Namespace): 20 Pods Running (Helm Rev 18 seit 2026-04-17)
 ```
 
 ### NetworkPolicies (PROD-Cluster)

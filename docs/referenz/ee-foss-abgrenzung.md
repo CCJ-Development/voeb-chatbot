@@ -1,6 +1,6 @@
 # EE/FOSS-Abgrenzung — Onyx Lizenzierung
 
-**Stand**: Maerz 2026
+**Stand**: April 2026 (Letzte Aktualisierung: 2026-04-17)
 **Erstellt von**: Nikolaj Ivanov (CCJ / Coffee Studios)
 **Bezug**: [Extension Framework](../technisches-feinkonzept/ext-framework.md) | [Extension-Entwicklungsplan](ext-entwicklungsplan.md)
 
@@ -87,7 +87,7 @@ ENABLE_PAID_ENTERPRISE_EDITION_FEATURES: "false"  # EE deaktiviert
 | 1 | **Branding / Whitelabel** | `ee.onyx.server.enterprise_settings.store` | `ext-branding` | 4b | ✅ Deployed (2026-03-08) |
 | 2 | **Token Limits / Usage Tracking** | — (existiert auch in EE nicht als Modul) | `ext-token` | 4c | ✅ Deployed (2026-03-09) |
 | 3 | **Custom System Prompts** | `ee.onyx.chat` (teilweise) | `ext-prompts` | 4d | ✅ Implementiert (2026-03-09) |
-| 4 | **Analytics / Monitoring** | `ee.onyx.server.monitoring` | `ext-analytics` | 4e | ⏭️ ÜBERSPRUNGEN — Funktionalität in ext-token enthalten |
+| 4 | **Analytics / Monitoring** | `ee.onyx.server.monitoring` | `ext-analytics` | 4e | ✅ Implementiert (2026-03-26) |
 | 5 | **RBAC / User Groups** | `ee.onyx.db.user_group`, `ee.onyx.access` | `ext-rbac` | 4f | ✅ Implementiert (2026-03-23) |
 | 6 | **Document Access Control** | `ee.onyx.external_permissions` | `ext-access` | 4g | ✅ Implementiert (2026-03-25) |
 | 7 | **Deutsche Lokalisierung** | — (existiert auch in EE nicht) | `ext-i18n` | 4h | ✅ Deployed (2026-03-22) |
@@ -149,7 +149,8 @@ Onyx FOSS (MIT, READ-ONLY)          Unsere Extensions (MIT, eigener Code)
 └─────────────────────────┘         └──────────────────────────┘
 ```
 
-- **14 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except)
+- **15 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except). Stand 2026-04-17: 14 gepatcht, nur #5 `header/` offen.
+- **Zusaetzliche ext/-Datei:** `backend/ext/auth.py` (neu seit Sync #5, 2026-04-14) — Wrapper fuer `current_admin_user` nach Upstream PR #9930. Traegt `_is_require_permission = True` Sentinel, damit `check_router_auth` beim Boot nicht crasht.
 - **Patches** werden als `.original` + `.patch` in `backend/ext/_core_originals/` gesichert
 - **Upstream-Merges** sind konfliktfrei fuer ext_-Code (Ordner existiert nicht in Upstream)
 - **Feature Flags** steuern alles: `EXT_ENABLED` (Master) + `EXT_{MODUL}_ENABLED` (pro Modul)

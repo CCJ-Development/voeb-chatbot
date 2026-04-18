@@ -1,8 +1,8 @@
 # Meilensteinplan -- VÖB Service Chatbot
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.5
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.6
 
 ---
 
@@ -23,10 +23,10 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 
 | Meilenstein | Titel | Phasen | Termin | Status |
 |-------------|-------|--------|--------|--------|
-| **M1** | Infrastruktur + DEV/TEST | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) | Abgeschlossen. Hinweis: PROD-Cluster wurde vor M1-Abnahme deployed (2026-03-11). PROD-Infrastruktur ist faktisch Teil des M1-Nachweises. |
+| **M1** | Infrastruktur + DEV/TEST + Monitoring | Phase 0-2 | 2026-02-27 (DEV) / 2026-03-03 (TEST) / 2026-04-17 (PROD technisch abgenommen) | Technisch abgeschlossen. Hinweis: PROD-Cluster wurde vor M1-Abnahme deployed (2026-03-11), HTTPS LIVE seit 2026-03-17. Monitoring-Optimierung Phase 1-6 (Alert Fatigue Fix + Deep-Health + externer Monitor, 2026-04-15/16) als M1-Nachtrag. Abnahmeprotokoll wartet auf VÖB-Termin. |
 | **M2** | Authentifizierung (Entra ID) + Extension Framework | Phase 3, 4a | 2026-03-24 | ✅ Abgeschlossen (Entra ID OIDC DEV 2026-03-23, PROD 2026-03-24; Phase 4a seit 2026-02-12) |
 | **M3** | Token Limits + Custom Prompts | Phase 4c, 4d | [TBD] | ✅ Beide deployed (Token 2026-03-09, Prompts 2026-03-09) |
-| **M4** | Branding + RBAC | Phase 4b, 4e, 4f, 4g | 2026-03-25 | ✅ Abgeschlossen (ext-branding ✅ deployed 2026-03-08, ext-analytics ⏭️ ÜBERSPRUNGEN, ext-rbac ✅ implementiert 2026-03-23, ext-access ✅ implementiert 2026-03-25) |
+| **M4** | Branding + RBAC | Phase 4b, 4e, 4f, 4g | 2026-03-26 | ✅ Abgeschlossen (ext-branding ✅ deployed 2026-03-08, ext-analytics ✅ implementiert 2026-03-26, ext-rbac ✅ implementiert 2026-03-23, ext-access ✅ implementiert 2026-03-25) |
 | **M5** | Testing, Security Hardening + Go-Live Readiness | Phase 5 | [TBD] | Geplant |
 | **M6** | Production Go-Live | Phase 6 | [TBD] | Geplant |
 
@@ -36,13 +36,15 @@ Jeder Meilenstein (M1-M6) entspricht einer Projektphase und hat zugehörige Akze
 
 ### Beschreibung
 
-Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung sind betriebsbereit, die CI/CD-Pipeline ist produktionsreif, und LLM-Modelle sind konfiguriert.
+Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und PROD-Umgebung sind betriebsbereit, die CI/CD-Pipeline ist produktionsreif, LLM-Modelle sind konfiguriert, und Monitoring ist nach PG-Outage-Reaktion optimiert.
 
-### Status: Abgeschlossen
+### Status: Technisch abgeschlossen (2026-04-17), wartet auf VÖB-Abnahmetermin
 
-- **DEV LIVE**: 2026-02-27 (`http://188.34.74.187`)
-- **TEST LIVE**: 2026-03-03 (`http://188.34.118.201`)
+- **DEV LIVE**: 2026-02-27 (`https://dev.chatbot.voeb-service.de`)
+- **TEST LIVE**: 2026-03-03 (dauerhaft heruntergefahren seit 2026-03-19)
+- **PROD LIVE**: 2026-03-17 (`https://chatbot.voeb-service.de`)
 - **CI/CD produktionsreif**: 2026-03-02 (Run #5 gruen)
+- **Monitoring-Optimierung Phase 1-6**: 2026-04-15/16 (Alert Fatigue Fix, PostgresDown Alert, Deep-Health-Endpoint `/ext/health/deep`, Readiness-Probe, Blackbox, externer GitHub Actions Health-Monitor, cert-manager-cainjector NetworkPolicy-Fix). Trigger: PG-PROD-Outage (31 Min, 2026-04-15) nicht erkannt.
 
 ### Liefergegenstände
 
@@ -92,7 +94,7 @@ Die Cloud-Infrastruktur ist auf StackIT provisioniert, DEV- und TEST-Umgebung si
 
 | Nr. | Kriterium | Status |
 |-----|-----------|--------|
-| M1-1 | Kubernetes Cluster laeuft mit 2 Nodes (g1a.8d, K8s v1.33.8 upgraded 2026-03-08) | [x] Ja |
+| M1-1 | Kubernetes Cluster laeuft: DEV Shared-Cluster `vob-chatbot` mit 2 Nodes (g1a.4d, downgraded 2026-03-16 zur Kostenoptimierung), PROD eigener Cluster `vob-prod` mit 2 Nodes (g1a.8d). K8s v1.33.8 (DEV) / v1.33.9 (PROD). | [x] Ja |
 | M1-2 | DEV: PostgreSQL erreichbar und funktionsfaehig | [x] Ja |
 | M1-3 | DEV: Vespa deployed und lauffaehig | [x] Ja |
 | M1-4 | DEV: Object Storage Bucket `vob-dev` funktioniert | [x] Ja |
@@ -302,13 +304,13 @@ Token Limits Management und Custom System Prompts sind implementiert und geteste
 
 ### Beschreibung
 
-Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding deployed (2026-03-08). RBAC implementiert (2026-03-23). ext-analytics uebersprungen (Funktionalitaet in ext-token enthalten). ext-access implementiert (2026-03-25).
+Branding (Whitelabel), ext-analytics, ext-rbac und ext-access sind implementiert. Branding deployed (2026-03-08). ext-analytics implementiert als eigenstaendiges Modul (2026-03-26, 19 SQL-Panels Grafana Dashboard, 4 API-Endpoints). ext-rbac implementiert (2026-03-23). ext-access implementiert (2026-03-25).
 
 ### Status: Abgeschlossen
 
-- **ext-branding deployed**: 2026-03-08 (DEV + TEST)
-- **ext-analytics**: ÜBERSPRUNGEN (Funktionalitaet in ext-token/M3)
-- **ext-rbac**: ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests)
+- **ext-branding deployed**: 2026-03-08 (DEV + TEST; PROD 2026-03-22)
+- **ext-analytics**: ✅ Implementiert (2026-03-26, Grafana Dashboard + 4 API-Endpoints, 9 Tests, Feature Flag `EXT_ANALYTICS_ENABLED`, DEV + PROD live)
+- **ext-rbac**: ✅ Implementiert (2026-03-23, 7 Endpoints, 29 Tests, Core #10 + #11 + #12 gepatcht)
 - **ext-access**: ✅ Implementiert (2026-03-25, Core #3 gepatcht, 11 Tests)
 
 ### Liefergegenstände
@@ -327,9 +329,14 @@ Branding (Whitelabel) und Role-Based Access Control sind implementiert. Branding
   - Rollen- und Gruppenverwaltung (Mapping auf Entra ID Abteilungen)
   - Admin-Endpunkte fuer Gruppen- und Rollenverwaltung
 
-- **Analytics Modul (`ext-analytics`)** — ⏭️ ÜBERSPRUNGEN
-  - Funktionalität bereits in ext-token enthalten (Usage Dashboard, Timeline, Per-User, Per-Model)
-  - Kein Mehrwert als eigenes Modul
+- **Analytics Modul (`ext-analytics`)** — ✅ implementiert (2026-03-26)
+  - Plattform-Nutzungsanalysen als eigenständiges Modul (zusätzlich zu ext-token)
+  - Grafana Dashboard `VÖB Analytics Overview` (19 SQL-Panels auf PostgreSQL Datasource)
+  - 4 Admin-API-Endpoints: `summary`, `users`, `agents`, `CSV-Export`
+  - Kein Core-Patch, keine Alembic-Migration noetig
+  - 9 Unit Tests, Feature Flag `EXT_ANALYTICS_ENABLED`
+  - DEV + PROD Grafana live
+  - NetworkPolicy `14-allow-grafana-pg-egress.yaml` fuer Grafana → StackIT PG (`db_readonly_user` mit SELECT-Grants)
 
 - **Document Access Control (`ext-access`)** — ✅ implementiert (2026-03-25)
   - Additiver Permission-Check in `backend/onyx/access/access.py` (Core-Datei #3)
@@ -604,5 +611,5 @@ Falls Abnahme verweigert wird:
 ---
 
 **Dokumentstatus**: In Bearbeitung
-**Letzte Aktualisierung**: 2026-03-14
-**Version**: 0.5
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.6

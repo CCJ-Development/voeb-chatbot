@@ -32,6 +32,9 @@ web/package.json, tailwind.config.js
 ```
 backend/ext/                 ← Backend-Extensions
   config.py                  ← Feature Flags
+  auth.py                    ← Wrapper fuer current_admin_user (nach Upstream PR #9930, Sync #5)
+                              mit _is_require_permission = True Sentinel, damit check_router_auth
+                              beim Boot nicht crasht
   routers/                   ← FastAPI Router
   models/                    ← DB Models (ext_-Prefix)
   schemas/                   ← Pydantic Schemas

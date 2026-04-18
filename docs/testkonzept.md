@@ -1,8 +1,8 @@
 # Testkonzept – VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-15
-**Version**: 0.5.2
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.6
 
 ---
 
@@ -175,21 +175,11 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-dev.yaml`
 - **Zweck**: Entwicklung, Debugging, Feature-Validierung
 
-### TEST-Umgebung (StackIT) -- LIVE seit 2026-03-03
+### TEST-Umgebung (StackIT) -- DAUERHAFT HERUNTERGEFAHREN seit 2026-03-19
 
-**Charakteristiken**:
-- **Cluster**: Gleicher SKE-Cluster, Node Pool `devtest`, Node 2 (g1a.8d: 8 vCPU, 32 GB RAM)
-- **Namespace**: `onyx-test`
-- **Pods**: 15 Pods Running
-- **Datenbank**: PostgreSQL Flex `vob-test` (2 CPU, 4 GB RAM, Single) — eigene Instanz, isoliert von DEV
-- **Object Storage**: Bucket `vob-test` — eigene Credentials
-- **Zugriff**: `https://test.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
-- **IngressClass**: `nginx-test` (eigene IngressClass, Konflikt mit DEV vermieden)
-- **LLM**: 4 Chat-Modelle konfiguriert: GPT-OSS 120B (`openai/gpt-oss-120b`), Qwen3-VL 235B (`Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`), Llama 3.3 70B (`cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic`), Llama 3.1 8B (`neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8`)
-- **Embedding**: Qwen3-VL-Embedding 8B (4096 Dimensionen, multilingual)
-- **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-test.yaml`
-- **GitHub Secrets**: Environment `test` mit eigenen PG-, Redis-, S3-Credentials
-- **Zweck**: Kundenvalidierung (VÖB), UAT, Pre-Production Testing
+**Historisch**: TEST war LIVE vom 2026-03-03 bis 2026-03-19 (15 Pods, HTTPS `https://test.chatbot.voeb-service.de`). Seit 2026-03-19 dauerhaft auf 0 Pods skaliert (Kostenoptimierung + vereinfachte Pipeline). Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich via `kubectl scale` oder `helm upgrade`.
+
+**Konsequenz fuer Test-Strategie**: Validierung direkt auf DEV (Entwickler-UAT) + geplantes Staging-Verhalten vor PROD-Deploy via Review im PR. Kundenvalidierung durch VÖB findet auf DEV-Endpoint statt (`https://dev.chatbot.voeb-service.de`, Entra ID OIDC).
 
 ### PROD-Umgebung (StackIT) -- DEPLOYED seit 2026-03-11
 
@@ -198,7 +188,8 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **K8s**: v1.33.9, Flatcar 4459.2.3
 - **Nodes**: 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)
 - **Namespace**: `onyx-prod`
-- **Pods**: 19 Pods Running — 2x API Server (HA), 2x Web Server (HA), 8 Celery-Worker (Standard Mode), 2x Model Server, 1x Vespa, 1x Redis, 1x NGINX Ingress
+- **Pods**: 20 Pods Running — 2x API Server (HA, 4Gi Limit nach OOM-Fix 2026-04-17), 2x Web Server (HA), 8 Celery-Worker (Standard Mode), 2x Model Server, OpenSearch (primary), Vespa (Zombie-Mode), 1x Redis, 1x NGINX Ingress
+- **Chart**: `onyx-0.4.44`, Helm Rev 18 (aktualisiert 2026-04-17 mit Sync #5 + Monitoring-Optimierung)
 - **Datenbank**: PostgreSQL Flex 4.8 HA (3-Node Replica)
 - **Object Storage**: Bucket `vob-prod`
 - **Load Balancer**: `188.34.92.162`
@@ -206,11 +197,12 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Authentifizierung**: `AUTH_TYPE: oidc` (Entra ID OIDC, seit 2026-03-24)
 - **LLM**: 3 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B), Embedding Qwen3-VL-Embedding 8B (seit 2026-03-24)
 - **Security**: SEC-06 Phase 2 aktiv (`runAsNonRoot: true`, Vespa = dokumentierte Ausnahme)
-- **Monitoring**: 14 Pods in `monitoring` NS (Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter, PG/Redis/OpenSearch/Blackbox Exporter, Operator, Loki, 2x Promtail). 25 Targets UP. 50 VÖB Rules. Loki Log-Aggregation (seit 2026-03-25). Teams-Alerting (PROD-Kanal)
+- **Monitoring**: 14 Pods in `monitoring` NS (Helm Rev 6 seit 2026-04-17, `--force-replace --server-side=false`). **26 Prometheus-Targets UP**, 46+1 VÖB Rules (10 Recording + 37 Alerting inkl. neuer `PostgresDown`), **29 Grafana-Dashboards** (6 custom: PG, Redis, Analytics, Audit, SLO, Token). Alert Fatigue Fix (repeat_interval 4h/24h, info+Watchdog+InfoInhibitor → null). Loki Log-Aggregation (30d Retention, 20Gi). 4 Blackbox-Probes (LLM, OIDC, S3, **Deep-Health**). Externer GitHub Actions Health-Monitor (cron 5 Min). Teams-Alerting (PROD-Kanal) — stiller Channel = alles OK.
+- **Health-Checks**: `/api/health` (Liveness, Python-Prozess), `/api/ext/health/deep` (Readiness + Blackbox, prueft DB+Redis+OpenSearch, ~47ms).
 - **GitHub Environment**: `prod` mit Required Reviewer + 7 Secrets (inkl. OPENSEARCH_PASSWORD, keine Secrets im Git)
 - **Helm Values**: `deployment/helm/values/values-common.yaml` + `values-prod.yaml`
 - **Zugriff**: HTTPS LIVE seit 2026-03-17 (`https://chatbot.voeb-service.de`)
-- **Aenderungen**: Nur nach erfolgreicher TEST-Validierung + GitHub Environment Approval
+- **Aenderungen**: Via CI/CD `stackit-deploy.yml` workflow_dispatch + GitHub Environment Approval. Runbook: `docs/runbooks/prod-deploy.md`.
 - **Zweck**: Production-Betrieb fuer VÖB-Mitarbeiter
 
 ---
@@ -1385,13 +1377,13 @@ Markiert als "Verified Fixed"
 | **Phase 3: Authentifizierung** | 2026-03-23/24 | Entra ID OIDC Integration | Erledigt (DEV 2026-03-23, PROD 2026-03-24) | Entwicklung (CCJ) + VÖB IT |
 | **Phase 4b-4d: Feature-Tests** | 2026-03-08 bis 2026-03-09 | Branding, Token Limits, Custom Prompts — alle implementiert und getestet | Erledigt (4b: 21 Tests, 4c: 11 Tests, 4d: 29 Tests) | Entwicklung (CCJ) |
 | **Phase 5: E2E + Security-Tests** | Ausstehend | Vollstaendige User Flows, Pentest | Geplant | Tech Lead (CCJ) + externer Auditor |
-| **Phase 6: UAT + Go-Live** | Ausstehend | VÖB-Stakeholder Abnahme auf TEST-Umgebung | Geplant | Tech Lead (CCJ) + VÖB |
+| **Phase 6: UAT + Go-Live** | Ausstehend | VÖB-Stakeholder Abnahme. **Historisch ADR-004**: UAT war auf TEST-Umgebung vorgesehen. Da TEST seit 2026-03-19 dauerhaft heruntergefahren ist, erfolgt Abnahme auf **DEV-Umgebung** (`https://dev.chatbot.voeb-service.de`, Entra ID OIDC, identischer Feature-Stand zu PROD). Finaler Kundenabnahme-Workflow mit VÖB abzustimmen. | Geplant | Tech Lead (CCJ) + VÖB |
 
 ---
 
 **Dokumentstatus**: Entwurf (teilweise konsolidiert)
-**Letzte Aktualisierung**: 2026-03-15
-**Version**: 0.5.2
+**Letzte Aktualisierung**: 2026-04-17
+**Version**: 0.6
 
 ## Aenderungshistorie
 
@@ -1404,3 +1396,4 @@ Markiert als "Verified Fixed"
 | v0.5 | 2026-03-11 | COFFEESTUDIOS | PROD-Umgebung ergaenzt, Konsolidierung Testfaelle, Testphasen-Tabelle aktualisiert |
 | v0.5.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: 6 Cross-Ref-Fixes (XREF-003/004/013/031/035/036) |
 | v0.5.2 | 2026-03-15 | COFFEESTUDIOS | Audit Quality-Fixes: RTM, Entry/Exit Criteria, Sprachbereinigung DE/EN, ENTWURF-Blocker praezisiert, QA-Team-Referenzen korrigiert (Solo-Dev), TC-RBAC-006 Modul-Zuordnung korrigiert (Security), Testprotokoll-Beispieldaten neutralisiert |
+| v0.6 | 2026-04-17 | COFFEESTUDIOS | TEST-Umgebung auf "heruntergefahren seit 2026-03-19" aktualisiert (nur noch DEV + PROD live). PROD: Chart 0.4.44, Helm Rev 18, 20 Pods, OOM-Fix (API 4Gi). Monitoring-Optimierung Phase 1-6 dokumentiert (Deep-Health-Endpoint `/api/ext/health/deep`, Alert Fatigue Fix, PostgresDown Alert, externer Health-Monitor). Extension-Tests aktualisiert: ext-rbac (29 Tests), ext-access (11 Tests), ext-audit (13 Tests), ext-analytics (9 Tests). Sync #5 Alembic-Chain-Recovery Test-Ergebnis dokumentiert (11 Migrationen, keine Datenverluste). |

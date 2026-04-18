@@ -1,6 +1,6 @@
 # StackIT Infrastruktur — Technische Referenz
 
-**Stand**: März 2026
+**Stand**: April 2026
 **Region**: EU01 (Frankfurt)
 **Provider**: StackIT (Schwarz Digits / Schwarz-Gruppe)
 
@@ -104,23 +104,23 @@
 
 ### Onyx-Komponenten Resource Requests
 
-| Komponente | CPU Request | RAM Request | Replicas |
-|------------|------------|-------------|----------|
-| Backend API (FastAPI) | 500m | 512 Mi | 2–3 |
-| Frontend (Next.js) | 250m | 256 Mi | 2 |
-| Background Worker (Celery Beat) | 250m | 512 Mi | 1 |
-| Background Worker (Primary) | 500m | 1 Gi | 2 |
-| Background Worker (Light) | 500m | 1 Gi | 1 |
-| Background Worker (Heavy) | 500m | 1 Gi | 1 |
-| Background Worker (DocFetching) | 500m | 1 Gi | 1 |
-| Background Worker (DocProcessing) | 500m | 1 Gi | 1 |
-| Background Worker (Monitoring) | 250m | 256 Mi | 1 |
-| Background Worker (User File) | 500m | 512 Mi | 1 |
-| Redis | 250m | 512 Mi | 1 |
-| OpenSearch (primaerer Document Index) | 1000m | 2 Gi | 1 |
-| Vespa (Zombie-Mode, kein aktiver Betrieb) | 100m | 512 Mi | 1 |
-| System-Overhead (kube-system) | ~1.4 CPU | ~2 Gi | — |
-| **TOTAL PROD** | **~8.6-9.1 CPU** | **~16-17 Gi** | — |
+| Komponente | CPU Request | RAM Request | RAM Limit | Replicas | Anmerkung |
+|------------|------------|-------------|-----------|----------|-----------|
+| Backend API (FastAPI) | 500m | **1 Gi** | **4 Gi** | 2 | **OOM-Fix 2026-04-17**: Limit 2Gi → 4Gi, Request 512Mi → 1Gi nach Restart-Loop (9+7 OOMKilled) |
+| Frontend (Next.js) | 250m | 256 Mi | — | 2 | |
+| Background Worker (Celery Beat) | 250m | 512 Mi | — | 1 | |
+| Background Worker (Primary) | 500m | 1 Gi | — | 2 | |
+| Background Worker (Light) | 500m | 1 Gi | — | 1 | |
+| Background Worker (Heavy) | 500m | 1 Gi | — | 1 | |
+| Background Worker (DocFetching) | 500m | **512 Mi** | **2 Gi** | 1 | **2026-04-17**: Limit 4Gi → 2Gi (30d-Peak nur 224 MiB) |
+| Background Worker (DocProcessing) | 500m | **512 Mi** | **2 Gi** | 1 | **2026-04-17**: Limit 4Gi → 2Gi (30d-Peak nur 225 MiB) |
+| Background Worker (Monitoring) | 250m | 256 Mi | — | 1 | |
+| Background Worker (User File) | 500m | 512 Mi | — | 1 | |
+| Redis | 250m | 512 Mi | — | 1 | |
+| OpenSearch (primaerer Document Index) | 1000m | 2 Gi | — | 1 | |
+| Vespa (Zombie-Mode, kein aktiver Betrieb) | 100m | 512 Mi | — | 1 | |
+| System-Overhead (kube-system) | ~1.4 CPU | ~2 Gi | — | — | |
+| **TOTAL PROD** | **~8.6-9.1 CPU** | **~16-17 Gi** | — | — | Netto 0 GiB Aenderung durch OOM-Fix (API +2Gi Limit, docfetching/docprocessing -2Gi Limit) |
 
 ### Skalierung
 
@@ -134,30 +134,31 @@
 
 ## Environments-Übersicht
 
-| Aspekt | DEV | TEST | PROD |
+| Aspekt | DEV | TEST (heruntergefahren) | PROD |
 |--------|-----|------|------|
-| Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` (eigener Cluster `vob-prod`, deployed 2026-03-11) |
+| Status | ✅ LIVE seit 2026-02-27 | ⏸️ 0 Pods seit 2026-03-19 (Helm Release + PVCs + Secrets bleiben) | ✅ LIVE seit 2026-03-11 (Helm Rev 18, Chart 0.4.44) |
+| Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` (eigener Cluster `vob-prod`) |
 | Cluster | shared (`vob-chatbot`) | shared (`vob-chatbot`) | **eigener Cluster** (ADR-004) |
-| Worker Nodes | eigener Node (g1a.4d) | eigener Node (g1a.4d) | 2× g1a.8d dedicated |
-| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 Replica (3 Nodes HA) |
+| Worker Nodes | eigener Node (g1a.4d) | keine laufenden Pods | 2× g1a.8d dedicated |
+| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`, leer) | Flex 4.8 Replica (3 Nodes HA) |
 | Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
-| OpenSearch | In-Cluster (1 Replica) | In-Cluster (1 Replica) | In-Cluster (1 Replica) |
-| Vespa | In-Cluster (Zombie-Mode) | In-Cluster (Zombie-Mode) | In-Cluster (Zombie-Mode) |
-| Redis | In-Cluster Pod | In-Cluster Pod | In-Cluster Pod |
-| LLM | StackIT AI Serving | gleich | gleich + Monitoring |
-| Backups | PG PITR (auto) | PG PITR (auto) | PG PITR + ObjStore Versioning |
-| Resource Quotas | Entfernt (DEV) | Entfernt (TEST) | CPU: 12, RAM: 20 Gi (berechnet: 8.75 CPU Requests + 37% Buffer, 15.25 Gi RAM Requests + 31% Buffer) |
-| Network Policy | Implementiert (SEC-03, 7 Policies) | Implementiert (SEC-03) | monitoring-NS: 13 Policies (2026-03-24). onyx-prod: 7 Policies (Zero-Trust, seit 2026-03-24) |
+| OpenSearch | In-Cluster (1 Replica) | — | In-Cluster (1 Replica, primary Document Index) |
+| Vespa | In-Cluster (Zombie-Mode) | — | In-Cluster (Zombie-Mode) |
+| Redis | In-Cluster Pod | — | In-Cluster Pod |
+| LLM | StackIT AI Serving | — | StackIT AI Serving + Monitoring |
+| Backups | PG PITR (auto) | PG PITR (auto, passiv) | PG PITR + ObjStore Versioning |
+| Resource Quotas | Entfernt (DEV) | — | CPU: 12, RAM: 20 Gi (berechnet: ~8.6-9.1 CPU Requests + Buffer, ~16-17 Gi RAM Requests + Buffer nach OOM-Fix 2026-04-17) |
+| Network Policy | Implementiert (SEC-03) | — | **14 monitoring-NS + 6 cert-manager-NS + 8 onyx-prod-NS** (Zero-Trust, Stand 2026-04-17) |
 
 ### DNS
 
 | Environment | Domain | IP | Status |
 |-------------|--------|-----|--------|
-| DEV | `dev.chatbot.voeb-service.de` | `188.34.118.222` | A-Record aktualisiert (2026-03-22, LB-IP nach Helm-Neuinstallation 2026-03-18) |
-| TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05) |
+| DEV | `dev.chatbot.voeb-service.de` | `188.34.118.222` | **HTTPS LIVE** (2026-03-22 A-Record aktualisiert, LB-IP nach Helm-Neuinstallation 2026-03-18) |
+| TEST | `test.chatbot.voeb-service.de` | `188.34.118.201` | A-Record gesetzt (2026-03-05), **Cluster heruntergefahren seit 2026-03-19** |
 | PROD | `chatbot.voeb-service.de` | `188.34.92.162` | **HTTPS LIVE** (2026-03-17), Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2, HSTS 1 Jahr |
 
-Cloudflare: DNS-only (kein Proxy). TLS DEV/TEST: LIVE seit 2026-03-09. TLS PROD: LIVE seit 2026-03-17. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv.
+Cloudflare: DNS-only (kein Proxy). TLS DEV: LIVE seit 2026-03-09. TLS PROD: LIVE seit 2026-03-17. cert-manager (v1.19.4), DNS-01 via Cloudflare API, ACME-Challenge CNAME-Delegation ueber GlobVill. ECDSA P-384, TLSv1.3, HTTP/2. Auto-Renewal aktiv. **cert-manager-cainjector NetworkPolicy-Fix (2026-04-16):** `ipBlock: 192.214.168.128/32` fuer externen K8s API Server statt `namespaceSelector`, sichert TLS-Renewal im Mai 2026 ab (35 Tage CrashLoop behoben).
 
 ---
 

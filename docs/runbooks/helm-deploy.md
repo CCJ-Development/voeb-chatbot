@@ -1,6 +1,6 @@
 # Runbook: Helm Deploy — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-03-19
+**Zuletzt verifiziert:** 2026-04-17 (PROD Chart 0.4.36 → 0.4.44, Helm Rev 18; Monitoring Helm Rev 6 via `--force-replace --server-side=false`)
 **Ausgeführt von:** Nikolaj Ivanov
 
 ---
@@ -356,10 +356,115 @@ WEB_DOMAIN: "https://chatbot.voeb-service.de"
 
 ---
 
+## Helm-Upgrade bei Ownership-Konflikten mit kubectl-replace
+
+**Kontext:** Wenn zwischen zwei Helm-Upgrades Ressourcen per `kubectl replace` oder direktem `kubectl apply` geandert wurden, entstehen Ownership-Konflikte (PrometheusRule, Secret, ConfigMap haben dann Field-Manager `kubectl-replace` neben `helm`). Nachstes `helm upgrade` failed mit:
+
+```
+Error: UPGRADE FAILED: ... Apply failed with 1 conflict: conflict with "kubectl-replace" using ...
+```
+
+**Erstmalig live geloest 2026-04-17** beim PROD-Monitoring-Upgrade (Helm Rev 6).
+
+### Lösung: `--force-replace` + `--server-side=false`
+
+Die neue Helm-CLI verbietet `--force-replace` (ehemals `--force`) mit Server-Side-Apply. Beim Upgrade muss daher auf Client-Side-Apply zurueckgewechselt werden:
+
+```bash
+# 1. Fehlgeschlagene Release-Secrets identifizieren + loeschen
+helm --kube-context vob-prod history monitoring -n monitoring --max 10
+# Revisionen mit Status "failed" notieren
+
+kubectl --context vob-prod delete secret -n monitoring \
+  sh.helm.release.v1.monitoring.v6 sh.helm.release.v1.monitoring.v7
+
+# 2. Force-Replace Upgrade mit Client-Side-Apply
+helm --kube-context vob-prod upgrade monitoring prometheus-community/kube-prometheus-stack \
+  --version 82.10.3 \
+  -n monitoring \
+  -f deployment/helm/values/values-monitoring-prod.yaml \
+  --server-side=false \
+  --force-replace \
+  --timeout 5m
+```
+
+**Seiteneffekte:**
+- Deployments koennen restarten (z.B. Grafana, Prometheus-Operator)
+- StatefulSets bleiben meist unberuert (Prometheus, AlertManager behalten Daten)
+- Historische Field-Manager-Eintraege (z.B. `kubectl-replace (Update)`) bleiben kosmetisch erhalten — das ist normal und nicht funktional
+
+**Prinzip fuer die Zukunft:** Helm als einzige Source of Truth. kubectl-replace nur in echten Notfaellen (dann Field-Manager-Cleanup einplanen).
+
+---
+
+## OOM-Fix PROD (2026-04-17)
+
+**Problem:** Beide API-Server-Pods OOMKilled (9 bzw. 7 Restarts), User sieht "failed to upload" bei grossen LLM-Requests (100k+ Tokens).
+
+**Root Cause:** Memory-Limit 2 GiB zu niedrig, Bursts uebersteigen 2 Gi bei Tool-Calls mit vielen Dokumenten.
+
+**Fix:** `values-prod.yaml` Memory-Werte angepasst + per `kubectl patch` sofort deployed:
+
+| Deployment | Vorher Limit | Nachher Limit | Vorher Request | Nachher Request |
+|------------|-------------|---------------|----------------|-----------------|
+| `onyx-prod-api-server` | 2 Gi | **4 Gi** | 512 Mi | **1 Gi** |
+| `onyx-prod-celery-worker-docfetching` | 4 Gi | **2 Gi** | 1 Gi | **512 Mi** |
+| `onyx-prod-celery-worker-docprocessing` | 4 Gi | **2 Gi** | 1 Gi | **512 Mi** |
+
+**Netto-Impact:** 0 GiB zusaetzliche Last (api +2Gi Limit durch docfetching/docprocessing -2Gi Limit kompensiert). 30d-Peaks der Celery-Worker lagen nur bei ~225 MiB — die 4Gi Limits waren ueberdimensioniert.
+
+**Sofort-Deploy per kubectl (vor CI/CD-Run):**
+```bash
+kubectl --context vob-prod patch deploy onyx-prod-api-server -n onyx-prod \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"api-server","resources":{"limits":{"memory":"4Gi"},"requests":{"memory":"1Gi"}}}]}}}}'
+
+kubectl --context vob-prod patch deploy onyx-prod-celery-worker-docfetching -n onyx-prod \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"celery-worker-docfetching","resources":{"limits":{"memory":"2Gi"},"requests":{"memory":"512Mi"}}}]}}}}'
+
+kubectl --context vob-prod patch deploy onyx-prod-celery-worker-docprocessing -n onyx-prod \
+  -p '{"spec":{"template":{"spec":{"containers":[{"name":"celery-worker-docprocessing","resources":{"limits":{"memory":"2Gi"},"requests":{"memory":"512Mi"}}}]}}}}'
+```
+
+**Rolling Update, keine Downtime.** Nach dem CI/CD-Deploy uebernehmen die values-prod.yaml-Werte automatisch, beide Stellen sind konsistent.
+
+---
+
+## Deep-Health-Endpoint als Readiness-Probe
+
+Seit 2026-04-17 wird `/api/ext/health/deep` als Readiness-Probe genutzt (statt nur `/api/health`).
+
+**Warum:** `/api/health` liefert 200 solange der Python-Prozess lebt — prueft DB nicht. Bei PG-Outage bleibt der Pod "ready", Traffic wird weitergeroutet, User sehen Errors. `/api/ext/health/deep` prueft DB+Redis+OpenSearch → automatischer Traffic-Drain bei Ausfall kritischer Abhaengigkeiten.
+
+**Konfiguration in `values-prod.yaml`:**
+```yaml
+api_server:
+  readinessProbe:
+    httpGet:
+      path: /api/ext/health/deep
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /api/health          # bleibt auf Python-Liveness
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 30
+```
+
+**Deep-Health-Endpoint:** `backend/ext/routers/health.py` → testet PG + Redis + OpenSearch Konnektivitaet. Typische Latenz 47ms. Public (keine sensitiven Daten, aber Timeout-Guards).
+
+**Nutzer:** Readiness-Probe (K8s), Blackbox-Probe (Prometheus), externer GitHub Actions Health-Monitor (cron 5 Min).
+
+---
+
 ## Verwandte Runbooks
 
 - [CI/CD Pipeline](./ci-cd-pipeline.md) — Automatisiertes Deployment ueber GitHub Actions
-- [Rollback-Verfahren](./rollback-verfahren.md) — Rollback bei fehlerhaftem Deploy
+- [PROD-Deploy (Template)](./prod-deploy.md) — Kompletter PROD-Rollout-Workflow
+- [Rollback-Verfahren](./rollback-verfahren.md) — Rollback bei fehlerhaftem Deploy + Alembic-Chain-Recovery
 - [LLM-Konfiguration](./llm-konfiguration.md) — LLM/Embedding-Modelle nach Deploy konfigurieren
 - [Upstream-Sync](./upstream-sync.md) — Onyx FOSS Upstream-Merges + Alembic Chain
 - [DNS + TLS Setup](./dns-tls-setup.md) — Let's Encrypt, cert-manager, Cloudflare DNS-01
+- [Alert-Antwort](./alert-antwort.md) — Reaktion auf Prometheus-Alerts (inkl. PostgresDown, Alert Fatigue Fix)

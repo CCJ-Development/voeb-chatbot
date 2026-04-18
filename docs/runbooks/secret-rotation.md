@@ -181,7 +181,7 @@ gh workflow run stackit-deploy.yml -f environment=prod -R CCJ-Development/voeb-c
 
 ### Wann: Alle 90 Tage (Expiration), bei Kompromittierung oder nach Kubeconfig-Leck
 
-**Naechste Expiration PROD:** `2026-06-09`
+**Naechste Expiration PROD:** `2026-06-22`
 
 ```bash
 # Option A: Terraform (empfohlen — erneuert automatisch)
@@ -319,10 +319,15 @@ gh workflow run stackit-deploy.yml -f environment=dev --ref main -R CCJ-Developm
 
 **Ursache:** K8s-Secret enthaelt gueltige Credentials (sonst wuerden Pod-Starts fehlschlagen), GitHub-Secret ist stale.
 
-**Recovery — K8s als Source of Truth:**
+**Recovery — K8s als Source of Truth (Quick-Fix bei CI-401-Fehler):**
 
 ```bash
-# 1. Credentials aus dem funktionierenden K8s-Secret extrahieren
+# 1. Dockerconfigjson dekodieren und inspizieren
+kubectl get secret stackit-registry -n onyx-dev \
+  -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d
+# Output: {"auths":{"registry.onstackit.cloud":{"username":"...","password":"...","auth":"<base64>"}}}
+
+# 2. Credentials extrahieren (username + password)
 PW=$(kubectl get secret stackit-registry -n onyx-dev \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | \
   python3 -c "import json,sys; d=json.load(sys.stdin); print(d['auths']['registry.onstackit.cloud']['password'])")
@@ -331,17 +336,19 @@ USER=$(kubectl get secret stackit-registry -n onyx-dev \
   -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | \
   python3 -c "import json,sys; d=json.load(sys.stdin); print(d['auths']['registry.onstackit.cloud']['username'])")
 
-# 2. Lokal verifizieren
+# 3. Lokal verifizieren
 echo "$PW" | docker login registry.onstackit.cloud -u "$USER" --password-stdin
 # Erwartung: "Login Succeeded"
 
-# 3. GitHub Secrets aktualisieren
+# 4. GitHub Secrets synchronisieren
 printf '%s' "$USER" | gh secret set STACKIT_REGISTRY_USER -R CCJ-Development/voeb-chatbot
 printf '%s' "$PW" | gh secret set STACKIT_REGISTRY_PASSWORD -R CCJ-Development/voeb-chatbot
 
-# 4. CI/CD Re-Run
+# 5. CI/CD Re-Run
 gh workflow run stackit-deploy.yml -f environment=dev --ref <branch-or-main> -R CCJ-Development/voeb-chatbot
 ```
+
+**Merke:** K8s-Secret `stackit-registry` ist die Source of Truth, weil Pods laufen (Image-Pull funktioniert) bedeutet, dass die Credentials gueltig sind. Wenn das GitHub Secret `STACKIT_REGISTRY_PASSWORD` driftet (z.B. nach Token-Rotation die nur K8s aktualisiert hat), scheitert nur CI/CD. Immer K8s → GitHub synchronisieren, nicht umgekehrt raten.
 
 **Alternativ — GitHub als Source of Truth** (falls K8s-Secret ebenfalls stale ist): Neues Token im StackIT Portal generieren, beide Stellen (GitHub + K8s in DEV und PROD) parallel updaten.
 

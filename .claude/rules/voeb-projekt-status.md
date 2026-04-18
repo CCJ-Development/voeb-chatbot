@@ -45,7 +45,10 @@
   - ✅ cert-manager v1.19.4 + ClusterIssuer `onyx-prod-letsencrypt` READY
   - ✅ Redis Operator + Image Pull Secret in `onyx-prod`
   - ✅ GitHub Environment `prod` + Required Reviewer + 7 Secrets (inkl. OPENSEARCH_PASSWORD)
-  - ✅ Helm Release `onyx-prod`: **20 Pods Running** (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa Zombie, **OpenSearch**, Redis, 2×Model, NGINX). Chart 0.4.36, Image `4337b8a`.
+  - ✅ Helm Release `onyx-prod`: **20 Pods Running** (2×API HA, 2×Web HA, 8 Celery-Worker, Vespa Zombie, **OpenSearch**, Redis, 2×Model, NGINX). **Chart 0.4.44, Rev 18** (aktualisiert 2026-04-17 mit Sync #5).
+  - ✅ **Sync #5 + Monitoring-Optimierung PROD: LIVE** (2026-04-17) — 344 Upstream-Commits, Deep-Health-Endpoint, Readiness-Probe auf `/ext/health/deep`, Alert Fatigue Fix offiziell via Helm (Monitoring Rev 6), PostgresDown Alert, `backend/ext/auth.py` Wrapper, Core #15 (useSettings.ts).
+  - ✅ **OOM-Fix PROD** (2026-04-17) — API-Server 2→4Gi, docfetching/docprocessing 4→2Gi. OOMKilled-Restart-Loop (9+7) gestoppt.
+  - ✅ **Alembic-Chain-Recovery PROD** (2026-04-17) — 11 Upstream-Migrationen sauber nachgezogen (689433b0d8de→503883791c39), alembic_version wieder auf `d8a1b2c3e4f5`. 2 neue Default-Gruppen ("Admin" id 54, "Basic" id 55) erstellt, 91/95 User in "Basic" (VÖB-Gruppen unveraendert).
   - ✅ **OpenSearch PROD: LIVE** (2026-03-22) — Primary Document Index, Retrieval aktiviert, Cluster yellow (erwartet bei Single-Node), sicheres Passwort (nicht Chart-Default)
   - ✅ **Vespa: Zombie-Mode** (2026-03-22) — 100m/512Mi Requests, 4Gi Limit. Nur fuer Celery Readiness Check.
   - ✅ **ext-i18n PROD: LIVE** (2026-03-22) — ~250 Strings Deutsch, ~95% user-facing UI
@@ -81,7 +84,7 @@
   - 4c: ✅ ext-token — LLM Usage Tracking + Limits. **DEV + TEST deployed (2026-03-09).** Branch auf main gemergt.
   - 4d: ✅ ext-prompts — Custom System Prompts. **DEV + TEST deployed und abgenommen (2026-03-09).** 29 Unit Tests, CORE #7 + #10 gepatcht.
   - 4e: ✅ ext-analytics — **Plattform-Nutzungsanalysen.** Implementiert (2026-03-26). Grafana Dashboard (19 SQL-Panels, PG-Datasource, NetworkPolicy) + 4 API-Endpoints (summary, users, agents, CSV-Export). Kein Core-Patch, kein Alembic. 9 Tests. Feature Flag `EXT_ANALYTICS_ENABLED`. DEV + PROD Grafana live.
-  - 4f: ✅ ext-rbac — Gruppenverwaltung. **Implementiert (2026-03-23).** 7 Endpoints, eigene Frontend-Seite `/admin/ext-groups`, Core #10 + #11 gepatcht, 29 Tests. Persona + DocumentSet Gruppen-Zuordnung funktioniert (Core #11 + #12 gepatcht).
+  - 4f: ✅ ext-rbac — Gruppenverwaltung. **Implementiert (2026-03-23).** 7 Endpoints, eigene Frontend-Seite `/admin/ext-groups`, **Core #10 + #11 + #12 gepatcht** (AdminSidebar-Link + persona.py + document_set.py), 29 Tests. Persona + DocumentSet Gruppen-Zuordnung funktioniert.
   - 4g: ✅ ext-access — Document Access Control. **Implementiert (2026-03-25).** Core #3 gepatcht (3 Hooks: user_groups + ACLs). Eigener Celery-Task (Ansatz C, umgeht EE-Guards). 2 Admin-Endpoints (resync, status). 11 Tests. Feature Flag `EXT_DOC_ACCESS_ENABLED`. Aktivierung: Flag + Resync.
   - 4h: ✅ ext-i18n — **Deutsche Lokalisierung.** ~250 Strings (Core-UI) + ~115 Strings (ext-Admin-Seiten), Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). Core #4 (layout.tsx) neu gepatcht. **DEV + PROD deployed (2026-03-22).** ext-Admin-Seiten (Token, Branding, Prompts) komplett auf Deutsch (2026-03-29). Text-Spacing + Kontrast-Fix.
   - 4i: ✅ ext-audit — **Audit-Logging.** Implementiert (2026-03-25). DB-Tabelle `ext_audit_log`, 15 Hooks in 5 ext-Routern, 2 Admin-Endpoints (Events + CSV-Export), DSGVO IP-Anonymisierung (90d). 13 Tests. Feature Flag `EXT_AUDIT_ENABLED`. Alembic `d8a1b2c3e4f5`.
@@ -89,8 +92,19 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**Monitoring-Optimierung Phase 1-6 abgeschlossen (2026-04-16).** Trigger: PG-PROD-Outage (31 Min, 2026-04-15) nicht durch Monitoring erkannt. Fixes: Alert Fatigue eliminiert (repeat_interval 4h/24h, info→null, Noise-Alerts silenced), `PostgresDown` Alert (`pg_up == 0`, 1 Min), Deep-Health-Endpoint `/ext/health/deep` (DB+Redis+OpenSearch), Readiness-Probe umgestellt, Blackbox-Probe auf Deep-Health, externer GitHub Actions Health-Monitor (cron 5 Min), cert-manager-cainjector NetworkPolicy gefixt (35d CrashLoop behoben). DEV verifiziert. Teams-Channel `voeb-chatbot-prod-alerts` ist still — jede neue Nachricht = echtes Problem.
-**Offen:** PROD-Deploy Sync #5 + Monitoring-Code (naechstes Maintenance-Window — Alembic-Chain-Recovery, seed_default_groups Check, Deep-Health + Readiness live schalten, Blackbox + Helm monitoring upgrade). M1-Abnahmeprotokoll wartet auf VÖB-Termin.
+**PROD-Rollout Sync #5 + Monitoring-Optimierung abgeschlossen (2026-04-17).** Kompletter 6-Schritte-Rollout sauber durch in ~15 Min: OOM-Fix (kubectl patch), CI/CD Deploy (Helm Rev 18, Chart 0.4.44), Alembic-Chain-Recovery (11 Migrationen), API-Server-Restart, Helm monitoring Rev 6 (Alert Fatigue Fix + PostgresDown offiziell live), Smoke-Test (alle Checks grün: `/api/health`, `/api/ext/health/deep`, `/api/enterprise-settings`, 26 Prometheus-Targets UP, `pg_up=1`). Browser-Test abgenommen.
+
+**Upstream-Drift (Stand 2026-04-18):** Bereits **140 neue Commits** auf `upstream/main` seit Sync #5 (2026-04-14). Kein kritischer Security-Fix dabei — Opal-UI-Refactors, Connector-Bugfixes, Dep-Bumps (authlib, mako), Multi-Model-Chat-Erweiterungen. Sync #6 in ~1-2 Wochen sinnvoll, kein Sofort-Handlungsbedarf.
+
+**Upstream-Metrics-Stack:** Seit Sync #5 laeuft ein Upstream-eigener Metrics-Stack (`prometheus-fastapi-instrumentator` + `metrics_server.py`) auf den 7 Celery-Worker-Pods (Ports 9092-9096). Default aktiv, aber ServiceMonitors off → kein Konflikt mit Custom-Monitoring. Evaluation "Custom-Setup reduzieren?" → aufgeschoben (kein Business-Impact). Dokumentiert in `docs/referenz/monitoring-konzept.md` Abschnitt 5b.
+
+**Offen:**
+- **Kostenoptimierung:** Node-Downgrade g1a.8d → g1a.4d (~283 EUR/Mo Ersparnis, separates Terraform-Maintenance-Window)
+- **2 neue Default-UserGroups** ("Admin" id 54, "Basic" id 55) — optional löschen falls VÖB nicht will
+- **Rate-Limit-Retry Feature** aus Stash fertigstellen
+- **Monitoring Phase 7-11** (optional): Incident-Playbook, Post-Incident-Review, Chaos-Test, On-Call-Konzept
+- **Upstream-Sync #6** in 1-2 Wochen (derzeit 140 Commits Drift, kein Sofort-Handlungsbedarf)
+- **M1-Abnahmeprotokoll** — wartet auf VÖB-Termin
 
 ## Blocker
 | Blocker | Wartet auf | Impact |
