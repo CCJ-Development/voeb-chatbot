@@ -20,7 +20,7 @@ git diff main..upstream/main --stat | tail -5               # Geaenderte Dateien
 
 ### 2. Hook-Dateien auf Konflikte pruefen
 
-Unsere 14 gepatchten Core-Dateien (Stand nach Sync #5, nur #5 `header/` ist offen). MUESSEN nach jedem Sync intakt sein:
+Unsere 15 gepatchten Core-Dateien (Stand 2026-04-20, nur #5 `header/` ist offen). MUESSEN nach jedem Sync intakt sein:
 
 ```bash
 for FILE in \
@@ -37,7 +37,8 @@ for FILE in \
   "web/src/components/auth/AuthFlowContainer.tsx" \
   "web/src/sections/sidebar/AdminSidebar.tsx" \
   "web/src/refresh-components/popovers/ActionsPopover/index.tsx" \
-  "web/src/hooks/useSettings.ts"; do
+  "web/src/hooks/useSettings.ts" \
+  "web/src/providers/DynamicMetadata.tsx"; do
   CHANGES=$(git diff main..upstream/main -- "$FILE" | wc -l)
   if [ "$CHANGES" -gt 0 ]; then
     echo "KONFLIKT-RISIKO: $FILE ($CHANGES diff-Zeilen)"

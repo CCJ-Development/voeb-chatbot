@@ -1,8 +1,8 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-04-17
-**Version**: 0.9
+**Letzte Aktualisierung**: 2026-04-20
+**Version**: 0.9.1
 
 ---
 
@@ -777,7 +777,7 @@ Für dringende Fixes auf einer bereits released Version:
    git merge upstream/main
 
 4. Resolve Conflicts
-   - Konflikte NUR in 10 Core-Dateien erwartet
+   - Konflikte NUR in 16 Core-Dateien erwartet
    - Upstream übernehmen, dann Patches aus _core_originals/ neu anwenden
    - Andere Konflikte = Fork-Regeln wurden verletzt
 
@@ -791,7 +791,7 @@ Für dringende Fixes auf einer bereits released Version:
    - Required Reviewers Approval
 ```
 
-**Warum "Extend, don't modify" funktioniert**: Max. 10 vorhersagbare Merge-Konflikte (10 Core-Dateien). Der `ext/`-Code existiert nicht in Upstream und erzeugt keine Konflikte.
+**Warum "Extend, don't modify" funktioniert**: Max. 16 vorhersagbare Merge-Konflikte (16 Core-Dateien). Der `ext/`-Code existiert nicht in Upstream und erzeugt keine Konflikte.
 
 ### Extension Updates
 
@@ -1061,13 +1061,14 @@ Runbooks werden in `docs/runbooks/` gepflegt. Jedes Runbook ist ein eigenständi
 ---
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-04-17
-**Version**: 0.9
+**Letzte Aktualisierung**: 2026-04-20
+**Version**: 0.9.1
 
 ### Versionshistorie
 
 | Version | Datum | Autor | Aenderungen |
 |---------|-------|-------|-------------|
+| 0.9.1 | 2026-04-20 | COFFEESTUDIOS | **Core #16 DynamicMetadata.tsx neu eingerichtet.** Fix fuer Browser-Tab-Titel-Reset nach Next.js Soft-Navigation: `usePathname()` + `useSearchParams()` als zusaetzliche Deps im title-`useEffect`. Deckt sowohl Pathname-Change als auch Query-Only-Transitions ab (Chat-Wechsel laeuft per Next.js-Redirect ueber `/chat?xxx` → `/app?xxx`, pathname bleibt `/app`). ~9 Zeilen Patch. Pre-commit Whitelist und `core-dateien.md` auf 16 Eintraege erweitert. Scope: ext-branding. Commits: `ac8946d` + `53bea2c`. |
 | 0.9 | 2026-04-17 | COFFEESTUDIOS | **Sync #5 + Monitoring-Optimierung + OOM-Fix PROD deployed.** Chart 0.4.36 → **0.4.44**, Helm Rev 4 → **Rev 18**. PROD API-Server 2Gi → **4Gi** Memory, docfetching + docprocessing 4Gi → 2Gi. Alembic-Chain-Recovery: 11 Upstream-Migrationen via 3-Phasen-Rotation (`689433b0d8de` → `503883791c39` → `d8a1b2c3e4f5`). Neue Default-UserGroups "Admin"/"Basic" via Upstream `seed_default_groups` (VÖB-Gruppen intakt). Monitoring Helm Rev 6 (`--force-replace --server-side=false`): Alert Fatigue Fix, `PostgresDown` Alert, Deep-Health-Endpoint `/api/ext/health/deep` als Readiness-Probe + Blackbox, externer GitHub Actions Health-Monitor. 15 Core-Dateien (Core #13 entfernt, Core #15 neu). `backend/ext/auth.py` NEU (Wrapper fuer `current_admin_user`, Upstream PR #9930). Runbook `docs/runbooks/prod-deploy.md`. |
 | 0.8 | 2026-03-22 | COFFEESTUDIOS | PROD 20 Pods (OpenSearch deployed + Retrieval aktiv), Vespa PROD 100m/512Mi Req / 4Gi Limit, DEV HTTPS LIVE (DNS aktualisiert), ext-i18n deployed (DEV + PROD), Chart 0.4.36 / Image df049fa / Helm Rev 4 |
 | 0.7.1 | 2026-03-19 | COFFEESTUDIOS | TEST dauerhaft heruntergefahren (0 Pods), Scale-to-Zero CronJobs entfernt |

@@ -149,7 +149,7 @@ Onyx FOSS (MIT, READ-ONLY)          Unsere Extensions (MIT, eigener Code)
 └─────────────────────────┘         └──────────────────────────┘
 ```
 
-- **15 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except). Stand 2026-04-17: 14 gepatcht, nur #5 `header/` offen.
+- **16 Core-Dateien** duerfen minimal geaendert werden (Hook-Pattern mit try/except). Stand 2026-04-20: 15 gepatcht, nur #5 `header/` offen.
 - **Zusaetzliche ext/-Datei:** `backend/ext/auth.py` (neu seit Sync #5, 2026-04-14) — Wrapper fuer `current_admin_user` nach Upstream PR #9930. Traegt `_is_require_permission = True` Sentinel, damit `check_router_auth` beim Boot nicht crasht.
 - **Patches** werden als `.original` + `.patch` in `backend/ext/_core_originals/` gesichert
 - **Upstream-Merges** sind konfliktfrei fuer ext_-Code (Ordner existiert nicht in Upstream)
