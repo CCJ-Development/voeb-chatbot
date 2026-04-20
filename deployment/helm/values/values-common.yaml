@@ -130,16 +130,27 @@ nginx:
         # Für PROD auf 31536000 (1 Jahr) erhöhen.
         add_header Strict-Transport-Security "max-age=3600; includeSubDomains" always;
         # SEC-09: Request-Rate-Limiting (DoS + LLM-Kosten-Schutz).
-        # 10 r/s pro IP = 600 r/min. Konservativ fuer 150-User Chatbot.
+        # Gilt NUR fuer /api/* — Seiten-Navigationen (Next.js App Router RSC-Prefetch
+        # auf /app?chatId=...) und statische Assets bleiben unlimited, weil der Browser
+        # beim Sidebar-Render der Chat-History 20+ parallele Prefetches absetzt und den
+        # Burst sonst komplett verbraucht → 429-Spam auf harmlosen Seiten-Aufrufen.
+        # 10 r/s pro IP = 600 r/min auf den API-Pfaden. Konservativ fuer 150-User Chatbot.
         # Normaler Chat: ~2-5 r/s bei Page-Load-Burst, ~0.5 r/s bei Chat.
         # Zone: 10 MB Shared Memory (~160.000 IPs trackbar).
-        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
+        # NGINX-Verhalten: limit_req_zone ignoriert leere Keys → nur API-Requests werden
+        # gezaehlt, Seiten-Requests passieren ohne Zaehlung (NGINX-Docs limit_req_module).
+        map $uri $ratelimit_key {
+          default      "";
+          "~^/api/"    $binary_remote_addr;
+        }
+        limit_req_zone $ratelimit_key zone=ratelimit:10m rate=10r/s;
         # Onyx custom config
         include /etc/nginx/custom-snippets/upstreams.conf;
         include /etc/nginx/custom-snippets/server.conf;
       # SEC-09: Rate-Limiting auf Server-Ebene anwenden.
       # burst=50: Erlaubt Bursts (Page-Load ~20 parallele API-Calls). nodelay: Burst-Requests
       # werden sofort bedient (kein Queuing). Ueber 10r/s + 50 burst = HTTP 429.
+      # Wirkt durch $ratelimit_key (map oben) nur auf /api/* — Seiten sind ausgenommen.
       server-snippet: |
         limit_req zone=ratelimit burst=50 nodelay;
         limit_req_status 429;

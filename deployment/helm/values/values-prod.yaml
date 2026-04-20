@@ -246,11 +246,18 @@ nginx:
         # SEC-09: Request-Rate-Limiting (DoS + LLM-Kosten-Schutz).
         # Identisch mit values-common.yaml — muss hier wiederholt werden weil
         # Helm Deep Merge nginx.controller.config komplett ersetzt.
-        limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s;
+        # Scope: NUR /api/*. Seiten-Navigationen (Next.js RSC-Prefetch) bleiben unlimited,
+        # siehe ausfuehrliche Begruendung in values-common.yaml.
+        map $uri $ratelimit_key {
+          default      "";
+          "~^/api/"    $binary_remote_addr;
+        }
+        limit_req_zone $ratelimit_key zone=ratelimit:10m rate=10r/s;
         # Onyx custom config
         include /etc/nginx/custom-snippets/upstreams.conf;
         include /etc/nginx/custom-snippets/server.conf;
       # SEC-09: Rate-Limiting auf Server-Ebene anwenden.
+      # Wirkt durch $ratelimit_key (map oben) nur auf /api/*.
       server-snippet: |
         limit_req zone=ratelimit burst=50 nodelay;
         limit_req_status 429;

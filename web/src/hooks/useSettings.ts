@@ -96,7 +96,12 @@ export function useEnterpriseSettings(eeEnabledRuntime: boolean): {
 export function useCustomAnalyticsScript(
   eeEnabledRuntime: boolean
 ): string | null {
-  const shouldFetch = EE_ENABLED || eeEnabledRuntime || EXT_BRANDING_ENABLED;
+  // VOeB nutzt kein Custom Analytics Script. Der Endpoint lebt ausschliesslich
+  // in backend/ee/ (fuer uns leer, keine EE-Lizenz) → 404 in FOSS. SWR retryt
+  // bei 404 per Default → Endlos-Loop in der Konsole. Gate bleibt deshalb auf
+  // Upstream-Original (nur EE-Flags), damit der Call gar nicht erst abgesetzt
+  // wird. Bei Bedarf koennte ein ext-analytics-Endpoint den Pfad spaeter bedienen.
+  const shouldFetch = EE_ENABLED || eeEnabledRuntime;
 
   const { data } = useSWR<string>(
     shouldFetch ? SWR_KEYS.customAnalyticsScript : null,

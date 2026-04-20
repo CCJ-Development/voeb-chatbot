@@ -16,6 +16,7 @@ paths:
 **Status (Stand 2026-04-20):** 15 von 16 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
 
 **Historie:**
+- 2026-04-20: Core #15 `useSettings.ts` **reduziert** — `useCustomAnalyticsScript`-Gate wieder entfernt (nur `useEnterpriseSettings` bleibt erweitert). Ursache: Endpoint `/api/enterprise-settings/custom-analytics-script` lebt nur in `backend/ee/` → 404 in FOSS → SWR-Retry-Loop spammt Browser-Konsole.
 - 2026-04-20: Core #16 `DynamicMetadata.tsx` **neu** — `usePathname` dep fuer `document.title`-Resync nach Soft-Navigation. Upstream-Bug: `useEffect`-Dep-Array ohne `pathname` laesst Titel auf "Onyx" stehen wenn Next.js App Router bei Nav den statischen `metadata.title` neu injiziert.
 - 2026-04-14 (Sync #5): Core #13 `CustomModal.tsx` **entfernt** — Upstream-Bug (onyx-dot-app/onyx#9592) gefixt via PRs #10009 ff.
 - 2026-04-14 (Sync #5): Core #15 `useSettings.ts` **neu** — Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag, Gate fuer ext-branding ohne EE-Lizenz.
@@ -37,7 +38,7 @@ paths:
 | 12 | `backend/onyx/db/document_set.py` | Gepatcht | 2026-03-23 (ext-rbac) |
 | 13 | `backend/onyx/natural_language_processing/search_nlp_models.py` | Gepatcht | 2026-03-24 (OpenSearch lowercase) |
 | 14 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` | Gepatcht | 2026-03-26 |
-| 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-14 (Sync #5) |
+| 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-20 (Analytics-404-Fix) |
 | 16 | `web/src/providers/DynamicMetadata.tsx` | Gepatcht | 2026-04-20 (ext-branding) |
 
 ## 1. `backend/onyx/main.py` — Router registrieren
@@ -125,11 +126,12 @@ paths:
 - HINWEIS: `useUser()` mit `isAdmin`/`isCurator` ist bereits in der Komponente vorhanden (Zeile 306). Kein neuer Import noetig.
 
 ## 15. `web/src/hooks/useSettings.ts` — useEnterpriseSettings ohne EE-Lizenz-Flag aktivieren
-- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED` als zusaetzlichen Gate in `shouldFetch` fuer `useEnterpriseSettings()` und `useCustomAnalyticsScript()`. Konstante am Datei-Anfang definieren.
-- VERBOTEN: SWR-Config, API-Keys, DEFAULT_SETTINGS, Return-Shape veraendern
-- MERGE: 2 Stellen: Import+Const (~8 Zeilen nach EE_ENABLED import), `shouldFetch =` (2x, nach `EE_ENABLED || eeEnabledRuntime` ein `|| EXT_BRANDING_ENABLED` anfuegen). Niedriges Merge-Risiko (Upstream hat diese Zeile in PR #9529 stabilisiert, weitere Aenderungen unwahrscheinlich).
-- STATUS: ✅ Gepatcht (2026-04-14, Sync #5). Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag. Unser ext-branding braucht den API-Call aber ohne EE-Lizenz.
+- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED` als zusaetzlichen Gate in `shouldFetch` **NUR fuer `useEnterpriseSettings()`**. Konstante am Datei-Anfang definieren. `useCustomAnalyticsScript()` bleibt auf Upstream-Original (nur EE-Flags).
+- VERBOTEN: SWR-Config, API-Keys, DEFAULT_SETTINGS, Return-Shape veraendern. Insbesondere KEINEN `EXT_BRANDING_ENABLED`-Gate in `useCustomAnalyticsScript()` einfuegen — der Endpoint existiert in FOSS nicht.
+- MERGE: 2 Stellen: Import+Const (~8 Zeilen nach EE_ENABLED import), `shouldFetch =` (1x in `useEnterpriseSettings`, nach `EE_ENABLED || eeEnabledRuntime` ein `|| EXT_BRANDING_ENABLED` anfuegen). Niedriges Merge-Risiko (Upstream hat diese Zeile in PR #9529 stabilisiert, weitere Aenderungen unwahrscheinlich).
+- STATUS: ✅ Gepatcht (2026-04-14, Sync #5). Auf einen Gate reduziert 2026-04-20 (siehe HINWEIS unten).
 - HINWEIS: **Entkoppelt von EE-Lizenz.** Wir setzen weder `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` noch `LICENSE_ENFORCEMENT_ENABLED` noch `NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES`. Der neue Flag `NEXT_PUBLIC_EXT_BRANDING_ENABLED` ist semantisch klar "VÖB-Branding-Hook aktivieren" und aktiviert keine EE-Features. Build-Arg muss in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` gesetzt sein.
+- HINWEIS 2 (2026-04-20): Der urspruengliche Sync-#5-Patch gated AUCH `useCustomAnalyticsScript()` hinter `EXT_BRANDING_ENABLED`. Folge: SWR rief `/api/enterprise-settings/custom-analytics-script` in PROD auf, der Endpoint lebt aber nur in `backend/ee/` (EE-only) → 404 → SWR-Default `shouldRetryOnError: true` + Exponential-Backoff = Endlos-Loop in der Browser-Konsole (Hunderte `setTimeout`-Retries pro Minute). Fix: Gate auf Upstream-Original zurueck. VOeB nutzt kein Custom Analytics Script; bei Bedarf koennte spaeter ein `ext-analytics`-Endpoint den Pfad bedienen.
 
 ## 16. `web/src/providers/DynamicMetadata.tsx` — document.title Re-Sync nach Soft-Navigation
 - ERLAUBT: `usePathname()` + `useSearchParams()` aus `next/navigation` importieren + `pathname` + `searchParams` zur Dep-Liste des title-`useEffect` hinzufuegen. 3-Zeilen-Kommentar zur Begruendung ueber den Hook-Aufrufen.

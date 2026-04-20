@@ -92,7 +92,7 @@ Die Sicherheitsarchitektur folgt den klassischen Schutzzielen:
 | Kubernetes-Orchestrierung | IMPLEMENTIERT | SKE Cluster mit automatischem Pod-Restart |
 | Datenbank-Backups | IMPLEMENTIERT | PG Flex: taegliches Backup (DEV 02:00 UTC, TEST 03:00 UTC, PROD 01:00 UTC, StackIT Managed). PROD: PG Flex 4.8 HA (3-Node), automatische Backups + PITR sekundengenau. StackIT Service Certificate V1.1: RPO/RTO 4h/4h, 30d Retention. Restore per Self-Service Clone. Details: `docs/backup-recovery-konzept.md` |
 | Monitoring und Alerting | IMPLEMENTIERT | kube-prometheus-stack deployed auf DEV/TEST (2026-03-10) und PROD (2026-03-12): Prometheus, Grafana, AlertManager, kube-state-metrics, node-exporter, PG Exporter, Redis Exporter. PROD: 9 Pods, 3 Targets UP, separater Teams PROD-Kanal mit `[PROD]`-Prefix, `send_resolved: true`. Konzept: `docs/referenz/monitoring-konzept.md` |
-| DDoS-Mitigation | IMPLEMENTIERT | Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 (SEC-09, 2026-03-16) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth). Keine WAF (internes Tool, 150 User). |
+| DDoS-Mitigation | IMPLEMENTIERT | Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 auf `/api/*` (SEC-09, 2026-03-16, auf `/api/*` gescopt 2026-04-20) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth). Keine WAF (internes Tool, 150 User). |
 | Hochverfügbarkeit | IMPLEMENTIERT (PROD) | PROD: 2x API HA, 2x Web HA, PG Flex 4.8 HA (3-Node). DEV/TEST: Single-Replica |
 
 ---
@@ -655,12 +655,13 @@ check_router_auth(application)
 - **Bekannte Abweichung:** Onyx Helm Chart Template (`nginx-conf.yaml`) enthaelt `client_max_body_size 5G` fuer den internen NGINX-Proxy (Port 1024). Dieser Port ist NICHT per LoadBalancer exponiert — externer Traffic geht ueber den Ingress Controller (20 MB Limit). Chart-Template ist READ-ONLY (Upstream). Fix bei naechstem Upstream-Sync evaluieren.
 - **Backend Defense-in-Depth (2026-03-16):** `MAX_FILE_SIZE_BYTES: "20971520"` (20 MB) in `values-common.yaml`. Onyx Default war 2 GB — greift bei Document-Indexing (`run_docfetching.py`). Stellt sicher, dass auch Pod-zu-Pod-Traffic (der den Ingress umgeht) das 20 MB Limit einhält.
 
-**Request-Rate-Limiting (SEC-09, implementiert 2026-03-16):**
-- **10 Requests/Sekunde** pro Client-IP (sustained rate), **Burst 50** (nodelay)
-- Konfiguriert via NGINX Ingress Controller ConfigMap: `limit_req_zone` in `http-snippet` + `limit_req` in `server-snippet`
-- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD) und ALLE Ingress-gerouteten Requests
-- HTTP 429 (Too Many Requests) bei Ueberschreitung
-- In `values-common.yaml` UND `values-prod.yaml` (Helm Deep Merge: PROD hat eigenes `nginx.controller.config`)
+**Request-Rate-Limiting (SEC-09, implementiert 2026-03-16, auf `/api/*` gescopt 2026-04-20):**
+- **10 Requests/Sekunde** pro Client-IP (sustained rate), **Burst 50** (nodelay) — **nur auf `/api/*` wirksam**
+- Konfiguriert via NGINX Ingress Controller ConfigMap: `map $uri $ratelimit_key { default ""; "~^/api/" $binary_remote_addr; }` + `limit_req_zone` auf den gemappten Key in `http-snippet` + `limit_req` in `server-snippet`
+- **Scope-Aenderung 2026-04-20:** Urspruenglich global auf Server-Ebene (alle Requests). Ab 2026-04-20 per `map`-Block nur noch auf API-Pfade (`/api/*`). Grund: Next.js App Router (Frontend) laedt beim Chat-Sidebar-Render bis zu 20+ Chat-Links parallel vor (RSC-Prefetch auf `/app?chatId=xxx&_rsc=...`). Diese Seiten-Requests haben keinen LLM-Kosten-Impact, fuellten aber den Burst und loesten 429-Salven auf harmlosen Navigationen aus. NGINX-Verhalten: Leere Keys (`default ""`) werden von `limit_req_zone` nicht gezaehlt → Seiten-Requests passieren ungehindert, der DoS-/LLM-Kosten-Schutz bleibt fuer API-Pfade voll erhalten.
+- Gilt fuer ALLE Umgebungen (DEV, TEST, PROD)
+- HTTP 429 (Too Many Requests) bei Ueberschreitung (nur auf API-Pfaden)
+- In `values-common.yaml` UND `values-prod.yaml` synchron (Helm Deep Merge: PROD hat eigenes `nginx.controller.config`, muss daher in beiden Dateien stehen)
 - **Client-IP Erhaltung:** `externalTrafficPolicy: Local` auf dem NGINX Service (alle Environments). Ohne dieses Setting wuerde `$binary_remote_addr` die Node-IP statt der Client-IP zeigen — alle User wuerden ein globales Rate-Limit teilen.
 - LLM-Backend (StackIT AI Model Serving) hat zusaetzlich eigene Rate Limits:
   - TPM: 200.000 Tokens/Minute (Output-Tokens 5x gewichtet)
@@ -980,7 +981,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = Ausnahme, keine produktiven Daten) |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
-| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **IMPLEMENTIERT** (2026-03-16) — Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 (NGINX `limit_req_zone` + `limit_req`) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth) |
+| SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **IMPLEMENTIERT** (2026-03-16, auf `/api/*` gescopt 2026-04-20) — Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 NUR auf `/api/*` (NGINX `map $uri $ratelimit_key` + `limit_req_zone` + `limit_req`) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth). Seiten-Routen und statische Assets nicht limitiert (verhindert 429 bei Next.js RSC-Prefetch). |
 | SEC-10 | Cluster-API ACL auf Egress-IP einschränken | P3 | **OFFEN** — `cluster_acl` in Terraform von `0.0.0.0/0` einschränken (empfohlen, nicht kritisch) |
 
 ### SEC-01: PostgreSQL ACL (ERLEDIGT)
@@ -1089,26 +1090,40 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **Finding**: Kein Rate Limiting auf Anwendungsebene. LLM-Backend hat eigene Limits (TPM: 200.000, RPM: 30-600), aber kein Schutz vor missbräuchlicher Nutzung auf unserer Ebene.
 
-**Implementierung (2026-03-16)**:
+**Implementierung (2026-03-16, auf `/api/*` gescopt 2026-04-20)**:
 
 Request-Rate-Limiting via NGINX Ingress Controller ConfigMap (`http-snippet` + `server-snippet`):
-- **Zone:** `limit_req_zone $binary_remote_addr zone=ratelimit:10m rate=10r/s` — 10 Requests/Sekunde pro Client-IP, 10 MB Shared Memory (~160.000 IPs)
-- **Enforcement:** `limit_req zone=ratelimit burst=50 nodelay` — Burst von 50 Requests erlaubt (deckt Page-Load mit ~20 parallelen API-Calls ab), keine Verzoegerung innerhalb des Bursts
+- **Pfad-Scope (map):**
+  ```
+  map $uri $ratelimit_key {
+    default      "";
+    "~^/api/"    $binary_remote_addr;
+  }
+  ```
+  Nur `/api/*` wird mit der Client-IP als Key gezaehlt. Fuer alle anderen Pfade bleibt der Key leer — NGINX ignoriert leere Keys per Definition (`ngx_http_limit_req_module`), d.h. Seiten-Navigationen und statische Assets passieren ungehindert.
+- **Zone:** `limit_req_zone $ratelimit_key zone=ratelimit:10m rate=10r/s` — 10 Requests/Sekunde pro Client-IP auf API-Pfaden, 10 MB Shared Memory (~160.000 IPs)
+- **Enforcement:** `limit_req zone=ratelimit burst=50 nodelay` — Burst von 50 Requests erlaubt (deckt API-Bursts bei Page-Load ab), keine Verzoegerung innerhalb des Bursts
 - **Status Code:** `limit_req_status 429` (Too Many Requests)
-- **Scope:** Global fuer ALLE Ingress-gerouteten Requests (API + Webserver)
+- **Scope:** NUR `/api/*`. Seiten-Routen (`/`, `/app?chatId=...`, `/admin/...`), statische Assets (`/_next/static/*`) und sonstige Ingress-gerouteten Pfade sind NICHT limitiert
 - **Konfiguration:** `values-common.yaml` (DEV/TEST) + `values-prod.yaml` (PROD, wegen Helm Deep Merge Duplikation)
 - **Client-IP Erhaltung:** `externalTrafficPolicy: Local` auf dem NGINX Ingress Controller Service (alle Environments). Ohne dieses Setting wuerde Kubernetes SNAT anwenden und `$binary_remote_addr` zeigt die interne Node-IP statt der echten Client-IP — alle User wuerden ein einziges Rate-Limit teilen. `Local` leitet Traffic nur an Nodes mit NGINX-Pod weiter und erhaelt die Quell-IP. Bei 1 NGINX-Controller-Pod aendert sich am Routing nichts.
+
+**Scope-Begruendung (2026-04-20):**
+- Urspruengliche Konfiguration 2026-03-16: Rate-Limit auf Server-Ebene, alle Requests gezaehlt.
+- Problem: Next.js App Router setzt beim Sidebar-Render der Chat-History RSC-Prefetches auf alle sichtbaren Chat-Links (`/app?chatId=xxx&_rsc=seere`). Bei Nutzern mit vielen Chats (>20) entsteht ein paralleler Burst von 20+ Requests innerhalb weniger hundert Millisekunden. Das fuellte den Burst-Bucket komplett, Folge-Navigationen wurden mit HTTP 429 abgewiesen — obwohl diese Seiten-Requests kein LLM ansprechen und keinen DoS-/Kosten-Impact haben.
+- Loesung: Rate-Limit nur dort anwenden wo der Schutzbedarf besteht — auf `/api/*` (LLM-Calls, Admin-APIs, Upload). Seiten-Rendering und statische Assets passieren frei.
+- Sicherheits-Netto: Unveraendert. Wer einen DoS fahren will, muss trotzdem ueber `/api/*` gehen; dort gelten weiterhin 10 r/s + 50 burst pro Client-IP.
 
 **Werte-Begruendung:**
 - 150 User, internes Tool (kein oeffentliches API)
 - Normaler Chat-Betrieb: ~0.5 r/s (Nachricht senden + Streaming-Response)
-- Page-Load-Burst: ~20 parallele API-Calls (Settings, Personas, History, etc.)
-- 10 r/s sustained + 50 burst = ein Nutzer muesste >600 Requests/Minute senden um blockiert zu werden
+- Page-Load-Burst auf API-Ebene: ~20 parallele API-Calls (Settings, Personas, History, etc.) — bleibt unter Burst=50
+- 10 r/s sustained + 50 burst = ein Nutzer muesste >600 Requests/Minute an die API senden um blockiert zu werden
 - Konservativ gewaehlt — kann bei Bedarf verschaerft werden
 
 **Defense-in-Depth Schichten (SEC-09 + XREF-007):**
 1. NGINX Ingress: `proxy-body-size: 20m` (Request-Groesse)
-2. NGINX Ingress: `limit_req 10r/s burst=50` (Request-Rate)
+2. NGINX Ingress: `limit_req 10r/s burst=50` auf `/api/*` (Request-Rate)
 3. Backend: `MAX_FILE_SIZE_BYTES: 20971520` (Document-Indexing-Limit)
 4. ext-token: Per-User Token-Quotas + Hard Stops (LLM-Kosten)
 5. StackIT AI Model Serving: TPM 200.000 + RPM 30-600 (Provider-Limit)
