@@ -6,10 +6,10 @@
 4. **Abnahmefähigkeit.** Alles durch VÖB abnehmbar. Protokolle pro Meilenstein (M1-M6).
 5. **Regulatorik.** DSGVO, EU AI Act, BSI-Grundschutz (BAIT als freiwillige Orientierung — VÖB ist kein KWG-Institut). Sicherheits-/Betriebskonzept sind Pflicht.
 6. **Stabilität vor Speed.** Saubere Architektur, Upstream-Sync-Fähigkeit, minimale Core-Änderungen.
-7. **Extend, don't modify.** ext_-Prefix, nur 10 Core-Dateien, Feature Flags für alles.
+7. **Extend, don't modify.** ext_-Prefix, nur 16 Core-Dateien, Feature Flags für alles.
 
 ## VERBOTEN
-- ❌ Onyx-Dateien verändern (außer 10 Core-Dateien auf erlaubte Weise)
+- ❌ Onyx-Dateien verändern (außer 16 Core-Dateien auf erlaubte Weise)
 - ❌ Onyx-DB-Tabellen mit ALTER TABLE ändern
 - ❌ Onyx-Komponenten/CSS/Tests direkt editieren
 - ❌ Code ohne Modulspezifikation + Freigabe

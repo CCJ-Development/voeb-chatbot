@@ -82,7 +82,7 @@ git merge upstream/main --no-commit --no-ff
 **Erwartete Konflikte (harmlos):**
 - `AGENTS.md`, `.claude/skills` → Unsere Version behalten (`git checkout --ours`)
 - `Chart.yaml`, `Chart.lock` → Upstream übernehmen (`git checkout --theirs`)
-- 15 Core-Dateien (ab Sync #5, vorher 15 — CORE #13 CustomModal.tsx entfernt da Upstream-Fix) → Upstream übernehmen, Patches neu anwenden (siehe unten)
+- 16 Core-Dateien (Stand 2026-04-20: Sync #5 ergaenzte Core #15 useSettings.ts, 2026-04-20 kam Core #16 DynamicMetadata.tsx hinzu) → Upstream übernehmen, Patches neu anwenden (siehe unten)
 - `backend/Dockerfile` → Upstream übernehmen, COPY ext/ neu einfügen (siehe "Zusätzliche Merge-Stellen")
 - `deployment/docker_compose/env.template` → Manuell mergen (wir appenden am Ende, Upstream ändert Mitte)
 
@@ -92,9 +92,9 @@ git merge upstream/main --no-commit --no-ff
 
 ### 5. Core-Datei-Patches aktualisieren
 
-Fuer JEDE gepatchte Core-Datei (aktuell 14 von 15 gepatcht — nur #5 `header/` offen):
+Fuer JEDE gepatchte Core-Datei (aktuell 15 von 16 gepatcht — nur #5 `header/` offen):
 - Backend: `main.py`, `multi_llm.py`, `access.py`, `prompt_utils.py`, `persona.py`, `document_set.py`, `search_nlp_models.py`
-- Frontend: `layout.tsx`, `constants.ts`, `LoginText.tsx`, `AuthFlowContainer.tsx`, `AdminSidebar.tsx`, `ActionsPopover/index.tsx`, `useSettings.ts`
+- Frontend: `layout.tsx`, `constants.ts`, `LoginText.tsx`, `AuthFlowContainer.tsx`, `AdminSidebar.tsx`, `ActionsPopover/index.tsx`, `useSettings.ts`, `DynamicMetadata.tsx`
 
 ```bash
 # Beispiel Backend-Datei:
@@ -257,7 +257,7 @@ Alle drei Fixes wurden erst beim DEV-Deploy sichtbar und waren nicht im initiale
 
 ## Zusätzliche Merge-Stellen (neben Core-Dateien)
 
-Neben den 15 Core-Dateien (Stand nach Sync #5: 14 gepatcht, nur #5 header/ offen — Core #13 CustomModal.tsx entfernt, Core #15 useSettings.ts NEU) ändern wir einige weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen.
+Neben den 16 Core-Dateien (Stand 2026-04-20: 15 gepatcht, nur #5 header/ offen — Core #15 useSettings.ts (Sync #5, 2026-04-14) + Core #16 DynamicMetadata.tsx (2026-04-20) sind die jüngsten Ergaenzungen) ändern wir einige weitere Upstream-Dateien. Diese sind KEINE Core-Dateien, aber bekannte Merge-Stellen.
 
 Zusätzlich gibt es **eine neue ext/-Datei seit Sync #5**, die bei jedem Sync evaluiert werden muss:
 
@@ -345,6 +345,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `backend/onyx/natural_language_processing/search_nlp_models.py` (CORE #13) | `.lower()` | 1 | Niedrig |
 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #14) | Early-Return | 1 | Niedrig |
 | `web/src/hooks/useSettings.ts` (CORE #15) | shouldFetch + EXT_BRANDING_ENABLED | ~8 | Niedrig |
+| `web/src/providers/DynamicMetadata.tsx` (CORE #16) | `usePathname` + `useSearchParams` + Deps | ~9 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.
 **Achtung #13:** TEMPORAER — OpenSearch lowercase Index-Name. Bei Upstream-Sync pruefen ob `clean_model_name()` selbst lowercase macht. Falls ja: Patch entfernen.

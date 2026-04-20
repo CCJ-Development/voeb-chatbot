@@ -132,10 +132,10 @@ paths:
 - HINWEIS: **Entkoppelt von EE-Lizenz.** Wir setzen weder `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` noch `LICENSE_ENFORCEMENT_ENABLED` noch `NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES`. Der neue Flag `NEXT_PUBLIC_EXT_BRANDING_ENABLED` ist semantisch klar "VÖB-Branding-Hook aktivieren" und aktiviert keine EE-Features. Build-Arg muss in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` gesetzt sein.
 
 ## 16. `web/src/providers/DynamicMetadata.tsx` — document.title Re-Sync nach Soft-Navigation
-- ERLAUBT: `usePathname()` aus `next/navigation` importieren + `pathname` zur Dep-Liste des title-`useEffect` hinzufuegen. Ein-Zeilen-Kommentar zur Begruendung ueber der `usePathname`-Zeile.
+- ERLAUBT: `usePathname()` + `useSearchParams()` aus `next/navigation` importieren + `pathname` + `searchParams` zur Dep-Liste des title-`useEffect` hinzufuegen. 3-Zeilen-Kommentar zur Begruendung ueber den Hook-Aufrufen.
 - VERBOTEN: Title-Logik veraendern, Favicon-Logik veraendern, Return-JSX veraendern, `use_custom_logo`-Zweig anfassen.
-- MERGE: 1 Stelle, 3 Zeilen (1 Import + 1 Hook-Call + 1 Dep-Array-Element). Niedriges Merge-Risiko (Datei ist klein und aendert sich upstream selten).
-- STATUS: ✅ Gepatcht (2026-04-20). Ohne `pathname` in den Deps laeuft der `useEffect` bei Soft-Navigation nicht neu, weil der `enterpriseSettings`-SWR-Cache dieselbe Referenz liefert. Next.js App Router injiziert bei jeder Route-Aenderung den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`. Ohne Re-Sync bleibt der Browser-Tab auf "Onyx", obwohl Admin "VOeB-Service Chatbot" konfiguriert hat.
+- MERGE: 1 Stelle, ~9 Zeilen (1 Import + 2 Hook-Calls + 1 Dep-Array-Erweiterung + 3 Kommentarzeilen). Niedriges Merge-Risiko (Datei ist klein und aendert sich upstream selten).
+- STATUS: ✅ Gepatcht (2026-04-20). Ohne `pathname` in den Deps laeuft der `useEffect` bei Route-Wechsel nicht neu (SWR-Referenz von `enterpriseSettings` stabil). Ohne `searchParams` fehlen Query-Only-Transitions: Chat-Wechsel ruft `/chat?chatId=xxx` auf, wird aber per Next.js-Redirect (`next.config.js`) auf `/app?chatId=xxx` umgeleitet → pathname bleibt `/app`, nur `searchParams` aendert sich. Beide Deps zusammen decken jede URL-Aenderung ab. Next.js App Router injiziert bei jeder Navigation den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`; der Effect ueberschreibt das synchron zurueck.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

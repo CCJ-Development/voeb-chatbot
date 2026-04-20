@@ -8,6 +8,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- [ext-branding] **Browser-Tab-Titel bleibt nach Soft-Navigation erhalten (2026-04-20)** — Core #16 `web/src/providers/DynamicMetadata.tsx` neu eingerichtet. `usePathname()` + `useSearchParams()` als zusaetzliche Deps im title-`useEffect`. Ursache: Next.js App Router re-injiziert bei jeder Soft-Navigation den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`. Ohne Deps laeuft der Effect nicht neu, weil die SWR-Referenz von `enterpriseSettings` stabil bleibt. Folge: Admin-Name "VOeB-Service Chatbot" wurde beim Navigieren auf "Onyx" zurueckgesetzt. **Besonderheit Chat-Wechsel:** Klicks in der Chat-Sidebar rufen `/chat?chatId=xxx` auf, das per Next.js-Redirect (`next.config.js` L115) auf `/app?chatId=xxx` umgeleitet wird — pathname bleibt `/app`, nur Query aendert sich. Deshalb sind beide Deps (`pathname` + `searchParams`) noetig: `pathname` fuer Route-Wechsel, `searchParams` fuer Query-Only-Transitions. Patch ist ~9 Zeilen (1 Import + 2 Hook-Calls + 1 Dep-Erweiterung + 3 Kommentarzeilen). Pre-commit Whitelist und `core-dateien.md` auf 16 Eintraege erweitert. Favicon war nicht betroffen (laeuft weiterhin ueber Onyx' DynamicMetadata JSX-Return). Commits: `ac8946d` (pathname) + `53bea2c` (searchParams).
+
 ### Deployed
 - [prod-rollout] **PROD-Rollout Sync #5 + Monitoring-Optimierung (2026-04-17)** — Kompletter 6-Schritte-Rollout in ~15 Min, keine Downtime
   - **Schritt 1 — OOM-Fix:** API-Server 2→4Gi, docfetching/docprocessing 4→2Gi via `kubectl patch`. OOMKilled-Restart-Loop (9+7 Restarts auf Pod-Ebene) gestoppt. Netto 0 GiB zusaetzlich (Peaks docfetching/docprocessing nur ~225 MiB).

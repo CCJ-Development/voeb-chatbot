@@ -804,7 +804,7 @@ Die folgenden Extension-Module (`backend/ext/` + `web/src/ext/`) sind auf DEV un
 | ext-analytics | `EXT_ANALYTICS_ENABLED` | **Nutzungsstatistiken**: Admin-only Plattform-KPIs (Nutzer, Sessions, Dokumente, Feedback). Read-Only SELECT-Queries auf bestehende Onyx-Tabellen, keine Core-Patches. | Deployed (2026-03-26) |
 | ext-i18n | `EXT_I18N_ENABLED` | **Deutsche Lokalisierung**: ~250 uebersetzte Strings der Benutzeroberflaeche. Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer). | Deployed (2026-03-22) |
 
-**Architektur-Prinzip**: Alle Extensions nutzen das Hook-Pattern (try/except ImportError) in max. 10 Core-Dateien. Bei Fehler in einer Extension läuft Onyx unbeeinträchtigt weiter. Details: `.claude/rules/core-dateien.md`
+**Architektur-Prinzip**: Alle Extensions nutzen das Hook-Pattern (try/except ImportError) in max. 16 Core-Dateien. Bei Fehler in einer Extension läuft Onyx unbeeinträchtigt weiter. Details: `.claude/rules/core-dateien.md`
 
 ---
 
