@@ -344,7 +344,7 @@ patch -p0 < backend/ext/_core_originals/AdminSidebar.tsx.patch
 | `.github/workflows/stackit-deploy.yml` | Build-Arg | 1 | Niedrig |
 | `backend/onyx/natural_language_processing/search_nlp_models.py` (CORE #13) | `.lower()` | 1 | Niedrig |
 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` (CORE #14) | Early-Return | 1 | Niedrig |
-| `web/src/hooks/useSettings.ts` (CORE #15) | shouldFetch + EXT_BRANDING_ENABLED | ~8 | Niedrig |
+| `web/src/hooks/useSettings.ts` (CORE #15) | shouldFetch + EXT_BRANDING_ENABLED (nur `useEnterpriseSettings`, **NICHT** `useCustomAnalyticsScript` — sonst 404-Loop, siehe Incident 2026-04-20) | ~8 | Niedrig |
 | `web/src/providers/DynamicMetadata.tsx` (CORE #16) | `usePathname` + `useSearchParams` + Deps | ~9 | Niedrig |
 **Hinweis:** #11 (persona.py) + #12 (document_set.py) gepatcht (ext-rbac, 2026-03-23).
 **Achtung #11:** `persona.py` hat 14 Commits/3 Monate (Sharing-Features aktiv upstream). Bei Upstream-Sync besonders pruefen.

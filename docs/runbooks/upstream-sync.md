@@ -418,13 +418,20 @@ kubectl get deploy -n onyx-dev onyx-dev-web-server -o yaml | grep -i NEXT_PUBLIC
 
 **Bei Sync #5 aufgetreten:** Upstream PR #9529 (SSR→CSR Migration) hat in `web/src/hooks/useSettings.ts` den Check `shouldFetch = EE_ENABLED || eeEnabledRuntime` eingefuehrt.
 
-**Recovery / Fix:** **NIE EE-Flags aktivieren** (Lizenzrechtlich problematisch). Stattdessen Core-Patch #15 in `web/src/hooks/useSettings.ts`:
+**Recovery / Fix:** **NIE EE-Flags aktivieren** (Lizenzrechtlich problematisch). Stattdessen Core-Patch #15 in `web/src/hooks/useSettings.ts` — **NUR** in `useEnterpriseSettings()` den zusaetzlichen Gate setzen, **NICHT** in `useCustomAnalyticsScript()`:
 ```typescript
 const EXT_BRANDING_ENABLED =
   process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
+
+// useEnterpriseSettings (erlaubt):
 const shouldFetch = EE_ENABLED || eeEnabledRuntime || EXT_BRANDING_ENABLED;
+
+// useCustomAnalyticsScript (NICHT anfassen — Upstream-Original bleibt):
+const shouldFetch = EE_ENABLED || eeEnabledRuntime;
 ```
 Plus Build-Arg `NEXT_PUBLIC_EXT_BRANDING_ENABLED=true` in `web/Dockerfile` und `stackit-deploy.yml`.
+
+⚠️ **Warnung (Incident 2026-04-20):** Der urspruengliche Sync-#5-Patch (Commit `89b2f0ec6`) hatte den Gate **auch** in `useCustomAnalyticsScript()`. Folge in PROD: SWR triggerte Fetches auf `/api/enterprise-settings/custom-analytics-script`, der Endpoint lebt aber nur in `backend/ee/` (EE-only) → 404 → SWR-Default `shouldRetryOnError: true` + Exponential-Backoff = Endlos-Loop aus mehreren Hundert 404-Retries pro Minute in der Browser-Konsole. Fix in Commit `4eb99469e` (2026-04-20) durch Entfernen des Gates in `useCustomAnalyticsScript()`. **Bei Sync #6+ ff.: Patch-Datei `backend/ext/_core_originals/useSettings.ts.patch` darf nur 1 `shouldFetch`-Stelle modifizieren — die in `useEnterpriseSettings()`.**
 
 ### Szenario D: Registry-Credentials Drift
 

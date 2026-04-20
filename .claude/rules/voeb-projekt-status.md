@@ -92,6 +92,8 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
+**PROD-Hotfix Konsolen-Fehler (2026-04-20):** Zwei Browser-Konsolen-Probleme in PROD behoben, DEV-Deploy gruen, PROD-Deploy angestossen (GitHub Run `24688836669`, wartet auf Approval). (1) Core #15 `useSettings.ts` reduziert — `useCustomAnalyticsScript()` nicht mehr hinter `EXT_BRANDING_ENABLED` gaten (Endpoint lebt nur in `backend/ee/` → 404 → SWR-Retry-Endlos-Loop). (2) NGINX SEC-09 Rate-Limit auf `/api/*` gescopt via `map $uri $ratelimit_key` — Next.js RSC-Prefetch fuer Chat-Sidebar loeste bei 20+ Chats sonst 429-Salven auf harmlosen Seiten-Navigationen aus. Commit `4eb99469e`. Doku: `core-dateien.md` (Core #15 ERLAUBT/VERBOTEN), `CHANGELOG.md`, `sicherheitskonzept.md` (SEC-09 Scope), `runbooks/upstream-sync.md` (Incident-Hinweis fuer Sync #6+), `fork-management.md` (Merge-Stellen-Tabelle), `memory/feedback_core-15-customanalytics-gate.md`.
+
 **PROD-Rollout Sync #5 + Monitoring-Optimierung abgeschlossen (2026-04-17).** Kompletter 6-Schritte-Rollout sauber durch in ~15 Min: OOM-Fix (kubectl patch), CI/CD Deploy (Helm Rev 18, Chart 0.4.44), Alembic-Chain-Recovery (11 Migrationen), API-Server-Restart, Helm monitoring Rev 6 (Alert Fatigue Fix + PostgresDown offiziell live), Smoke-Test (alle Checks grün: `/api/health`, `/api/ext/health/deep`, `/api/enterprise-settings`, 26 Prometheus-Targets UP, `pg_up=1`). Browser-Test abgenommen.
 
 **Upstream-Drift (Stand 2026-04-18):** Bereits **140 neue Commits** auf `upstream/main` seit Sync #5 (2026-04-14). Kein kritischer Security-Fix dabei — Opal-UI-Refactors, Connector-Bugfixes, Dep-Bumps (authlib, mako), Multi-Model-Chat-Erweiterungen. Sync #6 in ~1-2 Wochen sinnvoll, kein Sofort-Handlungsbedarf.
