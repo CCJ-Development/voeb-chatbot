@@ -17,7 +17,7 @@ if [[ "$CURRENT_BRANCH" == chore/upstream-sync-* ]] || [ -f .git/MERGE_HEAD ]; t
   exit 0
 fi
 
-# Whitelist: 14 Core-Dateien aus .claude/rules/core-dateien.md (Stand: Sync #5, 2026-04-13).
+# Whitelist: 16 Core-Dateien aus .claude/rules/core-dateien.md (Stand: 2026-04-20).
 # Directory-Eintraege enden mit '/' und matchen alle Dateien darunter via Prefix.
 ALLOWED_CORE_FILES=(
   # Backend Core (7)
@@ -29,7 +29,7 @@ ALLOWED_CORE_FILES=(
   "backend/onyx/db/document_set.py"                                # #12 DocumentSet Gruppen-Zuordnung
   "backend/onyx/natural_language_processing/search_nlp_models.py"  # #13 OpenSearch lowercase
 
-  # Frontend Core (7)
+  # Frontend Core (9)
   "web/src/app/layout.tsx"                                         # #4  Navigation + i18n
   "web/src/components/header/"                                     # #5  Branding
   "web/src/lib/constants.ts"                                       # #6  CSS Variables
@@ -37,7 +37,8 @@ ALLOWED_CORE_FILES=(
   "web/src/components/auth/AuthFlowContainer.tsx"                  # #9  Login Icon + Text
   "web/src/sections/sidebar/AdminSidebar.tsx"                      # #10 Admin Sidebar
   "web/src/refresh-components/popovers/ActionsPopover/index.tsx"   # #14 Actions-Popover
-  "web/src/hooks/useSettings.ts"                                 # #15 useEnterpriseSettings Gate
+  "web/src/hooks/useSettings.ts"                                   # #15 useEnterpriseSettings Gate
+  "web/src/providers/DynamicMetadata.tsx"                          # #16 Title Sync pathname dep
 )
 
 CHANGED_FILES=$(git diff --cached --name-only)

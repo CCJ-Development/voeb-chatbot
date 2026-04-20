@@ -1,0 +1,25 @@
+--- backend/ext/_core_originals/DynamicMetadata.tsx.original	2026-04-20 16:20:08
++++ web/src/providers/DynamicMetadata.tsx	2026-04-20 16:21:58
+@@ -1,17 +1,21 @@
+ "use client";
+ 
+ import { useEffect, useMemo } from "react";
++import { usePathname } from "next/navigation";
+ import { useSettingsContext } from "@/providers/SettingsProvider";
+ 
+ export default function DynamicMetadata() {
+   const { enterpriseSettings } = useSettingsContext();
++  // pathname dep re-syncs document.title after soft-navigations, where
++  // Next.js App Router re-injects the static metadata.title into <head>.
++  const pathname = usePathname();
+ 
+   useEffect(() => {
+     const title = enterpriseSettings?.application_name || "Onyx";
+     if (document.title !== title) {
+       document.title = title;
+     }
+-  }, [enterpriseSettings]);
++  }, [enterpriseSettings, pathname]);
+ 
+   // Cache-buster so the favicon re-fetches after an admin uploads a new logo.
+   const cacheBuster = useMemo(

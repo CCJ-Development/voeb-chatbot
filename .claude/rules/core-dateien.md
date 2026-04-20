@@ -6,17 +6,19 @@ paths:
   - "web/src/lib/**"
   - "web/src/sections/**"
   - "web/src/refresh-components/**"
+  - "web/src/providers/**"
 ---
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 15 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 16 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 
-**Status (Stand 2026-04-17):** 14 von 15 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
+**Status (Stand 2026-04-20):** 15 von 16 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
 
-**Historie Sync #5 (2026-04-14):**
-- Core #13 `CustomModal.tsx` **entfernt** — Upstream-Bug (onyx-dot-app/onyx#9592) gefixt via PRs #10009 ff.
-- Core #15 `useSettings.ts` **neu** — Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag, Gate fuer ext-branding ohne EE-Lizenz.
+**Historie:**
+- 2026-04-20: Core #16 `DynamicMetadata.tsx` **neu** — `usePathname` dep fuer `document.title`-Resync nach Soft-Navigation. Upstream-Bug: `useEffect`-Dep-Array ohne `pathname` laesst Titel auf "Onyx" stehen wenn Next.js App Router bei Nav den statischen `metadata.title` neu injiziert.
+- 2026-04-14 (Sync #5): Core #13 `CustomModal.tsx` **entfernt** — Upstream-Bug (onyx-dot-app/onyx#9592) gefixt via PRs #10009 ff.
+- 2026-04-14 (Sync #5): Core #15 `useSettings.ts` **neu** — Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag, Gate fuer ext-branding ohne EE-Lizenz.
 
 **Uebersicht:**
 | # | Datei | Status | Letzte Patch-Aenderung |
@@ -36,6 +38,7 @@ paths:
 | 13 | `backend/onyx/natural_language_processing/search_nlp_models.py` | Gepatcht | 2026-03-24 (OpenSearch lowercase) |
 | 14 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` | Gepatcht | 2026-03-26 |
 | 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-14 (Sync #5) |
+| 16 | `web/src/providers/DynamicMetadata.tsx` | Gepatcht | 2026-04-20 (ext-branding) |
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -127,6 +130,12 @@ paths:
 - MERGE: 2 Stellen: Import+Const (~8 Zeilen nach EE_ENABLED import), `shouldFetch =` (2x, nach `EE_ENABLED || eeEnabledRuntime` ein `|| EXT_BRANDING_ENABLED` anfuegen). Niedriges Merge-Risiko (Upstream hat diese Zeile in PR #9529 stabilisiert, weitere Aenderungen unwahrscheinlich).
 - STATUS: ✅ Gepatcht (2026-04-14, Sync #5). Upstream SSR→CSR Migration (#9529) gated `useEnterpriseSettings` hinter EE-Lizenz-Flag. Unser ext-branding braucht den API-Call aber ohne EE-Lizenz.
 - HINWEIS: **Entkoppelt von EE-Lizenz.** Wir setzen weder `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` noch `LICENSE_ENFORCEMENT_ENABLED` noch `NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES`. Der neue Flag `NEXT_PUBLIC_EXT_BRANDING_ENABLED` ist semantisch klar "VÖB-Branding-Hook aktivieren" und aktiviert keine EE-Features. Build-Arg muss in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` gesetzt sein.
+
+## 16. `web/src/providers/DynamicMetadata.tsx` — document.title Re-Sync nach Soft-Navigation
+- ERLAUBT: `usePathname()` aus `next/navigation` importieren + `pathname` zur Dep-Liste des title-`useEffect` hinzufuegen. Ein-Zeilen-Kommentar zur Begruendung ueber der `usePathname`-Zeile.
+- VERBOTEN: Title-Logik veraendern, Favicon-Logik veraendern, Return-JSX veraendern, `use_custom_logo`-Zweig anfassen.
+- MERGE: 1 Stelle, 3 Zeilen (1 Import + 1 Hook-Call + 1 Dep-Array-Element). Niedriges Merge-Risiko (Datei ist klein und aendert sich upstream selten).
+- STATUS: ✅ Gepatcht (2026-04-20). Ohne `pathname` in den Deps laeuft der `useEffect` bei Soft-Navigation nicht neu, weil der `enterpriseSettings`-SWR-Cache dieselbe Referenz liefert. Next.js App Router injiziert bei jeder Route-Aenderung den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`. Ohne Re-Sync bleibt der Browser-Tab auf "Onyx", obwohl Admin "VOeB-Service Chatbot" konfiguriert hat.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:
