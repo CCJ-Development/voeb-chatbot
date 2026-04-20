@@ -11,11 +11,12 @@ paths:
 
 # Core-Dateien: Was darf geändert werden
 
-**NUR DIESE 16 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
+**NUR DIESE 17 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 
-**Status (Stand 2026-04-20):** 15 von 16 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
+**Status (Stand 2026-04-20):** 16 von 17 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
 
 **Historie:**
+- 2026-04-20: Core #17 `AccountPopover.tsx` **neu** — `EXT_BRANDING_ENABLED`-Gate blendet im User-Dropdown (Klick auf eigenen Namen unten links) die Menu-Eintraege "Notifications" und "Help & FAQ" sowie den roten Notifications-Bubble-Indikator am Sidebar-Trigger aus. Whitelabel-Anforderung: VOeB nutzt Onyx' internes Release-Notes-/Announcement-System nicht, und "Help & FAQ" linkte auf `docs.onyx.app` (Onyx-Branding auf VOeB-Oberflaeche).
 - 2026-04-20: Core #15 `useSettings.ts` **reduziert** — `useCustomAnalyticsScript`-Gate wieder entfernt (nur `useEnterpriseSettings` bleibt erweitert). Ursache: Endpoint `/api/enterprise-settings/custom-analytics-script` lebt nur in `backend/ee/` → 404 in FOSS → SWR-Retry-Loop spammt Browser-Konsole.
 - 2026-04-20: Core #16 `DynamicMetadata.tsx` **neu** — `usePathname` dep fuer `document.title`-Resync nach Soft-Navigation. Upstream-Bug: `useEffect`-Dep-Array ohne `pathname` laesst Titel auf "Onyx" stehen wenn Next.js App Router bei Nav den statischen `metadata.title` neu injiziert.
 - 2026-04-14 (Sync #5): Core #13 `CustomModal.tsx` **entfernt** — Upstream-Bug (onyx-dot-app/onyx#9592) gefixt via PRs #10009 ff.
@@ -40,6 +41,7 @@ paths:
 | 14 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` | Gepatcht | 2026-03-26 |
 | 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-20 (Analytics-404-Fix) |
 | 16 | `web/src/providers/DynamicMetadata.tsx` | Gepatcht | 2026-04-20 (ext-branding) |
+| 17 | `web/src/sections/sidebar/AccountPopover.tsx` | Gepatcht | 2026-04-20 (ext-branding User-Menu) |
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -138,6 +140,13 @@ paths:
 - VERBOTEN: Title-Logik veraendern, Favicon-Logik veraendern, Return-JSX veraendern, `use_custom_logo`-Zweig anfassen.
 - MERGE: 1 Stelle, ~9 Zeilen (1 Import + 2 Hook-Calls + 1 Dep-Array-Erweiterung + 3 Kommentarzeilen). Niedriges Merge-Risiko (Datei ist klein und aendert sich upstream selten).
 - STATUS: ✅ Gepatcht (2026-04-20). Ohne `pathname` in den Deps laeuft der `useEffect` bei Route-Wechsel nicht neu (SWR-Referenz von `enterpriseSettings` stabil). Ohne `searchParams` fehlen Query-Only-Transitions: Chat-Wechsel ruft `/chat?chatId=xxx` auf, wird aber per Next.js-Redirect (`next.config.js`) auf `/app?chatId=xxx` umgeleitet → pathname bleibt `/app`, nur `searchParams` aendert sich. Beide Deps zusammen decken jede URL-Aenderung ab. Next.js App Router injiziert bei jeder Navigation den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`; der Effect ueberschreibt das synchron zurueck.
+
+## 17. `web/src/sections/sidebar/AccountPopover.tsx` — User-Menu Whitelabel-Aufraeumung
+- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED`-Konstante am Dateianfang (nach den Imports) definieren + 3 Stellen mit `!EXT_BRANDING_ENABLED &&` (bzw. `hasNotifications && !EXT_BRANDING_ENABLED`) gaten: (a) Menu-Item "Notifications" im `PopoverMenu`-Array, (b) Menu-Item "Help & FAQ" im `PopoverMenu`-Array, (c) Notifications-Bubble in `rightChildren` der `SidebarTab`.
+- VERBOTEN: Menu-Reihenfolge, Menu-Item "User Settings", Trenner (`null`-Eintrag), Login/Logout-Logik, `SidebarTab`-Props (ausser `rightChildren`-Conditional), Popover-Struktur, SWR-Fetches veraendern. SWR-Calls bleiben erhalten (kein Funktionsunterschied bei deaktiviertem Flag, Upstream-Behaviour wird respektiert).
+- MERGE: 3 Stellen: Konstante (~11 Zeilen inkl. Kommentar) nach UserAvatar-Import + 2x Array-Element-Gate im PopoverMenu (Zeilen ~99-116 upstream) + 1x Bubble-Conditional in SidebarTab rightChildren (Zeile ~193). Niedriges Merge-Risiko: Upstream veraendert das User-Menu selten, Insertion-Stellen sind stabil (JSX-Array-Elemente sind per `key` identifizierbar).
+- STATUS: ✅ Gepatcht (ext-branding, 2026-04-20). Whitelabel-Aufraeumung fuer VOeB. Bei `NEXT_PUBLIC_EXT_BRANDING_ENABLED=true` zeigt das User-Menu nur noch "Benutzereinstellungen" + Trenner + "Abmelden".
+- HINWEIS: Build-time Gate, gesetzt in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` — gleicher Flag wie Core #15 (`useSettings.ts`). Kein neuer Build-Arg noetig. `onShowBuildIntro`-Prop bleibt erhalten (wird via `NotificationsPopover` weitergeleitet, aber Popover wird bei aktivem Flag nie geoeffnet — defensiv). Die ext-i18n-Eintraege "Notifications" und "Help & FAQ" im Translation-Dictionary werden NICHT entfernt — sie sind tot-code bei aktivem Flag, aber ein Rueckzug auf Upstream (Flag off) wuerde sie wieder brauchen.
 
 ## Absicherung
 Vor JEDER Core-Datei-Änderung:

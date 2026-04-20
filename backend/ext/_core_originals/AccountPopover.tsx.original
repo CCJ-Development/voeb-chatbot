@@ -26,16 +26,6 @@ import useAppFocus from "@/hooks/useAppFocus";
 import { useVectorDbEnabled } from "@/providers/SettingsProvider";
 import UserAvatar from "@/refresh-components/avatars/UserAvatar";
 
-// VOeB ext-branding: Whitelabel-Gate fuer das User-Menu. Blendet die
-// "Notifications"- und "Help & FAQ"-Menu-Eintraege sowie den Notifications-
-// Bubble-Indikator am Sidebar-Trigger aus. VOeB nutzt Onyx' internes
-// Notifications-System nicht (Release Notes/Announcements sind kein VOeB-
-// Kontext) und "Help & FAQ" verweist auf docs.onyx.app — fuer ein Whitelabel-
-// Deployment stoerend. Gate ist build-time (NEXT_PUBLIC_EXT_BRANDING_ENABLED),
-// gilt fuer alle Umgebungen in denen der Flag gesetzt ist (DEV + PROD).
-const EXT_BRANDING_ENABLED =
-  process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
-
 interface SettingsPopoverProps {
   onUserSettingsClick: () => void;
   onOpenNotifications: () => void;
@@ -106,28 +96,24 @@ function SettingsPopover({
               User Settings
             </LineItem>
           </div>,
-          !EXT_BRANDING_ENABLED && (
-            <LineItem
-              key="notifications"
-              icon={SvgBell}
-              onClick={onOpenNotifications}
-            >
-              {`Notifications${
-                undismissedCount > 0 ? ` (${undismissedCount})` : ""
-              }`}
-            </LineItem>
-          ),
-          !EXT_BRANDING_ENABLED && (
-            <LineItem
-              key="help-faq"
-              icon={SvgExternalLink}
-              href="https://docs.onyx.app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Help & FAQ
-            </LineItem>
-          ),
+          <LineItem
+            key="notifications"
+            icon={SvgBell}
+            onClick={onOpenNotifications}
+          >
+            {`Notifications${
+              undismissedCount > 0 ? ` (${undismissedCount})` : ""
+            }`}
+          </LineItem>,
+          <LineItem
+            key="help-faq"
+            icon={SvgExternalLink}
+            href="https://docs.onyx.app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Help & FAQ
+          </LineItem>,
           null,
           showLogin && (
             <LineItem key="log-in" icon={SvgUser} onClick={handleLogin}>
@@ -204,7 +190,7 @@ export default function AccountPopover({
               </div>
             )}
             rightChildren={
-              hasNotifications && !EXT_BRANDING_ENABLED ? (
+              hasNotifications ? (
                 <Section padding={0.5}>
                   <SvgNotificationBubble size={6} />
                 </Section>

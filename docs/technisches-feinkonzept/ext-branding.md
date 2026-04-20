@@ -24,6 +24,9 @@
 | TEST Deployment | Getestet | http://188.34.118.201, Branding funktional (2026-03-08) |
 | Admin-UI (Browser-Seite) | Implementiert | Route `/admin/ext-branding`, Sidebar-Link unter Settings |
 | Core-Patch CORE #10 (AdminSidebar.tsx) | Implementiert | Billing→Branding, Patch generiert |
+| Core-Patch CORE #15 (useSettings.ts) | Implementiert | `useEnterpriseSettings`-Gate ohne EE-Lizenz (Sync #5, 2026-04-14); `useCustomAnalyticsScript`-Gate wieder entfernt (2026-04-20, vermied 404-Retry-Loop) |
+| Core-Patch CORE #16 (DynamicMetadata.tsx) | Implementiert (2026-04-20) | `pathname` + `searchParams` als Deps fuer document.title-Resync nach Soft-Navigation |
+| Core-Patch CORE #17 (AccountPopover.tsx) | Implementiert (2026-04-20) | User-Menu Whitelabel-Aufraeumung: Notifications + Help & FAQ + Bubble hinter `EXT_BRANDING_ENABLED` ausgeblendet |
 | Favicon | Offen | Nicht im Scope v1.0 (siehe "Nicht im Umfang") |
 | Farben/Theme | Offen | Eigenes Modul, nicht Teil von ext-branding |
 

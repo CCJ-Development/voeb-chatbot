@@ -1,0 +1,75 @@
+--- backend/ext/_core_originals/AccountPopover.tsx.original	2026-04-20 22:51:41
++++ web/src/sections/sidebar/AccountPopover.tsx	2026-04-20 22:52:11
+@@ -26,6 +26,16 @@
+ import { useVectorDbEnabled } from "@/providers/SettingsProvider";
+ import UserAvatar from "@/refresh-components/avatars/UserAvatar";
+ 
++// VOeB ext-branding: Whitelabel-Gate fuer das User-Menu. Blendet die
++// "Notifications"- und "Help & FAQ"-Menu-Eintraege sowie den Notifications-
++// Bubble-Indikator am Sidebar-Trigger aus. VOeB nutzt Onyx' internes
++// Notifications-System nicht (Release Notes/Announcements sind kein VOeB-
++// Kontext) und "Help & FAQ" verweist auf docs.onyx.app — fuer ein Whitelabel-
++// Deployment stoerend. Gate ist build-time (NEXT_PUBLIC_EXT_BRANDING_ENABLED),
++// gilt fuer alle Umgebungen in denen der Flag gesetzt ist (DEV + PROD).
++const EXT_BRANDING_ENABLED =
++  process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
++
+ interface SettingsPopoverProps {
+   onUserSettingsClick: () => void;
+   onOpenNotifications: () => void;
+@@ -96,24 +106,28 @@
+               User Settings
+             </LineItem>
+           </div>,
+-          <LineItem
+-            key="notifications"
+-            icon={SvgBell}
+-            onClick={onOpenNotifications}
+-          >
+-            {`Notifications${
+-              undismissedCount > 0 ? ` (${undismissedCount})` : ""
+-            }`}
+-          </LineItem>,
+-          <LineItem
+-            key="help-faq"
+-            icon={SvgExternalLink}
+-            href="https://docs.onyx.app"
+-            target="_blank"
+-            rel="noopener noreferrer"
+-          >
+-            Help & FAQ
+-          </LineItem>,
++          !EXT_BRANDING_ENABLED && (
++            <LineItem
++              key="notifications"
++              icon={SvgBell}
++              onClick={onOpenNotifications}
++            >
++              {`Notifications${
++                undismissedCount > 0 ? ` (${undismissedCount})` : ""
++              }`}
++            </LineItem>
++          ),
++          !EXT_BRANDING_ENABLED && (
++            <LineItem
++              key="help-faq"
++              icon={SvgExternalLink}
++              href="https://docs.onyx.app"
++              target="_blank"
++              rel="noopener noreferrer"
++            >
++              Help & FAQ
++            </LineItem>
++          ),
+           null,
+           showLogin && (
+             <LineItem key="log-in" icon={SvgUser} onClick={handleLogin}>
+@@ -190,7 +204,7 @@
+               </div>
+             )}
+             rightChildren={
+-              hasNotifications ? (
++              hasNotifications && !EXT_BRANDING_ENABLED ? (
+                 <Section padding={0.5}>
+                   <SvgNotificationBubble size={6} />
+                 </Section>
