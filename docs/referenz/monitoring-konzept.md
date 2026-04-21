@@ -235,7 +235,7 @@ helm install monitoring prometheus-community/kube-prometheus-stack \
 # ===========================================================
 # VÖB Service Chatbot — Monitoring Stack Values
 # ===========================================================
-# kube-prometheus-stack auf shared DEV+TEST Cluster
+# kube-prometheus-stack auf DEV-Cluster (TEST am 2026-04-21 abgebaut)
 # Ressourcen-Budget: 1,1 vCPU Requests, 1,9 Gi RAM Requests
 # ===========================================================
 
@@ -502,11 +502,11 @@ spec:
 
 ### Phase 3: Alert-Rules (0,25 PT) — ✅ DEPLOYED
 
-**Status:** 20 Custom-Regeln aktiv in `values-monitoring.yaml` (DEV/TEST) + 22 in `values-monitoring-prod.yaml` (PROD, inkl. 2 Backup-Check-Alerts). AlertManager konfiguriert mit Microsoft Teams Webhook (Kanal: Scale42 AI). OpenSearch PVC Storage Alert (#8b `OpenSearchStorageFull`) hinzugefuegt (2026-03-19).
+**Status:** 20 Custom-Regeln aktiv in `values-monitoring.yaml` (DEV) + 22 in `values-monitoring-prod.yaml` (PROD, inkl. 2 Backup-Check-Alerts). AlertManager konfiguriert mit Microsoft Teams Webhook (Kanal: Scale42 AI). OpenSearch PVC Storage Alert (#8b `OpenSearchStorageFull`) hinzugefuegt (2026-03-19).
 
 **Alert-Rules (aktiv in YAML-Dateien):**
 
-| # | Alert | Severity | DEV/TEST | PROD | Beschreibung |
+| # | Alert | Severity | DEV | PROD | Beschreibung |
 |---|-------|----------|----------|------|-------------|
 | 1 | `APIDown` | critical | ✅ | ✅ | API nicht erreichbar |
 | 2 | `PodCrashLooping` | critical | ✅ | ✅ | Pod restartet wiederholt (>3/h) |
@@ -565,7 +565,7 @@ Panels:
 6. DB Connection Hold Time — `histogram_quantile(0.95, rate(onyx_db_connection_hold_seconds_bucket[5m]))`
 
 **Grafana-Zugriff:**
-- DEV/TEST: `kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80`
+- DEV: `kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80`
 - PROD: Evaluieren ob Ingress mit Auth sinnvoll ist
 
 ---
@@ -576,16 +576,16 @@ PROD = eigener Cluster (ADR-004). Monitoring wird als eigenstaendiger Stack depl
 
 ### 5.1 Architektur-Entscheidung
 
-Kein Cross-Cluster-Monitoring. Jeder Cluster hat seinen eigenen Stack (Prometheus + Grafana + AlertManager + Exporter). Begruendung: ADR-004 (Blast Radius, eigenes Maintenance-Window). PROD-Monitoring darf nicht von DEV/TEST-Cluster abhaengen.
+Kein Cross-Cluster-Monitoring. Jeder Cluster hat seinen eigenen Stack (Prometheus + Grafana + AlertManager + Exporter). Begruendung: ADR-004 (Blast Radius, eigenes Maintenance-Window). PROD-Monitoring darf nicht von DEV-Cluster abhaengen.
 
-### 5.2 PROD-spezifische Konfiguration (Abweichungen von DEV/TEST)
+### 5.2 PROD-spezifische Konfiguration (Abweichungen von DEV)
 
-| Parameter | DEV/TEST | PROD | Begruendung |
+| Parameter | DEV | PROD | Begruendung |
 |-----------|----------|------|-------------|
 | Scrape-Targets | `onyx-dev-api-service`, `onyx-test-api-service` | `onyx-prod-api-service.onyx-prod.svc.cluster.local:8080` | Eigener Cluster, nur 1 Namespace |
 | Prometheus Retention | 30d | **90d** | PROD-Metriken muessen laenger aufbewahrt werden (Capacity Planning, Incident Review) |
 | Prometheus Storage | 20 Gi | **50 Gi** | Laengere Retention = mehr Speicher |
-| AlertManager Receiver | `teams-niko` (DEV/TEST-Kanal) | **Eigener PROD-Kanal** | ITIL: PROD-Alerts duerfen nicht in DEV-Rauschen untergehen |
+| AlertManager Receiver | `teams-niko` (DEV-Kanal) | **Eigener PROD-Kanal** | ITIL: PROD-Alerts duerfen nicht in DEV-Rauschen untergehen |
 | Grafana Dashboards | Manuell importiert | **Sidecar-Provisioning (gnetId)** | BSI OPS.1.1.2: Wiederherstellbarkeit. Kein manueller Zustand auf PROD |
 | Grafana Ingress | `kubectl port-forward` | `kubectl port-forward` | Entscheidung Niko (2026-03-12): kein externer Zugang, nur Kubeconfig |
 | `send_resolved` | `true` | `true` | Entwarnung bei Alert-Resolution |
@@ -643,7 +643,7 @@ kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
 | `pg-exporter-prod.yaml` | ✅ Erstellt (2026-03-11) | postgres_exporter PROD (Secret manuell erstellen) |
 | `redis-exporter-prod.yaml` | ✅ Erstellt (2026-03-11) | redis_exporter PROD (Secret manuell erstellen) |
 | `03-allow-scrape-egress.yaml` | ✅ Aktualisiert (2026-03-12) | `onyx-prod` Namespace hinzugefuegt |
-| `apply.sh` (Exporters) | ✅ Aktualisiert (2026-03-12) | Auto-Detection DEV/TEST/PROD, PROD-Secrets Anleitung |
+| `apply.sh` (Exporters) | ✅ Aktualisiert (2026-03-12) | Auto-Detection DEV/PROD, PROD-Secrets Anleitung |
 | `07-allow-redis-exporter-egress.yaml` | ✅ Aktualisiert (2026-03-12) | `onyx-prod` Namespace hinzugefuegt |
 | `09-allow-backup-check-egress.yaml` | ✅ Erstellt (2026-03-15) | pg-backup-check CronJob → StackIT API (HTTPS:443) |
 | NetworkPolicies (monitoring/) | ✅ Wiederverwendbar | `apply.sh` erkennt `onyx-prod` automatisch |
@@ -808,7 +808,7 @@ TLS-Renewal fuer `chatbot.voeb-service.de` im Mai 2026 ist jetzt abgesichert.
 | # | Frage | Wer | Status |
 |---|-------|-----|--------|
 | 1 | ~~Alerting-Kanal: Email, Slack, oder Webhook?~~ | Niko | ✅ Microsoft Teams Webhook konfiguriert (2026-03-11). Alerts werden an Teams-Kanal zugestellt. |
-| 2 | ~~Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?)~~ | Niko | ✅ Entscheidung (2026-03-12): Nur `kubectl port-forward` fuer alle Environments (DEV/TEST/PROD). Kein Ingress, kein externer Zugang. Zugriff nur mit Kubeconfig. |
+| 2 | ~~Grafana-Zugang für VÖB? (port-forward reicht oder Ingress?)~~ | Niko | ✅ Entscheidung (2026-03-12): Nur `kubectl port-forward` fuer alle Environments (DEV/PROD). Kein Ingress, kein externer Zugang. Zugriff nur mit Kubeconfig. |
 | 3 | ~~Grafana Admin-Passwort: Wie verwalten?~~ | Niko | ✅ Per `--set grafana.adminPassword=<SECRET>` beim Install. Passwort liegt in K8s Secret `monitoring-grafana`. |
 | 4 | ~~Log-Aggregation (Loki) in Phase 2 oder später?~~ | Niko | ✅ Erledigt (2026-03-25, loki-stack 2.10.3 deployed) |
 | 5 | ~~SMTP-Server für AlertManager (Email-Versand)?~~ | Niko | ✅ Entfällt — Teams Webhook statt Email gewählt (2026-03-10). Kein SMTP nötig. |
@@ -822,7 +822,7 @@ TLS-Renewal fuer `chatbot.voeb-service.de` im Mai 2026 ist jetzt abgesichert.
 | 1 | Health Probes aktivieren + `/metrics` verifizieren | 0,25 PT | ✅ Deployed (2026-03-10) |
 | 2 | kube-prometheus-stack deployen + NetworkPolicies | 0,75 PT | ✅ Deployed (2026-03-10) |
 | 3 | Alert-Rules konfigurieren | 0,25 PT | ✅ Deployed (2026-03-10), Teams Webhook konfiguriert (2026-03-11) |
-| 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ✅ PROD: Sidecar-Provisioning (gnetId). DEV/TEST: manuell importiert |
+| 4 | Grafana Dashboards (Standard + Onyx Custom) | 0,25 PT | ✅ PROD: Sidecar-Provisioning (gnetId). DEV: manuell importiert |
 | 5 | PROD Monitoring Config + Deploy | 0,25 PT | ✅ Deployed (2026-03-12, Helm Rev 3 → Rev 4). Alert-Tuning applied |
 | **Gesamt** | | **1,75 PT** | **1,75 PT erledigt, alle Phasen deployed** |
 
@@ -930,7 +930,7 @@ Der WAL Collector ruft `pg_ls_waldir()` auf — braucht `pg_monitor` Rolle. Stac
 ### Deployed Pods
 
 ```
-$ kubectl get pods -n monitoring  (nach Phase 4 Exporter-Deploy, DEV/TEST Shared Cluster)
+$ kubectl get pods -n monitoring  (nach Phase 4 Exporter-Deploy, DEV Shared Cluster)
 NAME                                                     READY   STATUS    AGE
 alertmanager-monitoring-kube-prometheus-alertmanager-0   2/2     Running   ~5h
 monitoring-grafana-5548f645df-cclq8                      3/3     Running   ~5h
@@ -988,7 +988,7 @@ allow-redis-exporter-ingress   redis_setup_type=standalone         ~10m  (Phase 
 | `deployment/k8s/monitoring-exporters/redis-exporter-test.yaml` | Neu (Phase 4) | redis_exporter TEST (Deployment + Service) |
 | `deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml` | Neu (PROD) | postgres_exporter PROD (Deployment + Service) |
 | `deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml` | Neu (PROD) | redis_exporter PROD (Deployment + Service) |
-| `deployment/k8s/monitoring-exporters/apply.sh` | Aktualisiert (PROD) | Deploy-Script mit Auto-Detection DEV/TEST/PROD |
+| `deployment/k8s/monitoring-exporters/apply.sh` | Aktualisiert (PROD) | Deploy-Script mit Auto-Detection DEV/PROD |
 | `deployment/helm/values/values-monitoring-prod.yaml` | Neu (PROD) | PROD Monitoring Values (90d, 50Gi, Sidecar-Dashboards, Teams-PROD) |
 | `deployment/k8s/network-policies/monitoring/06-allow-pg-exporter-egress.yaml` | Neu (Phase 4) | PG Exporter → StackIT PG:5432 |
 | `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Neu (Phase 4) | Redis Exporter → onyx-dev/test/prod:6379 |
@@ -1059,7 +1059,7 @@ Commit noch ausstehend — Dateien auf Feature-Branch `feature/monitoring-export
 |---------|--------|----------|
 | 1 | `values-monitoring-prod.yaml` erstellt (90d Retention, 50Gi, PROD-only Targets, Teams-PROD Webhook, Sidecar-Dashboards) | ✅ |
 | 2 | `03-allow-scrape-egress.yaml` + `07-allow-redis-exporter-egress.yaml` um `onyx-prod` ergaenzt | ✅ |
-| 3 | `apply.sh` (Exporters) rewrite: Auto-Detection DEV/TEST/PROD | ✅ |
+| 3 | `apply.sh` (Exporters) rewrite: Auto-Detection DEV/PROD | ✅ |
 | 4 | Teams PROD Webhook-URL eingetragen (separater Kanal) | ✅ |
 | 5 | PROD Kubeconfig verifiziert (`~/.kube/config-prod`) — Cluster `vob-prod` erreichbar | ✅ |
 | 6 | `helm install monitoring` mit `values-monitoring-prod.yaml` | ❌ Timeout: Grafana Init-Container CrashLoop |
@@ -1111,7 +1111,7 @@ Prometheus Targets:
 
 **11. App-NS Monitoring-Policies NICHT ohne Basis-Policies anwenden (kritisch)**
 
-Auf DEV/TEST funktionieren `allow-monitoring-scrape` und `allow-redis-exporter-ingress` problemlos, weil dort seit SEC-03 (2026-03-05) ein vollstaendiges NetworkPolicy-Set existiert (default-deny + allow-intra + allow-dns + allow-external-egress). Die Basis-Policies erlauben normalen Betrieb, die Monitoring-Policies fuegen nur zusaetzliche Ingress-Regeln hinzu.
+Auf DEV funktionieren `allow-monitoring-scrape` und `allow-redis-exporter-ingress` problemlos, weil dort seit SEC-03 (2026-03-05) ein vollstaendiges NetworkPolicy-Set existiert (default-deny + allow-intra + allow-dns + allow-external-egress). Die Basis-Policies erlauben normalen Betrieb, die Monitoring-Policies fuegen nur zusaetzliche Ingress-Regeln hinzu.
 
 Auf PROD existierten noch **keine** Basis-Policies. Durch das Anwenden von `allow-monitoring-scrape` (policyTypes: [Ingress], podSelector: {}) wurde fuer ALLE Pods in `onyx-prod` ein implizites Ingress-Deny aktiv. Nur Ingress von `monitoring:8080` war erlaubt — externer Traffic zum NGINX LoadBalancer wurde blockiert. Zusaetzlich brach `allow-redis-exporter-ingress` die Onyx→Redis-Verbindung (nur Redis-Exporter-Ingress erlaubt, nicht Onyx-App-Ingress).
 
@@ -1136,7 +1136,7 @@ Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/d
 | `deployment/helm/values/values-monitoring-prod.yaml` | Neu | PROD Monitoring Values (90d, 50Gi, Sidecar-Dashboards, Teams-PROD) |
 | `deployment/k8s/monitoring-exporters/pg-exporter-prod.yaml` | Vorhanden (2026-03-11) | postgres_exporter PROD |
 | `deployment/k8s/monitoring-exporters/redis-exporter-prod.yaml` | Vorhanden (2026-03-11) | redis_exporter PROD |
-| `deployment/k8s/monitoring-exporters/apply.sh` | Rewrite | Auto-Detection DEV/TEST/PROD |
+| `deployment/k8s/monitoring-exporters/apply.sh` | Rewrite | Auto-Detection DEV/PROD |
 | `deployment/k8s/network-policies/monitoring/03-allow-scrape-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
 | `deployment/k8s/network-policies/monitoring/07-allow-redis-exporter-egress.yaml` | Ergaenzt | `onyx-prod` Namespace hinzugefuegt |
 
@@ -1149,5 +1149,5 @@ Grafana Helm Chart Download-Init-Container erstellt `mkdir -p /var/lib/grafana/d
 | v0.3 | 2026-03-12 | COFFEESTUDIOS | PROD-Deployment, Teams-Alerting |
 | v0.3.1 | 2026-03-14 | COFFEESTUDIOS | Audit-Korrektur: NP 7→8, Kickoff-Referenz, Änderungshistorie |
 | v0.4 | 2026-03-19 | COFFEESTUDIOS | OpenSearch als ueberwachte Komponente hinzugefuegt: PVC Alert (`OpenSearchStorageFull`). Vespa-Monitoring auf Alive-Check reduziert (Zombie-Mode). |
-| v0.5 | 2026-03-22 | COFFEESTUDIOS | Helm Rev 3→4. Pod-Counts aktualisiert (DEV 16→17, TEST 15→0 heruntergefahren, PROD 19→20). PROD CPU Requests korrigiert (~8.750→~7.850m). Alert-Tabelle mit YAML-Realitaet abgeglichen: 20 Regeln DEV/TEST, 22 PROD. `OpenSearchClusterRed` als GEPLANT (nicht implementiert) dokumentiert. NP 8→9 (`09-allow-backup-check-egress.yaml` ergaenzt). Scrape-Egress Inline-YAML um `onyx-prod` ergaenzt. Entscheidungstabelle Vespa-Eintrag aktualisiert. |
+| v0.5 | 2026-03-22 | COFFEESTUDIOS | Helm Rev 3→4. Pod-Counts aktualisiert (DEV 16→17, TEST 15→0 heruntergefahren, PROD 19→20). PROD CPU Requests korrigiert (~8.750→~7.850m). Alert-Tabelle mit YAML-Realitaet abgeglichen: 20 Regeln DEV, 22 PROD. `OpenSearchClusterRed` als GEPLANT (nicht implementiert) dokumentiert. NP 8→9 (`09-allow-backup-check-egress.yaml` ergaenzt). Scrape-Egress Inline-YAML um `onyx-prod` ergaenzt. Entscheidungstabelle Vespa-Eintrag aktualisiert. |
 | v1.0 | 2026-03-25 | COFFEESTUDIOS | Monitoring-Audit + 3 Sprints. Neue Komponenten: cert-manager ServiceMonitor, OpenSearch Exporter (elasticsearch-exporter v1.9.0), Blackbox Exporter (PROD Health + 3 externe Deps), Loki Log-Aggregation (loki-stack 2.10.3, 30d Retention). SLO Recording Rules (10) + SLO Dashboard (Availability, Latenz, Error Budget). Security Alerts (3: Auth, 403, OIDC). cert-manager NetworkPolicies (6, Zero-Trust). PGBackupCheck Alert-Noise behoben (Zeitfenster 8h). Grafana Dashboards als ConfigMap (PG, Redis, SLO). Targets 19→25, VÖB Rules 22→46, Dashboards 0→3, NetworkPolicies monitoring 9→13 + cert-manager 0→6. Helm Cleanup (Rev 8 FAILED → Rev 9). KubeCPUOvercommit Silence (90d). |

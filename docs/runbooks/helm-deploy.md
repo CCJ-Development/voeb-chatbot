@@ -69,7 +69,7 @@ helm upgrade --install onyx-dev \
 
 ### TEST
 
-> **HINWEIS:** TEST ist seit 2026-03-19 auf 0 Replicas heruntergefahren. Alle Deployments und StatefulSets sind auf 0 skaliert, der Helm Release und PVCs bleiben erhalten. Reaktivierung: `kubectl scale deployment --all --replicas=1 -n onyx-test` oder `helm upgrade` mit aktuellen Values.
+> **HINWEIS:** TEST-Live-Infrastruktur wurde am **2026-04-21 vollstaendig abgebaut** (Helm Release uninstalled, Namespace geloescht, PG Flex + Bucket via StackIT CLI geloescht). Die folgenden TEST-Anweisungen bleiben als Blueprint fuer Kunden-Klon-Projekte und Reaktivierung. Reaktivierung benoetigt `terraform apply` (siehe `deployment/terraform/environments/test/main.tf` Header) + `helm upgrade --install`.
 
 ```bash
 export KUBECONFIG=~/.kube/config
@@ -260,13 +260,12 @@ kubectl get pods -n onyx-{env}
 
 # API Health
 # DEV:  curl -s https://dev.chatbot.voeb-service.de/api/health
-# TEST: curl -s https://test.chatbot.voeb-service.de/api/health
 # PROD: curl -s https://chatbot.voeb-service.de/api/health
+# (TEST Live-Infrastruktur seit 2026-04-21 abgebaut)
 # Erwartete Ausgabe: {"success":true,"message":"ok","data":null}
 
 # Login-Seite
 # DEV:  curl -s -o /dev/null -w "%{http_code}" https://dev.chatbot.voeb-service.de/auth/login
-# TEST: curl -s -o /dev/null -w "%{http_code}" https://test.chatbot.voeb-service.de/auth/login
 # PROD: curl -s -o /dev/null -w "%{http_code}" https://chatbot.voeb-service.de/auth/login
 # Erwartete Ausgabe: 200 (oder 307 redirect zu login)
 ```

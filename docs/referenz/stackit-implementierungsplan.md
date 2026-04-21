@@ -4,22 +4,25 @@
 **Erstellt von**: Nikolaj Ivanov (CCJ / Coffee Studios)
 **Bezug**: [Technische Referenz](stackit-infrastruktur.md) | [Meilensteinplan](../abnahme/meilensteinplan.md)
 
-> **Scope dieses Plans: DEV + TEST Environments (historisch).**
-> Phase 1–6: DEV (abgeschlossen, LIVE). Phase 7: TEST war LIVE 2026-03-03, **seit 2026-03-19 dauerhaft heruntergefahren** (0 Pods; Helm Release + PVCs + Secrets bleiben erhalten). Live-Environments heute: **nur DEV + PROD**.
+> **Scope dieses Plans: DEV Environment (historisch auch TEST als Phase 7).**
+> Phase 1–6: DEV (abgeschlossen, LIVE). Phase 7: TEST war LIVE 2026-03-03 bis 2026-03-19 (compute auf 0 Pods). Am **2026-04-21 wurde die TEST-Live-Infrastruktur vollstaendig abgebaut** (PostgreSQL Flex `vob-test`, Bucket `vob-test`, Helm Release, Namespace geloescht). Code-Artefakte bleiben als Template im Repo — Phase 7 ist als Blueprint fuer Reaktivierung oder Klon-Projekte lesbar. Live-Environments heute: **DEV + PROD**.
 > PROD-Spezifikationen sind in der [Technischen Referenz](stackit-infrastruktur.md) dokumentiert. PROD aktueller Stand: Chart 0.4.44, Helm Rev 18 (Sync #5 + Monitoring-Optimierung + OOM-Fix deployed 2026-04-17).
 > Architekturentscheidung zur Umgebungstrennung: [ADR-004](../adr/adr-004-umgebungstrennung-dev-test-prod.md)
 
 ---
 
-## Was wird provisioniert?
+## Was wird provisioniert (DEV, aktueller Stand)?
 
-| Ressource | Spec | Geschätzte Kosten |
-|-----------|------|-------------------|
-| 1× SKE Cluster | 1 Node Pool (`devtest`) | ~72 EUR/Monat |
-| 2× Worker Nodes | g1a.4d (4 vCPU, 16 GB RAM) je — Downgrade 2026-03-16 | ~503 EUR/Monat |
-| 2× PostgreSQL Flex 2.4 | Single (2 CPU, 4 GB, 20 GB SSD) je | ~60 EUR/Monat |
-| 2× Object Storage Bucket | `vob-dev`, `vob-test` | ~10 EUR/Monat |
-| **TOTAL DEV + TEST** | | **~585 EUR/Monat** (nach Downgrade 2026-03-16) |
+| Ressource | Spec | EUR/Monat |
+|-----------|------|-----------|
+| 1× SKE Cluster | 1 Node Pool (`devtest`) | 71,71 |
+| 2× Worker Nodes | g1a.4d (4 vCPU, 16 GB RAM) je — Downgrade 2026-03-16 | 283,18 |
+| 1× PostgreSQL Flex 2.4 | Single (2 CPU, 4 GB, 20 GB SSD) | 105,54 |
+| 1× Object Storage Bucket | `vob-dev` | 0,27 |
+| 1× Load Balancer | Essential-10 | 9,39 |
+| **TOTAL DEV** | | **~470 EUR/Monat** |
+
+> Historisch (bis 2026-04-21) waren PG Flex `vob-test`, Bucket `vob-test` und ein LoadBalancer fuer TEST ebenfalls provisioniert (~115 EUR/Monat). Mit dem TEST-Abbau entfallen diese Kosten vollstaendig. Fuer Reaktivierung siehe Header von `deployment/terraform/environments/test/main.tf`.
 
 ---
 

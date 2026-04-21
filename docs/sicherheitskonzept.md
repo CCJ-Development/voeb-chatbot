@@ -447,17 +447,14 @@ Es wird **kein** HashiCorp Vault eingesetzt. Die Secrets-Verwaltung erfolgt übe
 ```
 Internet
   │
-  ├─→ [SKE Cluster vob-chatbot (DEV/TEST)]
+  ├─→ [SKE Cluster vob-chatbot (DEV)]
   │     NGINX Ingress (LoadBalancer)
-  │       DEV: 188.34.118.222 (IngressClass: nginx, DNS-Update ausstehend)
-  │       TEST: 188.34.118.201 (IngressClass: nginx-test)
-  │     [onyx-dev Namespace] — 16 Pods
+  │       DEV: 188.34.118.222 (IngressClass: nginx)
+  │     [onyx-dev Namespace] — 17 Pods
   │       API Server → OpenSearch, Redis, Celery (8 Worker)
   │       Web Server (Frontend), Model Server, Vespa (Zombie)
-  │     [onyx-test Namespace] — 15 Pods
-  │       API Server → OpenSearch, Redis, Celery (8 Worker)
-  │       Web Server (Frontend), Model Server, Vespa (Zombie)
-  │     [monitoring Namespace] — DEV/TEST Monitoring
+  │     [onyx-test Namespace] — ABGEBAUT (2026-04-21, war 15 Pods)
+  │     [monitoring Namespace] — DEV Monitoring
   │
   └─→ [SKE Cluster vob-prod (PROD, eigener Cluster)]
         NGINX Ingress (LoadBalancer)

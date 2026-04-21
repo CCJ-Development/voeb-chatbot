@@ -26,7 +26,7 @@
 ## Voraussetzungen
 
 - Onyx-Instanz laeuft (alle Pods 1/1 Running)
-- Admin-Zugang zur Onyx-UI (`https://dev.chatbot.voeb-service.de/admin` bzw. `https://test.chatbot.voeb-service.de/admin`)
+- Admin-Zugang zur Onyx-UI (`https://dev.chatbot.voeb-service.de/admin` oder `https://chatbot.voeb-service.de/admin`)
 - StackIT AI Model Serving Token vorhanden
 
 ---
@@ -308,15 +308,15 @@ Bei Rate-Limit-Fehlern (HTTP 429): Indexing-Geschwindigkeit in Onyx ist normaler
 
 ## 7. Umgebungsspezifische Konfiguration
 
-| Feld | DEV | TEST | PROD |
-|------|-----|------|------|
-| URL | `https://dev.chatbot.voeb-service.de` | `https://test.chatbot.voeb-service.de` (heruntergefahren seit 2026-03-19, 0 Pods) | `https://chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-17) |
-| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 4 Modelle) ✅ (2026-03-24) |
-| Chat Default | GPT-OSS 120B | GPT-OSS 120B | GPT-OSS 120B ✅ (2026-03-24) |
-| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 | GPT-OSS, Qwen3-VL, Llama 3.3 ✅ (2026-03-24) |
-| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ (2026-03-24) |
+| Feld | DEV | PROD |
+|------|-----|------|
+| URL | `https://dev.chatbot.voeb-service.de` | `https://chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-17) |
+| Chat-Provider | StackIT (1 Provider, 4 Modelle) | StackIT (1 Provider, 3 Modelle) ✅ (2026-03-24) |
+| Chat Default | GPT-OSS 120B | GPT-OSS 120B ✅ (2026-03-24) |
+| Chat-Modelle | GPT-OSS, Qwen3-VL, Llama 3.3, Llama 3.1 (Llama 3.1 bei StackIT deprecated) | GPT-OSS, Qwen3-VL, Llama 3.3 ✅ (2026-03-24) |
+| Embedding | **Qwen3-VL-Embedding 8B (StackIT)** ✅ | **Qwen3-VL-Embedding 8B (StackIT)** ✅ (2026-03-24) |
 
-> **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert.
+> **Hinweis:** Die LLM-Konfiguration erfolgt **pro Umgebung separat** ueber die Admin-UI. Es gibt keine Helm-Values dafuer — die Einstellungen werden in der PostgreSQL-Datenbank gespeichert. TEST-Umgebung wurde am 2026-04-21 abgebaut; Anleitung bleibt als Template.
 
 ---
 

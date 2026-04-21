@@ -154,8 +154,8 @@ kubectl get pods -n onyx-dev \
 
 # API Health Check (via HTTPS)
 curl https://dev.chatbot.voeb-service.de/api/health    # DEV
-curl https://test.chatbot.voeb-service.de/api/health   # TEST (heruntergefahren seit 2026-03-19)
 curl https://chatbot.voeb-service.de/api/health         # PROD (HTTPS LIVE seit 2026-03-17)
+# TEST war bis 2026-04-21 verfuegbar, Live-Infrastruktur ist abgebaut; Template im Repo.
 ```
 
 ---

@@ -15,9 +15,9 @@
 
 | Parameter | Wert |
 |-----------|------|
-| Cluster | 2 (`vob-chatbot`: DEV+TEST shared, `vob-prod`: PROD eigener Cluster, ADR-004) |
-| Kubernetes-Version | DEV/TEST: v1.33.8, PROD: v1.33.9 |
-| Namespaces | `onyx-dev`, `onyx-test` (shared Cluster), `onyx-prod` (eigener Cluster) |
+| Cluster | 2 (`vob-chatbot`: DEV; `vob-prod`: PROD eigener Cluster, ADR-004) |
+| Kubernetes-Version | v1.33.9 (DEV + PROD) |
+| Namespaces | `onyx-dev`, `onyx-prod`. Der `onyx-test`-Namespace wurde am 2026-04-21 geloescht (Template im Repo erhalten). |
 | Ingress Controller | NGINX via Essential Network Load Balancer (NLB-10) |
 | TLS | Let's Encrypt via cert-manager (v1.19.4), LIVE seit 2026-03-09. ECDSA P-384, TLSv1.3, HTTP/2. DNS-01 via Cloudflare, ACME-Challenge CNAME-Delegation ueber GlobVill |
 | Network Policies | IMPLEMENTIERT (SEC-03): DEV 7 Policies, PROD 7 Policies (Zero-Trust, seit 2026-03-24), Monitoring 13 Policies, cert-manager 6 Policies |
@@ -26,10 +26,10 @@
 
 | Environment | Node-Typ | vCPU | RAM | Anzahl | Pool |
 |-------------|----------|------|-----|--------|------|
-| DEV + TEST | g1a.4d | 4 | 16 GB | 2 (1 pro Env) | `devtest` |
+| DEV | g1a.4d | 4 | 16 GB | 2 | `devtest` |
 | PROD (dedicated) | g1a.8d | 8 | 32 GB | 2 (bei Bedarf 3) | eigener Cluster |
 
-**DEV+TEST allokierbare Kapazitaet (2x g1a.4d):** ~7.4 CPU / ~26 Gi RAM — je ~3.7 CPU / ~13 Gi pro Env
+**DEV allokierbare Kapazitaet (2x g1a.4d):** ~7.4 CPU / ~26 Gi RAM
 **PROD allokierbare Kapazitaet (2x g1a.8d):** ~15.8 CPU / ~56.6 Gi RAM
 **PROD geschaetzte Auslastung:** CPU ~55% Requests / ~62% mit Monitoring, RAM ~27% Requests / ~30% mit Monitoring (bei 150 Usern, basierend auf values-prod.yaml PROD-Requests)
 
@@ -37,7 +37,7 @@
 > Begründung: CPU-Isolation, Ausfallsicherheit, Enterprise-Standard.
 
 > **Upgrade (ADR-005):** g1a.4d → g1a.8d seit 2026-03-06 (8 separate Celery-Worker nach Upstream PR #9014).
-> **Downgrade DEV+TEST (2026-03-16):** g1a.8d → g1a.4d (Kostenoptimierung). PROD bleibt g1a.8d.
+> **Downgrade DEV (2026-03-16):** g1a.8d → g1a.4d (Kostenoptimierung). PROD bleibt g1a.8d. TEST-Umgebung wurde am 2026-04-21 live abgebaut.
 
 ---
 
@@ -46,8 +46,9 @@
 | Environment | Konfiguration | vCPU | RAM | HA |
 |-------------|---------------|------|-----|-----|
 | DEV | Flex 2.4 Single | 2 | 4 GB | Nein |
-| TEST | Flex 2.4 Single | 2 | 4 GB | Nein |
 | PROD | Flex 4.8 Replica | 4 | 8 GB | Ja (3-Node Set) |
+
+> PG Flex `vob-test` wurde am 2026-04-21 geloescht (zusammen mit allen Backups).
 
 **Disk Performance:** Premium Performance Tier 2 (`premium-perf2-stackit`, SSD-level IOPS), 1 Disk pro Node
 **Backup:** PostgreSQL PITR (automatisch), Object Storage für Backup-Daten

@@ -14,17 +14,17 @@
 
 Die DEV- und TEST-Umgebungen laufen seit Februar/Maerz 2026 stabil auf einem geteilten SKE-Cluster (`vob-chatbot`). Gemaess ADR-004 wird PROD auf einem **eigenen, dedizierten SKE-Cluster** betrieben. Dieses Dokument beschreibt alle Schritte, Abhaengigkeiten und offenen Punkte fuer die PROD-Bereitstellung.
 
-### 1.2 Aktueller Stand (2026-03-11)
+### 1.2 Aktueller Stand (2026-04-21)
 
-| Komponente | DEV | TEST | PROD |
-|------------|-----|------|------|
-| SKE Cluster | `vob-chatbot` (shared) | `vob-chatbot` (shared) | **`vob-prod`** (dedicated, seit 2026-03-11) |
-| Namespace | `onyx-dev` (17 Pods) | `onyx-test` (15 Pods, heruntergefahren) | `onyx-prod` (20 Pods) |
-| PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 2.4 Single `vob-test` | Flex 4.8 Replica HA `vob-prod` (3 Nodes) |
-| Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
-| Domain | `dev.chatbot.voeb-service.de` | `test.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`) |
-| TLS | HTTPS LIVE (Let's Encrypt) | HTTPS LIVE (Let's Encrypt) | **HTTPS LIVE** (2026-03-17, Let's Encrypt ECDSA P-384) |
-| Auth | oidc (Entra ID, seit 2026-03-23) | Basic (heruntergefahren) | oidc (Entra ID, seit 2026-03-24) |
+| Komponente | DEV | PROD |
+|------------|-----|------|
+| SKE Cluster | `vob-chatbot` (DEV only, TEST 2026-04-21 abgebaut) | **`vob-prod`** (dedicated, seit 2026-03-11) |
+| Namespace | `onyx-dev` (17 Pods) | `onyx-prod` (20 Pods) |
+| PostgreSQL | Flex 2.4 Single `vob-dev` | Flex 4.8 Replica HA `vob-prod` (3 Nodes) |
+| Object Storage | `vob-dev` | `vob-prod` |
+| Domain | `dev.chatbot.voeb-service.de` | `chatbot.voeb-service.de` (LB: `188.34.92.162`) |
+| TLS | HTTPS LIVE (Let's Encrypt) | **HTTPS LIVE** (2026-03-17, Let's Encrypt ECDSA P-384) |
+| Auth | oidc (Entra ID, seit 2026-03-23) | oidc (Entra ID, seit 2026-03-24) |
 | Monitoring | kube-prometheus-stack | (shared mit DEV) | ✅ Deployed (14 Pods, 25 Targets UP, 50 VoEB Rules, Loki, seit 2026-03-25) |
 | CI/CD Job | `deploy-dev` (auto) | `deploy-test` (manuell) | `deploy-prod` (manuell, Review) |
 | Helm Values | `values-dev.yaml` | `values-test.yaml` | `values-prod.yaml` (deployed 2026-03-11) |

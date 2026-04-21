@@ -156,7 +156,7 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 - **Technologie**: GitHub Actions (`.github/workflows/stackit-deploy.yml`)
 - **Build**: Backend + Frontend parallel (~8 Min mit Cache), SHA-gepinnte Actions
 - **Registry**: StackIT Container Registry (`voeb-chatbot`)
-- **Ausführung**: Automatisch bei Push auf `main` (DEV), manuell per `workflow_dispatch` (TEST, PROD)
+- **Ausführung**: Automatisch bei Push auf `main` (DEV), manuell per `workflow_dispatch` (PROD; TEST-Template-Job inaktiv seit 2026-04-21)
 - **Validierung**: Smoke Tests (`/api/health`) nach jedem Deploy
 - **Artifacts**: Docker Images (Backend, Frontend), Helm Release
 
