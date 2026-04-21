@@ -1,6 +1,15 @@
 # ===========================================================
 # VÖB Service Chatbot — TEST Environment Helm Values
 # ===========================================================
+# STATUS: TEMPLATE-UMGEBUNG (INAKTIV seit 2026-04-21)
+#
+# Die Live-Infrastruktur wurde am 2026-04-21 abgebaut
+# (Helm Release + Namespace + PG-Instance + Bucket geloescht).
+# Diese Values-Datei bleibt als Blueprint erhalten fuer
+#   - Reaktivierung bei Bedarf
+#   - Wiederverwendung in Kunden-Klon-Projekten
+# Reaktivierungs-Anleitung: siehe deployment/terraform/environments/test/main.tf
+#
 # Analog zu DEV: 1 Replica pro Service, 8 separate Celery-Worker (Standard Mode).
 # Eigener Node im shared Cluster (ADR-004).
 #

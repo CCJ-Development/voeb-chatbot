@@ -67,16 +67,17 @@
   - ✅ **Embedding PROD: Qwen3-VL-Embedding 8B** (2026-03-24) — LiteLLM Provider, 4096 Dimensionen, Re-Index abgeschlossen
   - ✅ **LLM PROD konfiguriert** (2026-03-24) — 3 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B). Core #13 Fix (api_key + api_base + default_model_name), Upstream-Bug onyx-dot-app/onyx#9592
   - ✅ **OpenSearch lowercase Fix** (2026-03-24) — Core #14 (clean_model_name .lower()), Upstream-Bug. DB manuell korrigiert nach CrashLoop.
-- **Phase 2 TEST:** **DAUERHAFT HERUNTERGEFAHREN** (seit 2026-03-19)
-  - ⏸️ **Status:** 0 Pods. Alle Deployments + StatefulSets auf 0 Replicas, Redis CRD geloescht. Helm Release + PVCs + Secrets bleiben erhalten. Reaktivierung jederzeit moeglich (`kubectl scale` oder `helm upgrade`).
-  - ⏸️ Scale-to-Zero CronJobs + RBAC entfernt (nicht mehr noetig). `deployment/k8s/cost-optimization/` geloescht.
-  - ✅ War LIVE von 2026-03-03 bis 2026-03-19 (15 Pods, 8 Celery-Worker, Standard Mode)
-  - ✅ SEC-01: PG ACL eingeschränkt (188.34.93.194/32 + Admin)
-  - ✅ Terraform apply TEST: PG Flex `vob-test` + Bucket `vob-test` (bleiben erhalten)
-  - ✅ Namespace `onyx-test` + Image Pull Secret + DB `onyx` (bleiben erhalten)
-  - ✅ GitHub Environment `test` + 5 Secrets (PG, Redis, S3)
+- **Phase 2 TEST:** **Live-Infrastruktur abgebaut, Code als Template erhalten** (2026-04-21)
+  - 🗑️ **StackIT Live-Ressourcen geloescht:** Helm Release `onyx-test` + Namespace `onyx-test` + PostgreSQL Flex `vob-test` (inkl. Backups) + Object Storage Bucket `vob-test`. Durchgefuehrt via StackIT CLI + kubectl + Terraform `state rm`.
+  - 💰 Einsparung: ~115 EUR/Monat (LoadBalancer + PG Flex 2.4 Single + Bucket)
+  - ⏸️ War heruntergefahren seit 2026-03-19 (15 Pods zuvor aktiv)
   - ✅ TLS/HTTPS TEST war LIVE (2026-03-09) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2
-  - ✅ Alle historischen Meilensteine (Monitoring, Upstream-Merges, K8s-Upgrade, etc.) bleiben dokumentiert
+  - 📋 **Template-Artefakte bleiben im Repo erhalten** (als Blueprint fuer Kunden-Klon-Projekte und fuer spaetere VÖB-Reaktivierung):
+    - `deployment/terraform/environments/test/` (mit Reaktivierungs-Anleitung im Header)
+    - `deployment/helm/values/values-test.yaml` (mit Template-Marker)
+    - `.github/workflows/stackit-deploy.yml` deploy-test-Job (inaktiv, nur via workflow_dispatch triggerbar)
+  - 📌 DNS-Eintrag `test.chatbot.voeb-service.de` muss bei GlobVill/Cloudflare aufgeraeumt werden (Leif)
+  - 📌 GitHub Environment `test` + 5 Secrets koennen geloescht werden (optional)
 - **Phase 3 (Auth):** ✅ **DEV + PROD LIVE** (2026-03-24) — Entra ID OIDC.
 - **Phase 4 (Extensions):** Detailplan: `docs/referenz/ext-entwicklungsplan.md` | Lizenz-Abgrenzung: `docs/referenz/ee-foss-abgrenzung.md`
   - 4a: ✅ Extension Framework Basis (Config, Feature Flags, Router, Health Endpoint, Docker)

@@ -1,14 +1,32 @@
 # ===========================================================
 # TEST Environment — VÖB Service Chatbot
 # ===========================================================
+# STATUS: TEMPLATE-UMGEBUNG (INAKTIV seit 2026-04-21)
+#
+# Die Live-Infrastruktur wurde am 2026-04-21 vollstaendig abgebaut
+# (PG Flex, Bucket, Helm Release, Namespace via StackIT CLI + kubectl geloescht).
+# Diese Konfiguration bleibt im Repo als Blueprint erhalten und dient:
+#   - als Reaktivierungs-Template fuer VÖB bei Bedarf
+#   - als Vorlage fuer TEST-Umgebungen in Kunden-Klon-Projekten
+#
 # Provisioniert NUR Daten-Services (kein eigener Cluster!):
-#   - 1× PostgreSQL Flex 2.4 Single (2 CPU, 4 GB)
+#   - 1× PostgreSQL Flex 2.4 Single (2 CPU, 4 GB, 20 GB SSD)
 #   - 1× Object Storage Bucket (vob-test)
 #
 # Der SKE-Cluster wird mit DEV geteilt (Node Pool "devtest",
 # 2 Nodes). Siehe ADR-004 für die Begründung.
 #
-# Geschätzte Kosten TEST-Daten: ~35 EUR/Monat
+# Geschätzte Kosten TEST-Daten: ~115 EUR/Monat (PG Flex + LB + Bucket)
+#
+# REAKTIVIERUNG — Schritt für Schritt:
+#   1. Neue values-test-secrets.yaml generieren (analog values-dev-secrets.yaml)
+#   2. GitHub Environment "test" mit 5 Secrets (PG, Redis, S3) neu anlegen
+#   3. terraform apply mit -var="project_id=<UUID>" in diesem Verzeichnis
+#      -> Erzeugt neue PG-Instance + neuen Bucket (neue IDs, neue Passwörter)
+#   4. CI/CD: workflow_dispatch mit environment=test triggern
+#      -> Helm Release + Namespace + LoadBalancer werden neu angelegt
+#   5. DNS-Eintrag test.chatbot.voeb-service.de auf neue LoadBalancer-IP
+#      -> Bei GlobVill und Cloudflare (Leif Rasch)
 # ===========================================================
 
 module "stackit_data" {

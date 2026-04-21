@@ -76,8 +76,8 @@ deployment/terraform/
       main.tf                ← DEV-Umgebung (ruft Modul auf)
       backend.tf             ← State-Backend (lokal, remote vorbereitet)
       terraform.tfvars       ← Projekt-spezifische Werte
-    test/
-      main.tf                ← TEST-Umgebung (eigene PG + Bucket)
+    test/                    ← Template-Umgebung (INAKTIV seit 2026-04-21, Blueprint fuer Klon-Projekte)
+      main.tf                ← TEST-Umgebung (eigene PG + Bucket) — Reaktivierungsanleitung im Header
       backend.tf
       terraform.tfvars
     prod/
@@ -93,16 +93,15 @@ deployment/helm/
   values/
     values-common.yaml       ← Gemeinsame Config (PG extern, MinIO aus, OpenSearch+Vespa(Zombie)+Redis an, Health Probes)
     values-dev.yaml          ← DEV: 1 Replica, 8 Celery-Worker (Standard Mode), Auth disabled
-    values-test.yaml         ← TEST: 1 Replica, 8 Celery-Worker, Auth disabled
+    values-test.yaml         ← TEMPLATE (INAKTIV seit 2026-04-21): 1 Replica, 8 Celery-Worker. Blueprint fuer Klon-Projekte.
     values-prod.yaml         ← PROD: 2xAPI HA, 2xWeb HA, 8 Celery-Worker (aktualisiert 2026-03-22, Chart 0.4.36, 20 Pods)
-    values-monitoring.yaml   ← kube-prometheus-stack DEV/TEST (separater Helm Release in NS monitoring)
+    values-monitoring.yaml   ← kube-prometheus-stack DEV (separater Helm Release in NS monitoring)
     values-monitoring-prod.yaml ← kube-prometheus-stack PROD (90d Retention, 50Gi, separater Teams-Kanal)
     values-loki-prod.yaml    ← Loki Log-Aggregation PROD (loki-stack 2.10.3, 30d Retention, 20Gi)
     values-dev-secrets.yaml  ← DEV Secrets: PG, Redis, S3 Credentials (gitignored)
-    values-test-secrets.yaml ← TEST Secrets (gitignored)
 ```
 Onyx: CI/CD (`gh workflow run stackit-deploy.yml`). Manuell: `helm upgrade --install -f values-common.yaml -f values-{env}.yaml`
-Monitoring DEV/TEST: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`
+Monitoring DEV: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring.yaml`
 Monitoring PROD: `helm upgrade monitoring prometheus-community/kube-prometheus-stack -n monitoring -f values-monitoring-prod.yaml`
 
 ## Monitoring

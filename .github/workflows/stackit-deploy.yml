@@ -321,7 +321,12 @@ jobs:
           kubectl get svc -n onyx-dev
 
   # =========================================================
-  # DEPLOY TEST: Manuell
+  # DEPLOY TEST: Manuell (Template — INAKTIV seit 2026-04-21)
+  # =========================================================
+  # Die TEST-Infrastruktur wurde am 2026-04-21 bei VÖB abgebaut.
+  # Dieser Job bleibt als Blueprint fuer Kunden-Klon-Projekte und fuer
+  # eventuelle Reaktivierung. Triggerung nur explizit per workflow_dispatch
+  # mit environment=test, was ein vorheriges `terraform apply` voraussetzt.
   # =========================================================
   deploy-test:
     needs: [prepare, build-backend, build-frontend]
