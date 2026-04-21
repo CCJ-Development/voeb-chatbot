@@ -1,7 +1,9 @@
 # Runbook: StackIT PostgreSQL Flex — Betriebswissen
 
-**Zuletzt verifiziert:** 2026-03-22 (DEV/TEST + PROD).
+**Zuletzt verifiziert:** 2026-04-21 (DEV + PROD; TEST-Instanz `vob-test` am 2026-04-21 geloescht)
 **Ausgeführt von:** Nikolaj Ivanov
+
+> **Für Kunden-Klon-Projekte:** Dieses Runbook verwendet konkrete VÖB-Instanznamen (`vob-dev`, `vob-prod`). Für einen neuen Kunden ersetze die Platzhalter aus dem [Master-Playbook](./kunden-klon-onboarding.md §2): `<PG_INSTANCE_DEV>`, `<PG_INSTANCE_PROD>`. Die DB-Struktur (`onyx` als Datenbank-Name, User `onyx_app` + `db_readonly_user`) ist projektunabhängig — die werden durch Terraform + Alembic-Migration automatisch angelegt. Manuelle Schritte (DB `onyx` erstellen, Grants für Readonly-User) sind im Abschnitt „Initialsetup" dokumentiert.
 
 ---
 

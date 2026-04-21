@@ -1,17 +1,19 @@
 # Runbook: Entra ID (OIDC) Konfiguration
 
-**Projekt:** VÖB Chatbot
-**Stand:** 2026-03-22
-**Autor:** COFFEESTUDIOS (Nikolaj Ivanov)
+**Projekt:** VÖB Chatbot (als Beispiel; für neue Kunden analog)
+**Stand:** 2026-04-21
+**Autor:** Nikolaj Ivanov (CCJ Development)
+
+> **Für Kunden-Klon-Projekte:** Die App Registration wird von der **Kunden-IT** in deren Entra-ID-Tenant erstellt. Der Tech Lead (CCJ) liefert die benötigten Redirect-URIs und erhält Client-ID, Tenant-ID und Client-Secret zurück. Als Tech Lead muss man ggf. als B2B-Gastbenutzer im Tenant aufgenommen werden, um administrativen Zugriff für das Troubleshooting zu haben. Platzhalter aus dem [Master-Playbook](./kunden-klon-onboarding.md §2): `<ENTRA_TENANT_ID>`, `<ENTRA_CLIENT_ID>`, `<PRIMARY_DOMAIN>`, `<DEV_DOMAIN>`.
 
 ---
 
 ## Voraussetzungen
 
 - HTTPS aktiv auf der Ziel-Umgebung (Pflicht fuer OIDC)
-- Entra ID App Registration durch VÖB IT erstellt
-- 3 Credentials von VÖB erhalten: Client ID, Tenant ID, Client Secret
-- Niko als User in Entra ID aufgenommen (B2B-Gastbenutzer)
+- Entra ID App Registration durch Kunden-IT erstellt
+- 3 Credentials vom Kunden erhalten: Client ID, Tenant ID, Client Secret (**Value**, nicht ID)
+- Tech Lead als Gastbenutzer im Tenant aufgenommen
 
 ## Architektur
 

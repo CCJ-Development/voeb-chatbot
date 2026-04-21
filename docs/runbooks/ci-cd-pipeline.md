@@ -2,18 +2,21 @@
 
 > **Workflow**: `.github/workflows/stackit-deploy.yml`
 > **Verifiziert**: 2026-03-02 (Run #5, Commit `ea70a11`)
-> **Letzte Änderung**: 2026-03-22
+> **Letzte Änderung**: 2026-04-21
 >
 > **Hinweis:** Seit Upstream-Sync #4 (2026-03-22) existiert `.github/workflows/storybook-deploy.yml` (Storybook Deploy). Harmlos, kann bei Bedarf deaktiviert werden.
+
+> **Für Kunden-Klon-Projekte:** Dieses Runbook ist mit dem VÖB-Workflow und VÖB-Secret-Namen dokumentiert. Für einen neuen Kunden müssen die GitHub Environments (`dev`, `prod`) und die zugehörigen Secrets neu angelegt werden. Secret-Namen bleiben identisch (`POSTGRES_PASSWORD`, `S3_ACCESS_KEY_ID`, …); nur die **Werte** sind kundenspezifisch. Siehe [Master-Playbook §2](./kunden-klon-onboarding.md) für die vollständige Variablen-Tabelle und die empfohlene Reihenfolge (erst GitHub Environments + Secrets, dann `terraform apply`, dann `workflow_dispatch`).
 
 ---
 
 ## Zweck
 
 **Wann dieses Runbook verwenden:**
-- Deployment auf DEV, TEST oder PROD ausloesen (automatisch oder manuell)
+- Deployment auf DEV oder PROD ausloesen (automatisch oder manuell)
 - Deploy-Status pruefen und Pipeline-Fehler debuggen
 - Secrets (Kubeconfig, Registry, DB) aktualisieren oder rotieren
+- (Historisch) TEST-Template-Job triggern — TEST-Live-Infra seit 2026-04-21 abgebaut
 
 **Zielgruppe:** DevOps / Tech Lead
 

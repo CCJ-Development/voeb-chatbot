@@ -34,25 +34,38 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für di
 | [ADR-005](./adr/adr-005-node-upgrade-g1a8d.md) | Akzeptiert | Node-Upgrade g1a.4d → g1a.8d |
 | [ADR-006](./adr/adr-006-vpn-zu-https-oidc.md) | In Diskussion | VPN-Schicht vs. HTTPS+OIDC |
 
-## Runbooks (Verifizierte Step-by-Step-Anleitungen)
+## Runbooks (22 Verifizierte Step-by-Step-Anleitungen)
+
+**Einstieg für Kunden-Klon-Projekte:** [kunden-klon-onboarding.md](./runbooks/kunden-klon-onboarding.md) — Master-Playbook mit End-to-End-Reihenfolge.
+
+### Setup (Phase 1–11)
 
 | Runbook | Thema |
 |---------|-------|
+| [kunden-klon-onboarding.md](./runbooks/kunden-klon-onboarding.md) | **Master-Playbook** für Klon-Projekte |
 | [stackit-projekt-setup.md](./runbooks/stackit-projekt-setup.md) | StackIT CLI, Service Account, Container Registry |
+| [terraform-setup.md](./runbooks/terraform-setup.md) | Terraform Initial-Setup (Variablen, apply, Outputs) |
 | [stackit-postgresql.md](./runbooks/stackit-postgresql.md) | PostgreSQL Flex Setup, User-Verwaltung |
+| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | cert-manager, Let's Encrypt, Cloudflare |
 | [helm-deploy.md](./runbooks/helm-deploy.md) | Helm Values, Deploy, Troubleshooting |
+| [entra-id-setup.md](./runbooks/entra-id-setup.md) | Entra ID OIDC-Einrichtung |
+| [monitoring-setup.md](./runbooks/monitoring-setup.md) | kube-prometheus-stack + Exporter + Loki + Alerts |
+| [llm-konfiguration.md](./runbooks/llm-konfiguration.md) | Chat + Embedding-Modelle konfigurieren |
+| [whitelabel-setup.md](./runbooks/whitelabel-setup.md) | Logo, App-Name, Consent, i18n für neuen Kunden |
 | [ci-cd-pipeline.md](./runbooks/ci-cd-pipeline.md) | CI/CD Pipeline, Secrets, Debugging |
 | [prod-deploy.md](./runbooks/prod-deploy.md) | 6-Schritte-Template für PROD-Rollouts |
-| [dns-tls-setup.md](./runbooks/dns-tls-setup.md) | cert-manager, Let's Encrypt, Cloudflare |
-| [entra-id-setup.md](./runbooks/entra-id-setup.md) | Entra ID OIDC-Einrichtung |
-| [llm-konfiguration.md](./runbooks/llm-konfiguration.md) | Chat + Embedding-Modelle konfigurieren |
-| [llm-provider-management.md](./runbooks/llm-provider-management.md) | LLM-Provider-Rotation, Fallbacks |
-| [rollback-verfahren.md](./runbooks/rollback-verfahren.md) | Helm/DB-Rollback, Post-Mortem |
+
+### Betrieb (nach Go-Live)
+
+| Runbook | Thema |
+|---------|-------|
 | [upstream-sync.md](./runbooks/upstream-sync.md) | Upstream-Merge-Prozess, Konflikt-Lösung |
 | [secret-rotation.md](./runbooks/secret-rotation.md) | Rotation von API-Tokens, Credentials |
+| [rollback-verfahren.md](./runbooks/rollback-verfahren.md) | Helm/DB-Rollback, Post-Mortem |
 | [alert-antwort.md](./runbooks/alert-antwort.md) | Alert-Reaktion, Eskalation |
 | [loki-troubleshooting.md](./runbooks/loki-troubleshooting.md) | Loki Log-Aggregation Debugging |
 | [opensearch-troubleshooting.md](./runbooks/opensearch-troubleshooting.md) | OpenSearch Index-Probleme |
+| [llm-provider-management.md](./runbooks/llm-provider-management.md) | LLM-Provider-Rotation, Fallbacks |
 | [ext-access-aktivierung.md](./runbooks/ext-access-aktivierung.md) | ext-access (Dokument-Zugriffskontrolle) aktivieren |
 | [ext-analytics-verwaltung.md](./runbooks/ext-analytics-verwaltung.md) | ext-analytics-Dashboard pflegen |
 | [ip-schutz-helm.md](./runbooks/ip-schutz-helm.md) | IP-Allowlisting in Helm |

@@ -1,20 +1,23 @@
 # Runbook: DNS + HTTPS Setup (Cloudflare DNS-01)
 
-**Status:** DEV + TEST + PROD LIVE — HTTPS aktiv auf allen Environments, Let's Encrypt ECDSA P-384, TLSv1.3. TEST heruntergefahren seit 2026-03-19.
-**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-03-22 (DEV HTTPS wiederhergestellt nach DNS-Update von Leif)
-**Erstellt von:** Nikolaj Ivanov (CCJ / Coffee Studios)
+**Status:** DEV + PROD LIVE — HTTPS aktiv, Let's Encrypt ECDSA P-384, TLSv1.3. TEST-Infrastruktur seit 2026-04-21 abgebaut.
+**Erstellt:** 2026-03-03 | **Aktualisiert:** 2026-04-21
+**Erstellt von:** Nikolaj Ivanov (CCJ Development)
+
+> **Für Kunden-Klon-Projekte:** Dieses Runbook ist mit konkreten VÖB-Werten (`voeb-service.de`, GlobVill als DNS-Provider, konkrete IPs) geschrieben. Für einen neuen Kunden ersetze die Platzhalter aus dem [Master-Playbook](./kunden-klon-onboarding.md §2) — insbesondere `<PRIMARY_DOMAIN>`, `<DEV_DOMAIN>`, `<DNS_PROVIDER>`, `<ADMIN_IP>`, `<ACME_EMAIL>`. Wenn der Kunden-DNS-Provider API-Access für Cloudflare / Let's Encrypt erlaubt, kann die CNAME-Delegation entfallen (siehe Abschnitt „DNS-01 ohne Delegation").
 
 ---
 
 ## Uebersicht
 
-### Aktueller Stand
+### Aktueller Stand (Beispiel VÖB)
 
 | Environment | Zugriff | Status |
 |-------------|---------|--------|
 | DEV | `https://dev.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-22) — DNS-Update von Leif/GlobVill durchgefuehrt, LB-IP `188.34.118.222`. ECDSA P-384, TLSv1.3, HTTP/2. |
-| TEST | `https://test.chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-09) — **Cluster heruntergefahren seit 2026-03-19** (Scale-to-Zero, Helm Release bleibt erhalten). |
-| PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, E7 Intermediate, HSTS 1 Jahr. |
+| PROD | `https://chatbot.voeb-service.de` | **HTTPS LIVE** (2026-03-17) — ECDSA P-384, HSTS 1 Jahr. |
+
+> TEST-Umgebung wurde am 2026-04-21 abgebaut; der ACME-Challenge-CNAME `_acme-challenge.test.chatbot.voeb-service.de` und der A-Record können bei GlobVill aufgeräumt werden.
 
 ### Zielzustand
 

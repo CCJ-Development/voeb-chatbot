@@ -3,6 +3,8 @@
 **Zuletzt verifiziert:** 2026-04-17 (PROD Chart 0.4.36 → 0.4.44, Helm Rev 18; Monitoring Helm Rev 6 via `--force-replace --server-side=false`)
 **Ausgeführt von:** Nikolaj Ivanov
 
+> **Für Kunden-Klon-Projekte:** Dieses Runbook ist mit konkreten VÖB-Werten geschrieben (Namespace `onyx-dev`/`onyx-prod`, Release-Namen `onyx-dev`/`onyx-prod`, Image-Registry `voeb-chatbot`). Für einen neuen Kunden ersetze die Platzhalter aus dem [Master-Playbook](./kunden-klon-onboarding.md §2): `<NAMESPACE_DEV>`, `<NAMESPACE_PROD>`, `<HELM_RELEASE_DEV>`, `<HELM_RELEASE_PROD>`, `<REGISTRY_PROJECT>`. Die Helm-Chart-Abhängigkeiten sind kundenunabhängig.
+
 ---
 
 ## Zweck
