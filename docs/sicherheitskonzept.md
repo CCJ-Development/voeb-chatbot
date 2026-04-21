@@ -1,9 +1,11 @@
 # Sicherheitskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise implementiert)
-**Letzte Aktualisierung**: 2026-04-17
-**Version**: 0.9
+**Letzte Aktualisierung**: 2026-04-21
+**Version**: 0.9.1
 **Nächste Überprüfung**: 2026-07-17
+
+> **TEST-Umgebung-Update (2026-04-21):** Die TEST-Live-Infrastruktur wurde vollständig abgebaut. Historische Erwähnungen von TEST als Live-System in diesem Dokument beschreiben den Stand bis 2026-04-20; aktuelle Live-Umgebungen sind DEV und PROD. Die Konfigurations-Artefakte bleiben als Template-Blueprint im Repo (siehe `deployment/terraform/environments/test/`).
 
 ---
 
@@ -46,7 +48,7 @@ Dieses Konzept gilt für:
 | Umgebung | Status | URL | Auth |
 |----------|--------|-----|------|
 | DEV | LIVE seit 2026-02-27 | `https://dev.chatbot.voeb-service.de` | Entra ID OIDC (`AUTH_TYPE: oidc`, seit 2026-03-23) |
-| TEST | Heruntergefahren (seit 2026-03-19) | `https://test.chatbot.voeb-service.de` | — |
+| TEST | **Abgebaut (2026-04-21)** | — | Template-Artefakte im Repo |
 | PROD | HTTPS LIVE seit 2026-03-17 | `https://chatbot.voeb-service.de` | Entra ID OIDC (`AUTH_TYPE: oidc`, seit 2026-03-24) |
 
 > **Hinweis:** Dieses Dokument trennt klar zwischen **IMPLEMENTIERT** (verifiziert in DEV/PROD) und **GEPLANT** (offen). PROD ist seit 2026-03-17 HTTPS LIVE (20 Pods, `https://chatbot.voeb-service.de`). DEV ist seit 2026-03-22 HTTPS LIVE. Entra ID OIDC ist seit 2026-03-24 auf DEV und PROD LIVE. TEST ist seit 2026-03-19 dauerhaft heruntergefahren.
@@ -221,12 +223,11 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 
 | Ressource | Rolle | Zugriff | Bemerkung |
 |-----------|-------|---------|-----------|
-| SKE Cluster `vob-chatbot` (DEV/TEST) | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs zurückgestellt |
-| SKE Cluster `vob-chatbot` (DEV/TEST) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
+| SKE Cluster `vob-chatbot` (DEV) | Tech Lead | Cluster-Admin (Kubeconfig) | SEC-05: Separate Kubeconfigs zurückgestellt |
+| SKE Cluster `vob-chatbot` (DEV) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | Selber Kubeconfig wie Tech Lead |
 | SKE Cluster `vob-prod` (PROD) | Tech Lead | Cluster-Admin (Kubeconfig) | Eigener Cluster (ADR-004), Kubeconfig gültig bis 2026-06-22 |
 | SKE Cluster `vob-prod` (PROD) | CI/CD Pipeline | Cluster-Admin (Kubeconfig) | GitHub Environment `prod` mit Required Reviewer + 7 Secrets |
 | Namespace `onyx-dev` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
-| Namespace `onyx-test` | Tech Lead / CI/CD | Full Access | Deployment, Secrets, ConfigMaps |
 | Namespace `onyx-prod` | Tech Lead + Reviewer | Full Access | Eigener Cluster, Required Reviewer auf GitHub Environment |
 | SKE Cluster API | Alle (Internet) | Zugriff mit Kubeconfig | **OPS-01: ACL auf Cluster-Egress-IP einschränken (empfohlen)** |
 
@@ -236,13 +237,10 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 |-----------|-------------|---------|-----------|
 | PostgreSQL DEV (`vob-dev`) | `onyx_app` | Read/Write (login, createdb) | ACL: Cluster-Egress-IP `188.34.93.194/32` (SEC-01) |
 | PostgreSQL DEV (`vob-dev`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
-| PostgreSQL TEST (`vob-test`) | `onyx_app` | Read/Write | Eigene Instanz, ACL identisch |
-| PostgreSQL TEST (`vob-test`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
 | PostgreSQL PROD (`vob-prod`) | `onyx_app` | Read/Write | PG Flex 4.8 HA (3-Node), ACL: Egress `188.34.73.72/32` + Admin-IP |
 | PostgreSQL PROD (`vob-prod`) | `db_readonly_user` | Read-Only | Knowledge Graph, Terraform-verwaltet |
 | PostgreSQL (Admin) | Tech Lead | Full Access (via Admin-IP) | `109.41.112.160/32` in PG ACL (alle Environments) |
 | Object Storage DEV (`vob-dev`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
-| Object Storage TEST (`vob-test`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
 | Object Storage PROD (`vob-prod`) | Anwendung | Read/Write (S3 API) | Access Key in K8s Secret |
 | Container Registry | CI/CD Robot Account | Push/Pull | `robot$voeb-chatbot+github-ci` |
 
@@ -392,7 +390,7 @@ API Base: https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1
 
 #### Object Storage (StackIT S3-kompatibel)
 
-- Buckets: `vob-dev` (DEV), `vob-test` (TEST), `vob-prod` (PROD)
+- Buckets: `vob-dev` (DEV), `vob-prod` (PROD); `vob-test` am 2026-04-21 geloescht
 - Zugriff über Access Key / Secret Key (pro Environment getrennt, in K8s Secrets)
 - SSE (Server-Side Encryption) als StackIT Default (SEC-07 verifiziert 2026-03-08)
 
@@ -1214,18 +1212,20 @@ Phase 6: NACHBEREITUNG
 
 ### Ressourcen-Übersicht
 
-| Ressource | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| SKE Cluster | Shared (`vob-chatbot`) | Shared (`vob-chatbot`) | Eigener Cluster (`vob-prod`, ADR-004) |
-| K8s Version | v1.33.8 | v1.33.8 | v1.33.9 |
-| Node Pool | `devtest` (2 Nodes, g1a.4d, downgraded 2026-03-16) | `devtest` (shared, 0 Pods seit 2026-03-19) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
-| Pods | 16 | 15 | 20 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
-| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 2.4 Single (`vob-test`) | Flex 4.8 HA 3-Node (`vob-prod`) |
-| Object Storage | `vob-dev` | `vob-test` | `vob-prod` |
-| Namespace | `onyx-dev` | `onyx-test` | `onyx-prod` |
-| Monitoring | Shared (`monitoring` NS) | Shared (`monitoring` NS) | Eigener (`monitoring` NS, 9 Pods) |
-| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa Zombie = Ausnahme) |
-| Deploy-Strategie | Recreate | Recreate | Recreate (DB Connection Pool Exhaustion vermeiden) |
+| Ressource | DEV | PROD |
+|-----------|-----|------|
+| SKE Cluster | `vob-chatbot` | Eigener Cluster (`vob-prod`, ADR-004) |
+| K8s Version | v1.33.9 | v1.33.9 |
+| Node Pool | `devtest` (2 Nodes, g1a.4d, downgraded 2026-03-16) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
+| Pods | 17 | 20 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
+| PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 4.8 HA 3-Node (`vob-prod`) |
+| Object Storage | `vob-dev` | `vob-prod` |
+| Namespace | `onyx-dev` | `onyx-prod` |
+| Monitoring | `monitoring` NS (shared im Cluster) | Eigener (`monitoring` NS, 9 Pods) |
+| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa Zombie = Ausnahme) |
+| Deploy-Strategie | Recreate | Recreate (DB Connection Pool Exhaustion vermeiden) |
+
+> TEST-Live-Infrastruktur seit 2026-04-21 abgebaut (Template-Artefakte im Repo).
 
 ### Telemetrie
 

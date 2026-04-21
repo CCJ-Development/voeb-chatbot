@@ -7,26 +7,30 @@
 
 ## 1. Umgebungen
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| Cluster | vob-chatbot (shared) | vob-chatbot (shared) | vob-prod (eigener, ADR-004) |
-| Namespace | onyx-dev | onyx-test | onyx-prod |
-| K8s Version | v1.33.9 | v1.33.9 | v1.33.9 |
-| Flatcar | 4459.2.3 | 4459.2.3 | 4459.2.3 |
-| Node Pool | devtest (2x g1a.4d) | devtest (2x g1a.4d) | prod (2x g1a.8d) |
-| Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
-| Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 17 | 0 (heruntergefahren seit 2026-03-19, war 15-16) | 20 (inkl. OpenSearch, seit 2026-03-22) |
-| API Replicas | 1 | 1 | 2 (HA) |
-| Web Replicas | 1 | 1 | 2 (HA) |
-| Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 | 8 |
-| IngressClass | nginx | nginx-test | nginx |
-| URL | https://dev.chatbot.voeb-service.de | https://test.chatbot.voeb-service.de | https://chatbot.voeb-service.de |
-| HTTPS | **LIVE** (seit 2026-03-22, DNS A-Record auf 188.34.118.222 aktualisiert) | LIVE (2026-03-09) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
-| Auth | oidc (Entra ID, seit 2026-03-23) | basic | oidc (Entra ID, seit 2026-03-24) |
-| Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell) | workflow_dispatch (manuell, Required Reviewer) |
-| Status | LIVE seit 2026-02-27 | **Heruntergefahren** (dauerhaft, seit 2026-03-19). Helm Release bleibt. Reaktivierung jederzeit moeglich. | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
-| Deployment-Strategie | Recreate | Recreate | Recreate |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| Cluster | vob-chatbot | vob-prod (eigener, ADR-004) |
+| Namespace | onyx-dev | onyx-prod |
+| K8s Version | v1.33.9 | v1.33.9 |
+| Flatcar | 4459.2.3 | 4459.2.3 |
+| Node Pool | devtest (2x g1a.4d) | prod (2x g1a.8d) |
+| Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
+| Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
+| Pods | 17 | 20 (inkl. OpenSearch, seit 2026-03-22) |
+| API Replicas | 1 | 2 (HA) |
+| Web Replicas | 1 | 2 (HA) |
+| Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 |
+| IngressClass | nginx | nginx |
+| URL | https://dev.chatbot.voeb-service.de | https://chatbot.voeb-service.de |
+| HTTPS | **LIVE** (seit 2026-03-22, DNS A-Record 188.34.118.222) | **LIVE** (2026-03-17) — Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2 |
+| Auth | oidc (Entra ID, seit 2026-03-23) | oidc (Entra ID, seit 2026-03-24) |
+| Deploy-Trigger | Push auf main (auto) | workflow_dispatch (manuell, Required Reviewer) |
+| Status | LIVE seit 2026-02-27 | **HTTPS LIVE** seit 2026-03-17 (deployed 2026-03-11) |
+| Deployment-Strategie | Recreate | Recreate |
+
+**TEST-Umgebung:** Seit 2026-04-21 **vollstaendig abgebaut** (Helm Release, Namespace, PostgreSQL Flex `vob-test`, Object Storage Bucket `vob-test` via StackIT CLI + kubectl + Terraform state rm geloescht). Die Konfigurations-Artefakte (`deployment/terraform/environments/test/`, `deployment/helm/values/values-test.yaml`, `deploy-test`-Workflow-Job) bleiben als Template-Blueprint im Repo fuer Kunden-Klon-Projekte und eventuelle Reaktivierung. Reaktivierungs-Anleitung im Header von `environments/test/main.tf`.
+
+Historisch: TEST war LIVE von 2026-03-03 bis 2026-03-19 (15 Pods), dann Compute-seitig auf 0 Replicas (Managed Services liefen weiter bis 2026-04-21).
 
 ---
 
@@ -40,9 +44,9 @@
 | DNS Provider | Cloudflare (DNS-only, kein Proxy, Pro-Plan) |
 | DNS-Aufloesungskette | GlobVill CNAME -> *.voeb-service.de.cdn.cloudflare.net -> Cloudflare A-Record -> StackIT LB IP |
 | LB DEV | **188.34.118.222** (DNS aktualisiert 2026-03-22 durch Leif/GlobVill) |
-| LB TEST | 188.34.118.201 |
+| LB TEST | (abgebaut 2026-04-21; ehemals 188.34.118.201) |
 | LB PROD | 188.34.92.162 |
-| Egress DEV+TEST | 188.34.93.194 (NAT Gateway, fest fuer Cluster-Lifecycle) |
+| Egress DEV | 188.34.93.194 (NAT Gateway, fest fuer Cluster-Lifecycle) |
 | Egress PROD | 188.34.73.72 |
 | TLS Algorithmus | ECDSA P-384 (secp384r1), BSI TR-02102-2 konform |
 | TLS Version | TLSv1.3 |
@@ -52,40 +56,42 @@
 | TLS Laufzeit | 90 Tage (cert-manager Renewal nach 2/3 = ~Tag 60) |
 | HTTP-Version | HTTP/2 |
 | cert-manager | v1.19.4, DNS-01 via Cloudflare API |
-| ClusterIssuers | onyx-dev-letsencrypt, onyx-test-letsencrypt, onyx-prod-letsencrypt (alle READY) |
+| ClusterIssuers | onyx-dev-letsencrypt, onyx-prod-letsencrypt (beide READY); onyx-test-letsencrypt obsolet seit TEST-Abbau 2026-04-21 |
 | ACME Server | https://acme-v02.api.letsencrypt.org/directory (Production) |
 | ACME Email | nikolaj.ivanov@coffee-studios.de |
 | HSTS DEV | max-age=3600; includeSubDomains (reaktiviert mit HTTPS, 2026-03-22) |
-| HSTS TEST | max-age=3600; includeSubDomains |
+| HSTS TEST | (abgebaut 2026-04-21) |
 | HSTS PROD | max-age=31536000; includeSubDomains |
 | HTTP-zu-HTTPS Redirect | 308 Permanent Redirect |
 | NetworkPolicies DEV | 7 Policies in onyx-dev (SEC-03 + Monitoring-Scrape + Redis-Exporter, seit 2026-03-10) |
 | NetworkPolicies PROD | **7 Policies** (Zero-Trust: Default-Deny, DNS, Intra-NS, NGINX Ingress, External Egress, Monitoring Scrape, Redis Exporter. Seit 2026-03-24) |
 | NetworkPolicies Monitoring | 13 Policies (Zero-Trust, alle applied. Seit 2026-03-24 vollstaendig) |
 | SKE Cluster API ACL | 0.0.0.0/0 (Kubeconfig mit Client-Zertifikat als Schutz) |
-| PG ACL DEV+TEST | 188.34.93.194/32 + Admin (SEC-01) |
+| PG ACL DEV | 188.34.93.194/32 + Admin (SEC-01) |
 | PG ACL PROD | 188.34.73.72/32 + Admin (SEC-01) |
 
 ---
 
 ## 3. Datenbank (PostgreSQL Flex)
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| Instanz-Name | vob-dev | vob-test | vob-prod |
-| Konfiguration | Flex 2.4 Single | Flex 2.4 Single | Flex 4.8 HA (3-Node Cluster) |
-| Specs | 2 CPU, 4 GB RAM, 20 GB SSD | 2 CPU, 4 GB RAM, 20 GB SSD | 4 CPU, 8 GB RAM (HA 3 Nodes) |
-| PostgreSQL Version | 16 | 16 | 16 |
-| Datenbank | onyx | onyx | onyx |
-| User (RW) | onyx_app | onyx_app | onyx_app |
-| User (RO) | db_readonly_user | db_readonly_user | db_readonly_user |
-| Port | 5432 | 5432 | 5432 |
-| Verbindung | SSL/TLS (sslmode=require) | SSL/TLS | SSL/TLS |
-| Backup | Taeglich 02:00 UTC, 30 Tage | Taeglich 03:00 UTC, 30 Tage | Taeglich 01:00 UTC, 30 Tage, PITR sekundengenau (Flex 4.8 HA) |
-| Encryption at Rest | AES-256 (StackIT Default) | AES-256 | AES-256 |
-| Lifecycle Protection | prevent_destroy = true (Terraform) | prevent_destroy = true | prevent_destroy = true |
-| User-Rollen | login, createdb | login, createdb | login, createdb |
-| max_connections | 100 (StackIT Default) | 100 | 100 |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| Instanz-Name | vob-dev | vob-prod |
+| Konfiguration | Flex 2.4 Single | Flex 4.8 HA (3-Node Cluster) |
+| Specs | 2 CPU, 4 GB RAM, 20 GB SSD | 4 CPU, 8 GB RAM (HA 3 Nodes) |
+| PostgreSQL Version | 16 | 16 |
+| Datenbank | onyx | onyx |
+| User (RW) | onyx_app | onyx_app |
+| User (RO) | db_readonly_user | db_readonly_user |
+| Port | 5432 | 5432 |
+| Verbindung | SSL/TLS (sslmode=require) | SSL/TLS |
+| Backup | Taeglich 02:00 UTC, 30 Tage | Taeglich 01:00 UTC, 30 Tage, PITR sekundengenau (Flex 4.8 HA) |
+| Encryption at Rest | AES-256 (StackIT Default) | AES-256 |
+| Lifecycle Protection | prevent_destroy = true (Terraform) | prevent_destroy = true |
+| User-Rollen | login, createdb | login, createdb |
+| max_connections | 100 (StackIT Default) | 100 |
+
+> PG Flex `vob-test` wurde am 2026-04-21 geloescht (zusammen mit Backups). Template fuer Neuanlage: `deployment/terraform/environments/test/main.tf`.
 
 **Hinweise:**
 - StackIT PG Flex erlaubt kein CREATEROLE -- spezielle User per Terraform
@@ -97,33 +103,35 @@
 
 ## 4. Object Storage
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| Bucket | vob-dev | vob-test | vob-prod |
-| Endpoint | object.storage.eu01.onstackit.cloud | (identisch) | (identisch) |
-| Encryption | AES-256 (at rest) | AES-256 | AES-256 |
-| Versionierung | Unterstuetzt, **nicht aktiviert** | Unterstuetzt, **nicht aktiviert** | Unterstuetzt, **nicht aktiviert** |
-| Versionierung Hinweis | Nicht via Terraform konfigurierbar (StackIT API-Limitation, GH Issue #1048). Aktivierung per `aws s3api put-bucket-versioning` (einmalig pro Bucket). Audit H3. | | |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| Bucket | vob-dev | vob-prod |
+| Endpoint | object.storage.eu01.onstackit.cloud | (identisch) |
+| Encryption | AES-256 (at rest) | AES-256 |
+| Versionierung | Unterstuetzt, **nicht aktiviert** | Unterstuetzt, **nicht aktiviert** |
+| Versionierung Hinweis | Nicht via Terraform konfigurierbar (StackIT API-Limitation, GH Issue #1048). Aktivierung per `aws s3api put-bucket-versioning` (einmalig pro Bucket). Audit H3. | |
+
+> Bucket `vob-test` wurde am 2026-04-21 geleert und geloescht.
 
 ---
 
 ## 5. LLM-Konfiguration
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| Provider | openai-compat (StackIT AI Model Serving) | (identisch) | openai-compat (StackIT AI Model Serving, seit 2026-03-24) |
-| API Base | https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1 | (identisch) | (identisch) |
-| Chat-Modelle | 4 Modelle (seit 2026-03-08) | 4 Modelle (identisch) | 3 Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, seit 2026-03-24) |
-| Embedding | Qwen3-VL-Embedding 8B (4096 Dim) | Qwen3-VL-Embedding 8B | Qwen3-VL-Embedding 8B (4096 Dim, seit 2026-03-24) |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| Provider | openai-compat (StackIT AI Model Serving) | openai-compat (StackIT AI Model Serving, seit 2026-03-24) |
+| API Base | https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1 | (identisch) |
+| Chat-Modelle | 4 Modelle (seit 2026-03-08) | 3 Modelle (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, seit 2026-03-24) |
+| Embedding | Qwen3-VL-Embedding 8B (4096 Dim) | Qwen3-VL-Embedding 8B (4096 Dim, seit 2026-03-24) |
 
-### Chat-Modelle (DEV + TEST)
+### Chat-Modelle (DEV)
 
 | Modell | Modell-ID |
 |--------|-----------|
 | GPT-OSS 120B | openai/gpt-oss-120b |
 | Qwen3-VL 235B | Qwen/Qwen3-VL-235B-A22B-Instruct-FP8 |
 | Llama 3.3 70B | cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic |
-| Llama 3.1 8B | neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8 |
+| Llama 3.1 8B | neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8 (bei StackIT inzwischen deprecated) |
 
 ### Nicht kompatible Modelle (kein Tool Calling auf StackIT vLLM)
 
@@ -147,28 +155,28 @@
 
 ### OpenSearch
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| Cluster-Name | onyx-opensearch | onyx-opensearch | onyx-opensearch |
-| Modus | Single-Node (discovery.type: single-node) | Single-Node | Single-Node |
-| CPU Request / Limit | 300m / 1000m | 300m / 1000m | 1000m / 2000m |
-| RAM Request / Limit | 1.5Gi / 4Gi | 1.5Gi / 4Gi | 2Gi / 4Gi |
-| JVM Heap | 512m (Docker Compose) | [Helm Default] | [Helm Default] |
-| PVC | 30Gi | 30Gi | 30Gi |
-| Port (REST API) | 9200 | 9200 | 9200 |
-| Auth | admin / [Secret] | admin / [Secret] | admin / [Secret] |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| Cluster-Name | onyx-opensearch | onyx-opensearch |
+| Modus | Single-Node (discovery.type: single-node) | Single-Node |
+| CPU Request / Limit | 300m / 1000m | 1000m / 2000m |
+| RAM Request / Limit | 1.5Gi / 4Gi | 2Gi / 4Gi |
+| JVM Heap | 512m (Docker Compose) | [Helm Default] |
+| PVC | 30Gi | 30Gi |
+| Port (REST API) | 9200 | 9200 |
+| Auth | admin / [Secret] | admin / [Secret] |
 
 ### Vespa (Zombie-Mode)
 
-| Parameter | DEV | TEST | PROD |
-|-----------|-----|------|------|
-| CPU Request / Limit | 50m / 200m | 50m / 200m | 100m / 500m |
-| RAM Request / Limit | 512Mi / 4Gi | 512Mi / 4Gi | 512Mi / 4Gi |
-| PVC | 20Gi | 20Gi | 50Gi |
-| Port (Application) | 8081 | 8081 | 8081 |
-| Port (Config) | 19071 | 19071 | 19071 |
-| privileged | false (Override, Upstream Default true) | false | false |
-| runAsUser | 0 (Upstream-Limitation: benoetigt Root fuer vm.max_map_count) | 0 | 0 |
+| Parameter | DEV | PROD |
+|-----------|-----|------|
+| CPU Request / Limit | 50m / 200m | 100m / 500m |
+| RAM Request / Limit | 512Mi / 4Gi | 512Mi / 4Gi |
+| PVC | 20Gi | 50Gi |
+| Port (Application) | 8081 | 8081 |
+| Port (Config) | 19071 | 19071 |
+| privileged | false (Override, Upstream Default true) | false |
+| runAsUser | 0 (Upstream-Limitation: benoetigt Root fuer vm.max_map_count) | 0 |
 
 **Vespa Einschraenkungen (KRITISCH):**
 - **Memory LIMIT >= 4 Gi Pflicht:** Vespa-Container prueft beim Start ob memory LIMIT >= 4 Gi (Hard-Check). Pod startet nicht bei niedrigerem Limit. `requests` koennen niedriger sein.
@@ -195,19 +203,21 @@
 
 | Umgebung | Pods im monitoring NS |
 |----------|-----------------------|
-| DEV+TEST (shared Cluster) | 11 (7 Basis + 4 Exporter) |
-| PROD (eigener Cluster) | 9 (7 Basis + 2 Exporter) |
+| DEV (Cluster vob-chatbot) | 9 (7 Basis + 2 Exporter) |
+| PROD (Cluster vob-prod) | 9 (7 Basis + 2 Exporter) |
 
 **Basis-Pods (7):** Prometheus, Grafana, AlertManager, kube-state-metrics, 2x node-exporter (DaemonSet), prometheus-operator
 
-**Exporter DEV+TEST:** pg-exporter-dev, pg-exporter-test, redis-exporter-dev, redis-exporter-test
+**Exporter DEV:** pg-exporter-dev, redis-exporter-dev
 
 **Exporter PROD:** pg-exporter-prod, redis-exporter-prod
 
+> Bis 2026-04-21 lief zusaetzlich pg-exporter-test + redis-exporter-test im monitoring NS. Diese wurden mit dem TEST-Abbau entfernt.
+
 ### 6.3 Scrape & Retention
 
-| Parameter | DEV+TEST | PROD |
-|-----------|----------|------|
+| Parameter | DEV | PROD |
+|-----------|-----|------|
 | Scrape-Intervall | 30s | 30s |
 | Scrape-Targets | 6 | 3 (onyx-api-prod, postgres-prod, redis-prod) |
 | Retention | 30d | 90d |
@@ -216,8 +226,8 @@
 
 ### 6.4 Alerting
 
-| Parameter | DEV+TEST | PROD |
-|-----------|----------|------|
+| Parameter | DEV | PROD |
+|-----------|-----|------|
 | Kanal | Microsoft Teams Webhook | Microsoft Teams (separater PROD-Kanal) |
 | Receiver | teams-niko | teams-prod |
 | Alert-Prefix | -- | [PROD] |
@@ -239,7 +249,7 @@
 | prometheus-operator | 100m / 200m | 128 Mi / 256 Mi | |
 | postgres_exporter | 50m / 100m | 64 Mi / 128 Mi | PROD: 100m / 250m |
 | redis_exporter | 25m / 50m | 32 Mi / 64 Mi | PROD: 50m / 150m |
-| **Summe (DEV/TEST)** | **1.100m** | **~1,9 Gi** | |
+| **Summe (DEV)** | **1.100m** | **~1,9 Gi** | |
 
 ### 6.6 Exporter-Ports
 
@@ -261,8 +271,8 @@
 
 | Dashboard | Grafana ID | Persistenz |
 |-----------|------------|------------|
-| PostgreSQL | 14114 (Fallback: 9628) | DEV/TEST: manuell (nicht persistent). PROD: Sidecar |
-| Redis | 763 | DEV/TEST: manuell (nicht persistent). PROD: Sidecar |
+| PostgreSQL | 14114 (Fallback: 9628) | DEV: manuell (nicht persistent). PROD: Sidecar |
+| Redis | 763 | DEV: manuell (nicht persistent). PROD: Sidecar |
 | Kubernetes Cluster | 6417 | -- |
 | Kubernetes Pods | 15760 | -- |
 | NGINX Ingress | 9614 | -- |
@@ -272,16 +282,16 @@
 
 ## 7. Kosten (netto, zzgl. MwSt.)
 
-### 7.1 DEV+TEST (Cluster vob-chatbot, shared)
+### 7.1 DEV (Cluster vob-chatbot)
 
 | Posten | Anzahl | EUR/Mo (je) | EUR/Mo (gesamt) |
 |--------|--------|-------------|-----------------|
 | SKE Cluster Management Fee | 1 | 71,71 | 71,71 |
 | Worker Node g1a.4d | 2 | 141,59 | 283,18 |
-| PostgreSQL Flex 2.4 Single | 2 | 105,54 | 211,08 |
-| Object Storage Bucket | 2 | 0,27 | 0,54 |
-| Load Balancer Essential-10 | 2 | 9,39 | 18,78 |
-| **Gesamt DEV+TEST** | | | **585,29** |
+| PostgreSQL Flex 2.4 Single | 1 | 105,54 | 105,54 |
+| Object Storage Bucket | 1 | 0,27 | 0,27 |
+| Load Balancer Essential-10 | 1 | 9,39 | 9,39 |
+| **Gesamt DEV** | | | **470,09** |
 
 ### 7.2 PROD (Cluster vob-prod, eigener)
 
@@ -298,17 +308,20 @@
 
 | Posten | EUR/Mo |
 |--------|--------|
-| DEV+TEST | 585,29 |
+| DEV | 470,09 |
 | PROD | 963,96 |
-| **Gesamt alle 3 Environments** | **1.549,25** |
+| **Gesamt alle aktiven Environments** | **1.434,05** |
 
-**Kostenoptimierung (2026-03-16):** DEV+TEST von 868,47 auf 585,29 EUR/Mo gesenkt durch Node-Downgrade g1a.8d → g1a.4d nach Resource-Requests-Optimierung. Details: `audit-output/kostenoptimierung-ergebnis.md`.
+**Historie der Kosten-Aenderungen:**
+- **2026-03-16:** DEV+TEST Node-Downgrade g1a.8d → g1a.4d (von 868,47 auf 585,29 EUR/Mo). Details: `audit-output/kostenoptimierung-ergebnis.md`.
+- **2026-03-19:** TEST auf 0 Pods skaliert (Compute-Kosten entfallen, Managed-Services liefen noch ~115 EUR/Mo).
+- **2026-04-21:** **TEST-Live-Infrastruktur vollstaendig abgebaut** — PostgreSQL Flex `vob-test`, Object Storage Bucket `vob-test` und Load Balancer geloescht via StackIT CLI. Einsparung: ~115 EUR/Mo. Template-Code bleibt im Repo fuer Reaktivierung / Klon-Projekte.
 
-**TEST heruntergefahren (2026-03-19):** TEST-Umgebung dauerhaft auf 0 Pods skaliert. Laufende Compute-Ressourcen (TEST-Anteil) entfallen. PVCs bleiben erhalten (minimale Speicherkosten). Helm Release bleibt bestehen fuer Reaktivierung. Scale-to-Zero CronJobs entfernt (nicht mehr noetig).
+**Geplanter PROD-Node-Downgrade** (g1a.8d → g1a.4d): reduziert PROD um ca. 283 EUR auf ~681 EUR/Mo. Gesamt danach: ~1.151 EUR/Mo.
 
-**Nicht enthalten:** Block Storage (Vespa PVCs 20-50 GB/Env + OpenSearch PVCs 30 GB/Env), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG Flex Preis enthalten.
+**Nicht enthalten:** Block Storage (Vespa + OpenSearch PVCs pro Environment), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG-Flex-Preis enthalten.
 
-**Preisquelle:** StackIT Preisliste v1.0.36 (03.03.2026), verifiziert gegen StackIT Calculator (2026-03-05). Alle Preise netto.
+**Preisquelle:** StackIT Preisliste v1.0.36 (03.03.2026). Alle Preise netto.
 
 ---
 
@@ -316,7 +329,7 @@
 
 | Komponente | Version | Hinweis |
 |------------|---------|---------|
-| Kubernetes DEV+TEST | v1.33.9 | Flatcar 4459.2.3 |
+| Kubernetes DEV | v1.33.9 | Flatcar 4459.2.3 |
 | Kubernetes PROD | v1.33.9 | Flatcar 4459.2.3 |
 | PostgreSQL | 16 | StackIT Managed Flex |
 | Redis | 7.0.15 | In-Cluster, OT Operator |
@@ -348,12 +361,11 @@
 
 | Cluster | Fenster (UTC) | Typ |
 |---------|---------------|-----|
-| vob-chatbot (DEV+TEST) | 02:00-04:00 | K8s Managed (StackIT, Terraform-konfiguriert) |
+| vob-chatbot (DEV) | 02:00-04:00 | K8s Managed (StackIT, Terraform-konfiguriert) |
 | vob-prod (PROD) | 03:00-05:00 | K8s Managed (StackIT, Terraform-konfiguriert) |
 
 **PG Backups:**
 - DEV: taeglich 02:00 UTC (`pg_backup_schedule = "0 2 * * *"`)
-- TEST: taeglich 03:00 UTC (`pg_backup_schedule = "0 3 * * *"`)
 - PROD: taeglich 01:00 UTC (`pg_backup_schedule = "0 1 * * *"`) — Flex 4.8 HA, WAL-basiert + PITR sekundengenau
 
 **StackIT Service Certificate V1.1 (gueltig ab 12.09.2025):**
@@ -369,7 +381,7 @@
 
 | Cluster | Gueltig bis | Hinweis |
 |---------|-------------|---------|
-| vob-chatbot (DEV+TEST) | 2026-06-14 | 90-Tage-Rotation |
+| vob-chatbot (DEV) | 2026-06-14 | 90-Tage-Rotation |
 | vob-prod (PROD) | **2026-06-22** | Erneuert 2026-03-24 (vorherige expired) |
 
 ---
@@ -397,9 +409,9 @@
 | Permissions | contents: read |
 | Concurrency | 1 Deploy pro Environment gleichzeitig |
 | DEV Deploy | Automatisch bei Push auf main |
-| TEST Deploy | Manuell (workflow_dispatch) |
+| TEST Deploy | Manuell (workflow_dispatch); Template-Job inaktiv seit 2026-04-21 |
 | PROD Deploy | Manuell (workflow_dispatch, Required Reviewer) |
-| Smoke Test DEV/TEST | 12 Versuche a 10s (~2 Min) |
+| Smoke Test DEV | 12 Versuche a 10s (~2 Min) |
 | Smoke Test PROD | 18 Versuche a 10s (~3 Min) |
 | Helm Flags | --wait --timeout 15m --history-max 5 |
 | paths-ignore | docs/**, *.md (Root), .claude/** |
@@ -449,8 +461,8 @@
 | PROD-Sizing | 2x g1a.8d reicht fuer ~150 gleichzeitige User |
 | CPU bei Vollauslastung (150 User) | ~40% |
 | RAM bei Vollauslastung (150 User) | ~25% |
-| Aktuelle CPU-Auslastung (DEV, 2026-03-19) | Nur DEV aktiv (TEST heruntergefahren seit 2026-03-19). Nach Downgrade auf g1a.4d: ~7.400m gesamt, deutlich entlastet |
-| Aktuelle RAM-Auslastung (DEV, 2026-03-19) | Nur DEV aktiv (TEST heruntergefahren seit 2026-03-19). ~28 Gi gesamt, deutlich entlastet |
+| Aktuelle CPU-Auslastung (DEV) | 2x g1a.4d, ~7.400m gesamt allocatable |
+| Aktuelle RAM-Auslastung (DEV) | 2x g1a.4d, ~28 Gi gesamt allocatable |
 | HPA | Nicht aktiv, nachruestbar |
 | Upload-Limit (Ingress Controller) | **20 MB** (`proxy-body-size: "20m"` in values-common.yaml, XREF-007, 2026-03-15) |
 | Upload-Limit (interner NGINX, Chart) | 5 GB (Upstream Helm Chart, READ-ONLY — Port 1024 nicht exponiert) |
@@ -458,7 +470,7 @@
 | Upload-Limit (Backend App) | **20 MB** (`MAX_FILE_SIZE_BYTES: "20971520"` in values-common.yaml, Defense-in-Depth XREF-007, 2026-03-16) |
 | Request-Rate-Limiting (SEC-09) | **10 r/s per IP**, burst 50, nodelay. NGINX `limit_req_zone` + `limit_req` in values-common.yaml + values-prod.yaml. HTTP 429 bei Ueberschreitung. `externalTrafficPolicy: Local` fuer Client-IP Erhaltung. (2026-03-16) |
 | Chat-Retention (vereinbart, Kickoff) | 6 Monate [Noch nicht implementiert] |
-| Vespa PVC | 20 GB DEV (TEST heruntergefahren, PVC erhalten), 50 GB PROD (kein separates Backup, Zombie-Mode — kein aktiver Index-Traffic) |
+| Vespa PVC | 20 GB DEV, 50 GB PROD (kein separates Backup, Zombie-Mode — kein aktiver Index-Traffic) |
 | OpenSearch PVC | 30 GB pro Umgebung (primaerer Document Index) |
 | Gemessene RTO (DEV, 17 MB DB) | Technisch: 3:16 Min, Operativ: 7:15 Min (Test 2026-03-15) |
 | Letzter Restore-Test | 2026-03-15 (DEV, ✅ 100% Integritaet) |

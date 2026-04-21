@@ -1,14 +1,16 @@
 # Betriebskonzept -- VÖB Service Chatbot
 
 **Dokumentstatus**: Entwurf (teilweise verifiziert)
-**Letzte Aktualisierung**: 2026-04-20
-**Version**: 0.9.1
+**Letzte Aktualisierung**: 2026-04-21
+**Version**: 0.9.2
+
+> **TEST-Umgebung-Update (2026-04-21):** Die TEST-Live-Infrastruktur (PostgreSQL Flex `vob-test`, Object Storage Bucket `vob-test`, Load Balancer, Helm Release `onyx-test`, Namespace) wurde vollständig abgebaut. Die Konfigurations-Artefakte bleiben als **Template-Blueprint** im Repo (`deployment/terraform/environments/test/`, `values-test.yaml`, `deploy-test`-Workflow-Job). Erwähnungen von TEST als Live-System in diesem Dokument sind historisch zu verstehen; für aktuelle Status-Angaben gilt die Umgebungs-Tabelle in Abschnitt "Umgebungen" weiter unten.
 
 ---
 
 ## Einleitung und Geltungsbereich
 
-Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtlinien für den Betrieb des VÖB Service Chatbot. Es umfasst alle drei aktiven Umgebungen (DEV, TEST, PROD).
+Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtlinien für den Betrieb des VÖB Service Chatbot. Es umfasst die zwei aktiven Umgebungen **DEV** und **PROD** (TEST seit 2026-04-21 als Template im Repo, live abgebaut).
 
 **Basis-Software**: Enterprise-Fork von [Onyx](https://github.com/onyx-dot-app/onyx-foss) (FOSS, MIT-Lizenz) mit Custom Extension Layer (`backend/ext/`, `web/src/ext/`).
 
@@ -35,9 +37,9 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 ├───────────────────────────────────────────────────────────────────┤
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │ SKE Kubernetes Cluster "vob-chatbot" (DEV+TEST)             │ │
+│  │ SKE Kubernetes Cluster "vob-chatbot" (DEV)                  │ │
 │  │ Node Pool "devtest": 2× g1a.4d (4 vCPU, 16 GB RAM)        │ │
-│  │ Kubernetes 1.33.8, Flatcar 4459.2.1                          │ │
+│  │ Kubernetes 1.33.9, Flatcar 4459.2.3                          │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
 │  │  │ Namespace: onyx-dev (DEV)                             │  │ │
@@ -65,14 +67,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  │                                                             │ │
-│  │  ┌───────────────────────────────────────────────────────┐  │ │
-│  │  │ Namespace: onyx-test (TEST) — HERUNTERGEFAHREN          │  │ │
-│  │  │ IngressClass: nginx-test                              │  │ │
-│  │  │ LoadBalancer IP: 188.34.118.201                       │  │ │
-│  │  │ Status: Dauerhaft heruntergefahren (seit 2026-03-19)  │  │ │
-│  │  │         0 Pods. Helm Release + PVCs + Secrets erhalten│  │ │
-│  │  │         Reaktivierung: kubectl scale / helm upgrade   │  │ │
-│  │  └───────────────────────────────────────────────────────┘  │ │
+│  │  (TEST-Namespace am 2026-04-21 abgebaut — Template im Repo)│ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
@@ -122,11 +117,11 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │ Managed PostgreSQL Flex (StackIT)                           │ │
 │  │                                                             │ │
 │  │  DEV: vob-dev (Flex 2.4 Single, 2 CPU, 4 GB, 20 GB SSD)  │ │
-│  │  TEST: vob-test (Flex 2.4 Single, 2 CPU, 4 GB, 20 GB SSD)│ │
 │  │  PROD: vob-prod (Flex 4.8 HA, 3-Node Cluster)             │ │
+│  │  (TEST: vob-test am 2026-04-21 abgebaut)                   │ │
 │  │  PostgreSQL Version: 16                                     │ │
-│  │  Backup: DEV 02:00 UTC, TEST 03:00 UTC, PROD managed (PITR)│ │
-│  │  ACL DEV+TEST: Egress-IP 188.34.93.194/32 + Admin          │ │
+│  │  Backup: DEV 02:00 UTC, PROD 01:00 UTC managed (PITR)      │ │
+│  │  ACL DEV: Egress-IP 188.34.93.194/32 + Admin               │ │
 │  │  ACL PROD: Egress-IP 188.34.73.72/32 + Admin               │ │
 │  │  Users: onyx_app (RW), db_readonly_user (RO)               │ │
 │  │                                                             │ │
@@ -137,8 +132,8 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │                                                             │ │
 │  │  Buckets:                                                   │ │
 │  │  - vob-dev (DEV File Store)                                │ │
-│  │  - vob-test (TEST File Store)                              │ │
 │  │  - vob-prod (PROD File Store)                              │ │
+│  │  (vob-test am 2026-04-21 geloescht)                        │ │
 │  │  Endpoint: object.storage.eu01.onstackit.cloud             │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -146,10 +141,10 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ StackIT AI Model Serving (LLM)                             │ │
 │  │                                                             │ │
-│  │  Alle Envs: 4 Chat-Modelle konfiguriert (2026-03-08):      │ │
-│  │    GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B │ │
-│  │  Embedding DEV+TEST: Qwen3-VL-Embedding 8B (aktiv)           │ │
-│  │  Embedding PROD: Qwen3-VL-Embedding 8B (aktiv, OpenSearch)    │ │
+│  │  DEV: 4 Chat-Modelle (GPT-OSS 120B, Qwen3-VL 235B,         │ │
+│  │       Llama 3.3 70B, Llama 3.1 8B [deprecated])            │ │
+│  │  PROD: 3 Chat-Modelle (ohne Llama 3.1 8B)                  │ │
+│  │  Embedding (alle Envs): Qwen3-VL-Embedding 8B (4096 Dim)    │ │
 │  │                                                             │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 │                                                                   │
@@ -170,14 +165,13 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 **Architektur-Aenderung**: Das primaere Document Index Backend wurde von Vespa auf **OpenSearch 3.4.0** umgestellt. Vespa laeuft weiterhin im **Zombie-Mode** (minimale Ressourcen, nur fuer Celery Readiness Check benoetigt). Dual-Write ist aktiv (Dokumente werden in beide Backends geschrieben), aber Retrieval erfolgt ausschliesslich ueber OpenSearch.
 
 - **DEV**: OpenSearch Single-Node deployed (300m/1.5Gi), 17 Pods gesamt
-- **TEST**: Dauerhaft heruntergefahren (seit 2026-03-19, 0 Pods, PVCs erhalten)
 - **PROD**: OpenSearch deployed (2026-03-22), Retrieval aktiv. 20 Pods gesamt. Vespa im Zombie-Mode (100m/512Mi Requests, 4Gi Limit — nur fuer Celery Readiness Check).
 
 **Hintergrund**: Vespa erfordert als Celery-Dependency einen laufenden Pod (Readiness Check). Ein vollstaendiges Entfernen ist ohne Upstream-Code-Aenderung nicht moeglich. Daher bleibt Vespa mit minimalen Ressourcen (50m/512Mi DEV, 100m/512Mi Requests / 4Gi Limit PROD) bestehen, waehrend OpenSearch das aktive Retrieval uebernimmt.
 
 ### Komponenten-Uebersicht
 
-| Komponente | Technologie | Zweck | Replicas DEV/TEST | Replicas PROD |
+| Komponente | Technologie | Zweck | Replicas DEV | Replicas PROD |
 |-----------|------------|-------|-------------------|---------------|
 | Frontend (Web Server) | Next.js 16, React 19, TypeScript | Web UI | 1 | 2 (HA) |
 | Backend (API Server) | Python 3.11, FastAPI 0.133.1, SQLAlchemy 2.0, Pydantic 2.11 | REST API | 1 | 2 (HA) |
@@ -196,7 +190,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 | Umgebung | Cluster | Namespace | LB IP | Egress IP | Status |
 |----------|---------|-----------|-------|-----------|--------|
 | DEV | `vob-chatbot` | `onyx-dev` | `188.34.118.222` | `188.34.93.194` | LIVE seit 2026-02-27, 17 Pods (inkl. OpenSearch). HTTPS LIVE (DNS A-Record aktualisiert 2026-03-22) |
-| TEST | `vob-chatbot` | `onyx-test` | `188.34.118.201` | `188.34.93.194` | **Dauerhaft heruntergefahren** (seit 2026-03-19). 0 Pods. Helm Release + PVCs + Secrets erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`. |
+| TEST | — | — | — | — | **Abgebaut** (2026-04-21). Template-Artefakte im Repo. Reaktivierung: `terraform apply` + `helm install` (Anleitung im Header von `environments/test/main.tf`). |
 | PROD | `vob-prod` | `onyx-prod` | `188.34.92.162` | `188.34.73.72` | DEPLOYED seit 2026-03-11, 20 Pods. Chart 0.4.44, Helm Rev 18 (Sync #5 + Monitoring-Optimierung + OOM-Fix deployed 2026-04-17). OpenSearch primary Index, API-Server 4Gi Memory (nach OOM-Fix), docfetching + docprocessing 2Gi. Monitoring Helm Rev 6 mit Alert Fatigue Fix + `PostgresDown` Alert + Deep-Health-Endpoint `/api/ext/health/deep`. |
 
 **Hinweis**: DEV und TEST teilen sich den SKE-Cluster `vob-chatbot` (Node Pool `devtest`, 2x g1a.4d). PROD laeuft laut ADR-004 auf dem separaten Cluster `vob-prod` (2x g1a.8d). DEV HTTPS LIVE seit 2026-03-22 (DNS A-Record `188.34.118.222` durch GlobVill aktualisiert). PROD HTTPS LIVE seit 2026-03-17. **TEST dauerhaft heruntergefahren seit 2026-03-19** (0 Pods, Helm Release + PVCs + Secrets bleiben erhalten, Reaktivierung jederzeit moeglich). Scale-to-Zero CronJobs wurden entfernt (nicht mehr noetig).
@@ -238,9 +232,9 @@ Das VÖB-spezifische Extension Framework erweitert Onyx FOSS um Enterprise-Featu
 
 | Modul | Beschreibung | Feature Flag | Admin UI | Status |
 |-------|-------------|-------------|----------|--------|
-| **ext-branding** | Whitelabel: Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent | `EXT_BRANDING_ENABLED` | `/admin/ext/branding` | ✅ DEV + TEST deployed (2026-03-08) |
-| **ext-token** | LLM Usage Tracking + Limits: Per-User, Per-Model, Timeline, Usage Dashboard | `EXT_TOKEN_LIMITS_ENABLED` | `/admin/ext/token-usage` | ✅ DEV + TEST deployed (2026-03-09) |
-| **ext-prompts** | Custom System Prompts: Globale Anweisungen für jeden LLM-Aufruf (prepend, nicht replace) | `EXT_CUSTOM_PROMPTS_ENABLED` | `/admin/ext/system-prompts` | ✅ DEV + TEST deployed (2026-03-09) |
+| **ext-branding** | Whitelabel: Logo, App-Name, Login-Text, Greeting, Disclaimer, Popup, Consent | `EXT_BRANDING_ENABLED` | `/admin/ext/branding` | ✅ DEV + PROD deployed (2026-03-08) |
+| **ext-token** | LLM Usage Tracking + Limits: Per-User, Per-Model, Timeline, Usage Dashboard | `EXT_TOKEN_LIMITS_ENABLED` | `/admin/ext/token-usage` | ✅ DEV + PROD deployed (2026-03-09) |
+| **ext-prompts** | Custom System Prompts: Globale Anweisungen für jeden LLM-Aufruf (prepend, nicht replace) | `EXT_CUSTOM_PROMPTS_ENABLED` | `/admin/ext/system-prompts` | ✅ DEV + PROD deployed (2026-03-09) |
 | **ext-i18n** | Deutsche Lokalisierung (~95% UI): ~250 Strings, Drei-Schichten-Architektur (ext-branding + t()-Calls + DOM-Observer) | `EXT_I18N_ENABLED` | — (keine Admin-UI) | ✅ DEV + PROD deployed (2026-03-22) |
 
 ### Feature Flags
@@ -400,7 +394,7 @@ GitHub Environment Secrets (verschlüsselt, pro Environment getrennt)
 |--------|-----------|
 | `STACKIT_REGISTRY_USER` | Container Registry Robot Account |
 | `STACKIT_REGISTRY_PASSWORD` | Container Registry Token |
-| `STACKIT_KUBECONFIG` | Base64-encoded Kubeconfig DEV+TEST (Ablauf: 2026-06-14) |
+| `STACKIT_KUBECONFIG` | Base64-encoded Kubeconfig DEV (Ablauf: 2026-06-14) |
 
 ### Helm-basiertes Deployment
 
@@ -627,12 +621,12 @@ Für dringende Fixes auf einer bereits released Version:
 
 **Self-Hosted Monitoring-Stack deployed auf allen Clustern.** kube-prometheus-stack im eigenen Namespace `monitoring` (separater Helm Release pro Cluster). Ueberwachung erfolgt ueber:
 
-1. **Prometheus**: Scrape-Targets pro Cluster (DEV+TEST: 6 Targets, PROD: 3 Targets — onyx-api-prod, postgres-prod, redis-prod), 30s Intervall. DEV+TEST: 30d Retention, 20 Gi PVC. PROD: 90d Retention, 50 Gi PVC.
+1. **Prometheus**: Scrape-Targets pro Cluster (DEV: 3 Targets, PROD: 26 Targets inkl. OpenSearch + cert-manager + 4 Blackbox), 30s Intervall. DEV: 30d Retention, 20 Gi PVC. PROD: 90d Retention, 50 Gi PVC.
 2. **Grafana**: Dashboards fuer Kubernetes, PostgreSQL (gnetId 14114), Redis (gnetId 763). PROD nutzt Sidecar-Dashboards (persistent, kein manueller Import noetig). Zugriff per `kubectl port-forward` (kein externer Ingress, Enterprise Best Practice).
-3. **AlertManager**: 20 Alert-Rules pro Cluster, Zustellung via Microsoft Teams Webhook. DEV+TEST: gemeinsamer Teams-Kanal. PROD: separater Teams PROD-Kanal mit `[PROD]`-Prefix. `send_resolved: true` fuer Entwarnung.
-4. **Exporters**: postgres_exporter v0.19.1 + redis_exporter v1.82.0 (DEV+TEST: 4 Pods, PROD: 2 Pods)
+3. **AlertManager**: 46 Custom-Alert-Rules auf PROD, Zustellung via Microsoft Teams Webhook. DEV: gemeinsamer Teams-Kanal. PROD: separater Teams PROD-Kanal. `send_resolved: true` fuer Entwarnung. Alert-Fatigue-Mitigation: repeat_interval 4h/24h.
+4. **Exporters**: postgres_exporter v0.19.1 + redis_exporter v1.82.0 (DEV: 2 Pods, PROD: 2 Pods + OpenSearch-Exporter + Blackbox + cert-manager-Exporter)
 5. **kube-state-metrics + node-exporter**: Cluster-weite Pod/Node/Deployment-Metriken (PROD: 2x node-exporter fuer 2 Nodes)
-6. **CI/CD Smoke Tests**: Jeder Deploy prueft `/api/health` (DEV: 12 Versuche a 10s = 120s, TEST/PROD: 18 Versuche a 10s = 180s)
+6. **CI/CD Smoke Tests**: Jeder Deploy prueft `/api/health` (DEV: 12 Versuche a 10s = 120s, PROD: 18 Versuche a 10s = 180s)
 7. **StackIT Console**: Managed-Service-Metriken fuer PostgreSQL und Object Storage
 8. **NetworkPolicies (Monitoring)**: 8 Policies pro Monitoring-Namespace (Zero-Trust: Default-Deny, DNS-Egress, Scrape-Egress, Intra-Namespace, K8s-API, PG-Exporter, Redis-Exporter, AlertManager-Webhook-Egress)
 
@@ -662,7 +656,7 @@ Für dringende Fixes auf einer bereits released Version:
 | Thema | Status | Prioritaet |
 |-------|--------|-----------|
 | Log-Aggregation (Loki) | Zu evaluieren | P2 |
-| Grafana Dashboards als ConfigMap (DEV+TEST) | Offen (manuell importiert, nicht persistent). PROD geloest via Sidecar-Dashboards. | P3 |
+| Grafana Dashboards als ConfigMap (DEV) | Offen (manuell importiert, nicht persistent). PROD geloest via Sidecar-Dashboards. | P3 |
 | Grafana Ingress mit Auth | Geplant | P2 |
 | NetworkPolicies `onyx-prod` | Offen (bewusst — vollstaendiges Set kommt mit DNS/TLS-Hardening) | P1 |
 
@@ -703,17 +697,16 @@ Für dringende Fixes auf einer bereits released Version:
 - **Anbieter**: StackIT Managed PostgreSQL Flex
 - **Automatische Backups**:
   - DEV: Taeglich um 02:00 UTC (konfiguriert per Terraform: `pg_backup_schedule = "0 2 * * *"`)
-  - TEST: Taeglich um 03:00 UTC (1h nach DEV, kein Overlap: `pg_backup_schedule = "0 3 * * *"`)
   - PROD: Taeglich um 01:00 UTC (`pg_backup_schedule = "0 1 * * *"`) — Flex 4.8 HA (3-Node), WAL-basiert + PITR
 - **Retention**: 30 Tage (StackIT Default)
-- **PITR (Point-in-Time Recovery)**: PROD: Verfuegbar, sekundengenau, Restore per Clone-Funktion (Self-Service). DEV/TEST: Abhaengig vom StackIT Flex Tier (Flex 2.4 Single — PITR-Verfuegbarkeit nicht bestaetigt).
+- **PITR (Point-in-Time Recovery)**: PROD: Verfuegbar, sekundengenau, Restore per Clone-Funktion (Self-Service). DEV: Abhaengig vom StackIT Flex Tier (Flex 2.4 Single — PITR-Verfuegbarkeit nicht bestaetigt).
 - **Lifecycle Protection**: `prevent_destroy = true` in Terraform
 - **Kritisch**: Backups sind instanzgebunden — bei Loeschung der PG-Instanz sind alle Backups unwiederbringlich verloren
 
 #### Object Storage
 - **Anbieter**: StackIT Object Storage (S3-kompatibel)
 - **Replikation**: Managed durch StackIT (automatisch ueber 3 AZs, 99.999999999% Durability)
-- **Buckets**: `vob-dev`, `vob-test`, `vob-prod` (jeweils fuer File Store)
+- **Buckets**: `vob-dev`, `vob-prod` (jeweils fuer File Store; `vob-test` am 2026-04-21 geloescht)
 - **Versionierung**: Unterstuetzt, aber **nicht aktiviert** in Terraform (Audit H3 offen)
 - **Verschluesselung**: AES-256 at Rest (StackIT Default), TLS 1.3 in Transit
 
@@ -816,7 +809,7 @@ Für dringende Fixes auf einer bereits released Version:
 
 ## Skalierung
 
-### Aktuelle Konfiguration (DEV/TEST)
+### Aktuelle Konfiguration (DEV)
 
 | Komponente | Requests | Limits |
 |-----------|----------|--------|
@@ -831,31 +824,33 @@ Für dringende Fixes auf einer bereits released Version:
 
 ### Skalierungsstrategie
 
-**DEV**: Keine Autoskalierung. 1 Replica pro Service. Standard Celery Mode (8 separate Worker). **TEST**: Dauerhaft heruntergefahren (seit 2026-03-19). 0 Pods, Helm Release + PVCs erhalten. Reaktivierung: `kubectl scale` oder `helm upgrade`.
+**DEV**: Keine Autoskalierung. 1 Replica pro Service. Standard Celery Mode (8 separate Worker).
 
 **PROD (deployed)**:
 - Eigener SKE-Cluster `vob-prod` (ADR-004), 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)
 - **HA fuer API + Web**: 2 Replicas je API Server und Web Server
 - Standard Celery Mode: 8 separate Worker (7 Worker + 1 Beat)
 - PostgreSQL: Flex 4.8 HA (3-Node Cluster) — automatisches Failover
-- **Kapazitaet**: 2x g1a.8d reicht fuer ca. 150 gleichzeitige User (~40% CPU, ~25% RAM bei Vollauslastung, extrapoliert aus DEV+TEST-Messungen)
+- **Kapazitaet**: 2x g1a.8d reicht fuer ca. 150 gleichzeitige User (~40% CPU, ~25% RAM bei Vollauslastung, extrapoliert aus DEV-Messungen)
 - **Deployment-Strategie**: Recreate (kein RollingUpdate — vermeidet DB Connection Pool Exhaustion)
 - HPA (HorizontalPodAutoscaler) nach Bedarf nachruestbar
 
 ### Vertikale Skalierung
 
-- **Kubernetes Nodes DEV+TEST**: g1a.4d (4 vCPU, 16 GB) seit 2026-03-16 (Kostenoptimierung, vorher g1a.8d ADR-005)
+- **Kubernetes Nodes DEV**: g1a.4d (4 vCPU, 16 GB) seit 2026-03-16 (Kostenoptimierung, vorher g1a.8d ADR-005)
 - **Kubernetes Nodes PROD**: g1a.8d (8 vCPU, 32 GB, 100 GB Disk), 2 Nodes
-- **PostgreSQL DEV+TEST**: Flex 2.4 (2 CPU, 4 GB). Upgrade auf groesseres Flavor per Terraform.
+- **PostgreSQL DEV**: Flex 2.4 (2 CPU, 4 GB). Upgrade auf groesseres Flavor per Terraform.
 - **PostgreSQL PROD**: Flex 4.8 HA (3-Node Cluster). Vertikales Upgrade per Terraform moeglich.
 
-### Kostenuebersicht (Stand 2026-03-19)
+### Kostenuebersicht (Stand 2026-04-21, nach TEST-Abbau)
 
 | Umgebung | Monatliche Kosten (ca.) | Nodes | Anmerkung |
 |----------|------------------------|-------|-----------|
-| DEV + TEST | ~585 EUR/Mo | 2x g1a.4d (geteilt) | TEST dauerhaft heruntergefahren (seit 2026-03-19, 0 Pods). Compute-Kosten nur DEV. PVCs + PG + Bucket bleiben (Speicherkosten minimal). |
+| DEV | ~470 EUR/Mo | 2x g1a.4d | Inkl. PG Flex 2.4 Single + Bucket + LoadBalancer |
 | PROD | ~964 EUR/Mo | 2x g1a.8d (eigener Cluster) | Inkl. PG Flex 4.8 HA + Monitoring |
-| **Gesamt** | **~1.549 EUR/Mo** | | |
+| **Gesamt** | **~1.434 EUR/Mo** | | TEST-Abbau 2026-04-21 spart ~115 EUR/Mo |
+
+**Nach geplantem PROD-Node-Downgrade (g1a.8d → g1a.4d):** ~1.151 EUR/Mo.
 
 ---
 
@@ -866,12 +861,12 @@ Für dringende Fixes auf einer bereits released Version:
 Alle SKE-Cluster haben automatische Wartungsfenster (konfiguriert per Terraform):
 
 ```
-DEV+TEST (Cluster vob-chatbot): 02:00-04:00 UTC (taeglich, managed durch StackIT)
-PROD (Cluster vob-prod):        03:00-05:00 UTC (taeglich, managed durch StackIT)
+DEV (Cluster vob-chatbot): 02:00-04:00 UTC (taeglich, managed durch StackIT)
+PROD (Cluster vob-prod):   03:00-05:00 UTC (taeglich, managed durch StackIT)
 Inhalt: Kubernetes-Version-Updates, Machine-Image-Updates
 ```
 
-**Hinweis**: PROD hat ein eigenes Wartungsfenster (03:00-05:00 UTC), das sich nicht mit DEV+TEST (02:00-04:00 UTC) ueberschneidet. So wird verhindert, dass alle Environments gleichzeitig gewartet werden.
+**Hinweis**: PROD hat ein eigenes Wartungsfenster (03:00-05:00 UTC), das sich nicht mit DEV (02:00-04:00 UTC) ueberschneidet. So wird verhindert, dass alle Environments gleichzeitig gewartet werden.
 
 ### Geplante Wartungen
 
@@ -989,8 +984,8 @@ SLAs, Verfügbarkeitsziele und Reaktionszeiten müssen mit VÖB abgestimmt werde
 
 - **GitHub Environments**: `dev`, `test` und `prod` mit je 5 Secrets (POSTGRES_PASSWORD, REDIS_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, DB_READONLY_PASSWORD). PROD nutzt zusaetzlich STACKIT_KUBECONFIG als Environment-Secret (ueberschreibt das globale Repository-Secret automatisch)
 - **GitHub Environment Protection (`prod`)**: Required Reviewer konfiguriert — Deployment auf PROD erfordert manuelle Freigabe
-- **Globale Secrets**: STACKIT_REGISTRY_USER, STACKIT_REGISTRY_PASSWORD, STACKIT_KUBECONFIG (DEV+TEST)
-- **Kubeconfig-Ablauf**: DEV+TEST 2026-06-14, PROD 2026-06-22 -- Erneuerung einplanen
+- **Globale Secrets**: STACKIT_REGISTRY_USER, STACKIT_REGISTRY_PASSWORD, STACKIT_KUBECONFIG (DEV)
+- **Kubeconfig-Ablauf**: DEV 2026-06-14, PROD 2026-06-22 -- Erneuerung einplanen
 - **Kubernetes Secrets**: `onyx-postgresql`, `onyx-redis`, `onyx-dbreadonly`, `onyx-objectstorage`, `stackit-registry` (pro Namespace)
 
 ### Security-Audit Findings (SEC-01 bis SEC-07)

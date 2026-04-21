@@ -22,8 +22,8 @@
 
 Dieses Konzept deckt alle persistenten Datenbestaende des VÖB Chatbot-Systems ab, die auf StackIT-Infrastruktur betrieben werden:
 
-- **PostgreSQL-Datenbanken** (DEV, TEST, PROD) — StackIT Managed PG Flex
-- **Object Storage Buckets** (vob-dev, vob-test, vob-prod) — StackIT Object Storage (S3-kompatibel)
+- **PostgreSQL-Datenbanken** (DEV, PROD) — StackIT Managed PG Flex. `vob-test` wurde am 2026-04-21 abgebaut.
+- **Object Storage Buckets** (vob-dev, vob-prod) — StackIT Object Storage (S3-kompatibel). `vob-test` wurde am 2026-04-21 geloescht.
 - **OpenSearch-Indizes** (Dokument-Chunks, Embeddings) — In-Cluster PersistentVolumeClaims (primaerer Document Index Store)
 - **Vespa** (Zombie-Mode, kein Produktiv-Traffic) — In-Cluster PersistentVolume, Daten in OpenSearch dupliziert
 - **Kubernetes-Konfiguration** — Helm Values, Secrets, Manifeste
