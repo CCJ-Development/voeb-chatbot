@@ -53,6 +53,80 @@
 
 ---
 
+## Typische Fallstricke / Lessons Learned
+
+Diese Sammlung destilliert die wichtigsten Fehlerquellen aus dem laufenden Betrieb. **Wenn ein Alert zum ersten Mal feuert, hier zuerst nachlesen** — die meisten Symptome sind Wiederholungen bekannter Muster.
+
+### 1. `/api/health` prueft die DB NICHT
+
+**Symptom:** `/api/health` liefert 200, aber alle DB-Queries scheitern. User sehen "failed to load chats".
+
+**Ursache:** `/api/health` prueft nur ob der Python-Prozess lebt. Ein Pod kann "Running + Ready" sein, obwohl die DB-Verbindung tot ist.
+
+**Anwendung:** Bei API-Anomalien IMMER `/api/ext/health/deep` aufrufen (prueft PostgreSQL + Redis + OpenSearch aktiv via DB-Verbindung). Die Readiness-Probe in PROD hat seit 2026-04-16 auf diesen Endpoint gewechselt.
+
+**Historie:** PG-Outage 2026-04-15 — Pods Ready, aber DB down. `/api/health` hat 200 geliefert → Alert ging nicht an → Nutzer sind auf "Error 500" gelaufen bevor Monitoring reagiert hat.
+
+### 2. `up{job=~"postgres-.*"}` ist NICHT `pg_up`
+
+**Symptom:** PG-Exporter laeuft (`up=1`), aber DB ist tatsaechlich down.
+
+**Ursache:** `up` misst nur ob der Exporter-Pod selbst scrapable ist. `pg_up` wird vom Exporter aktiv via DB-Connect-Versuch gesetzt.
+
+**Anwendung:** Bei allen PG-Alerts IMMER `pg_up` pruefen, nie nur `up`. Seit 2026-04-16 gibt es den dedizierten `PostgresDown` Alert auf `pg_up == 0`.
+
+### 3. Alert Fatigue ist schlimmer als fehlende Alerts
+
+**Symptom:** Channel `voeb-chatbot-prod-alerts` wurde frueher pro Stunde 5-10 Mal benachrichtigt (Watchdog, severity=info, InfoInhibitor, SLO-Alerts aus dem 30d-Window, KubeCPUOvercommit False Positive). Folge: Niemand hat mehr geschaut → echte Incidents sind durchgerutscht.
+
+**Ursache:** Default `repeat_interval: 4h`, keine Routing-Regeln fuer `severity: info` / `Watchdog` / `InfoInhibitor`.
+
+**Anwendung:**
+- **Grundprinzip seit 2026-04-16:** Stiller Channel = alles OK. Jede Nachricht = sofort handeln.
+- **Niemals** neue Alerts mit `severity: warning` bauen, wenn sie nur zur Information dienen — `severity: info` + Routing zu Grafana-only.
+- `repeat_interval` fuer `critical` auf 4h, default auf 24h (nicht darunter!).
+- False Positives (z.B. `KubeCPUOvercommit` bei CPU Requests 78% / actual <5%) mit Silence versehen, nicht "wegignorieren" im Kopf.
+
+### 4. cert-manager NetworkPolicy — `namespaceSelector` reicht NICHT fuer K8s API Server
+
+**Symptom:** `cert-manager-cainjector` Pod in CrashLoopBackoff (3600+ Restarts ueber 35 Tage). TLS-Renewal drohte zu scheitern, `CertExpiringSoon` waere irgendwann gefeuert.
+
+**Ursache:** Die NetworkPolicy erlaubte Egress via `namespaceSelector` zur K8s-API — aber der StackIT K8s-Control-Plane lebt AUSSERHALB des Clusters (dedizierte IP). `namespaceSelector` matcht nur In-Cluster-Pods.
+
+**Fix 2026-04-16:** In `03-allow-k8s-api-egress.yaml` auf `ipBlock: 192.214.168.128/32` umgestellt (StackIT SKE Control-Plane-IP).
+
+**Anwendung:**
+- NetworkPolicies fuer Egress zur K8s-API immer mit `ipBlock` (bei Managed K8s wie StackIT SKE), NICHT mit `namespaceSelector`.
+- Die IP des Control-Plane findet sich mit `kubectl get endpoints kubernetes -n default`.
+- Bei jedem neuen NetworkPolicy-Rollout auf monitoring + cert-manager NS: `kubectl get pods -A | grep -v Running` pruefen — CrashLoops zeigen sich sofort.
+
+### 5. `kubectl replace` bei Operator-verwalteten CRDs erzeugt Ownership-Konflikte
+
+**Symptom:** `PrometheusRule` sieht korrekt aus, aber Prometheus lädt die Rules nicht (Operator weigert sich zu reconcilen).
+
+**Ursache:** `kubectl replace` setzt `metadata.managedFields` neu, Operator erkennt Resource nicht mehr als seine eigene.
+
+**Anwendung:**
+- **Bei Operator-CRDs immer `kubectl apply` verwenden**, nicht `replace` / `create --dry-run | apply`.
+- Bei Helm-verwalteten CRDs: `helm upgrade` ist Source of Truth.
+- Bei bereits korrupten Releases: `helm upgrade --force-replace --server-side=false` (einmaliger Heilungs-Pfad, danach normal weitermachen).
+
+### 6. `kube_job_status_failed` zaehlt pro Pod, nicht pro Job
+
+**Symptom:** Alert `PGBackupCheckFailed` feuert, obwohl der letzte Run eigentlich erfolgreich war.
+
+**Ursache:** Bei einem CronJob mit `restartPolicy: OnFailure` zaehlt jeder Pod-Retry als "failed", bis der letzte Pod erfolgreich ist. Die Metrik kumuliert.
+
+**Anwendung:** Alert-Rule mit Zeitfenster + Vergleich gegen `lastSuccessfulTime` statt nur gegen `failed`-Count.
+
+### 7. Blackbox `valid_status_codes: []` bedeutet Default 2xx, NICHT "alle"
+
+**Symptom:** Blackbox-Probe schlaegt fehl obwohl das Target 401/403 zurueckgibt (was bei ungeloggten Probes erwartet ist).
+
+**Anwendung:** Explizit listen: `valid_status_codes: [200, 401, 403]`. Niemals leer lassen bei Auth-geschuetzten Endpoints.
+
+---
+
 ## Alert: APIDown
 
 **Severity:** critical
@@ -751,8 +825,8 @@ KUBECONFIG=~/.kube/config-prod kubectl get cronjob pg-backup-check -n monitoring
 KUBECONFIG=~/.kube/config-prod kubectl describe cronjob pg-backup-check -n monitoring
 
 # Direkte StackIT API-Pruefung:
-# stackit postgresql backup list --project-id <PROJECT_ID> --instance-id <INSTANCE_ID>
-# stackit postgresql backup list --project-id <PROJECT_ID> --instance-id <INSTANCE_ID> --format json | jq '.[0]'
+# stackit postgresql backup list --project-id <PROJECT_ID> --instance-id <PG_INSTANCE_ID>
+# stackit postgresql backup list --project-id <PROJECT_ID> --instance-id <PG_INSTANCE_ID> --format json | jq '.[0]'
 ```
 
 **Lösung:**

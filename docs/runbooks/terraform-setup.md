@@ -284,7 +284,7 @@ PG-User kann nicht gelöscht werden, solange Objekte (Tabellen, DBs) auf ihn gep
 - Objekte vorher löschen (`DROP DATABASE`, `REASSIGN OWNED`)
 - Oder: PG-Instance direkt über StackIT CLI löschen (umgeht die User-Abhängigkeit):
   ```bash
-  stackit postgresflex instance delete <INSTANCE_ID> --project-id=<PROJECT_ID> --region=eu01
+  stackit postgresflex instance delete <PG_INSTANCE_ID> --project-id=<PROJECT_ID> --region=eu01
   ```
   Danach `terraform state rm` für die betroffenen Ressourcen.
 

@@ -189,7 +189,7 @@ Für CI/CD später einen **Robot Account** in der Registry-Oberfläche erstellen
 
 ## Nächster Schritt
 
-Sobald der Service Account die `project.admin`-Rolle hat → weiter mit dem [Implementierungsplan Phase 2](../referenz/stackit-implementierungsplan.md#phase-2-terraform-apply-dev) (Terraform Deploy).
+Sobald der Service Account die `project.admin`-Rolle hat → weiter mit dem [Implementierungsplan Phase 2](../referenz/stackit-implementierungsplan.md#phase-2-dev-infrastruktur-provisionieren) (Terraform Deploy).
 
 ---
 

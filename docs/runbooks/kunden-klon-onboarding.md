@@ -30,13 +30,14 @@ Bevor du anfängst, müssen folgende Dinge vom Kunden geklärt sein:
 
 Alle Runbooks nutzen Platzhalter, die du durchgängig ersetzt. Lege dir eine `kunde.tfvars` und eine `.env.kunde` an — alle Werte stehen dort einmal zentral.
 
-### Pflicht-Variablen
+### 2.1 Pflicht-Variablen (zu ersetzende Strings)
 
 | Platzhalter | Beispiel (VÖB) | Verwendung |
 |---|---|---|
-| `<CUSTOMER_SHORT>` | `vob` | Prefix für alle StackIT-Ressourcen: `vob-dev`, `vob-prod` |
+| `<CUSTOMER_SHORT>` | `vob` | Prefix für alle StackIT-Ressourcen: `vob-dev`, `vob-prod`, Teams-Kanal-Name |
 | `<CUSTOMER_NAME>` | `voeb-service` | Container-Registry-Projekt, DNS-Zone-Name |
-| `<PROJECT_ID>` | `b3d2a04e-46de-48bc-abc6-c4dfab38c2cd` | StackIT Project UUID |
+| `<PROJECT_ID>` | `b3d2a04e-46de-48bc-abc6-c4dfab38c2cd` | StackIT Project UUID (DEV). Wenn DEV und PROD in **einem** StackIT-Projekt leben, gilt dieser Wert auch für PROD. |
+| `<PROD_PROJECT_ID>` | (nur wenn separates PROD-Projekt) | StackIT Project UUID für PROD — nur nötig, wenn DEV und PROD in getrennten StackIT-Projekten liegen (empfohlen für Compliance-strenge Kunden). Beim VÖB-Setup identisch mit `<PROJECT_ID>`. |
 | `<PRIMARY_DOMAIN>` | `chatbot.voeb-service.de` | PROD-URL |
 | `<DEV_DOMAIN>` | `dev.chatbot.voeb-service.de` | DEV-URL |
 | `<CLUSTER_DEV>` | `vob-chatbot` | SKE-Cluster DEV (+TEST falls gewünscht) |
@@ -55,27 +56,61 @@ Alle Runbooks nutzen Platzhalter, die du durchgängig ersetzt. Lege dir eine `ku
 | `<ENTRA_TENANT_ID>` | UUID von Kunden-IT | OIDC Provider URL |
 | `<ENTRA_CLIENT_ID>` | UUID von Kunden-IT | OIDC App Registration |
 | `<TEAMS_WEBHOOK_URL>` | Microsoft Teams Connector URL | Monitoring-Alerts |
+| `<TECH_LEAD_EMAIL>` | `niko@coffee-studios.de` | Erster Admin im Chatbot, CronJob-Ownership, Eskalationskontakt |
+| `<ADMIN_EMAILS>` | `"niko@…","po@…"` | SQL-IN-Liste für initiales Admin-Promoting (post-go-live.md) |
 
-### Optionale Variablen
+### 2.2 Pflicht-Secrets (Credentials, nicht als Strings ersetzbar)
 
-| Platzhalter | Beispiel | Wann relevant |
+Diese werden NICHT durchgängig als Platzhalter ersetzt — sie landen direkt in GitHub Environment Secrets / K8s Secrets. Im Master-Playbook gelistet für Vollständigkeit.
+
+| Secret-Name | Quelle | Wo abgelegt |
 |---|---|---|
-| `<DNS_PROVIDER>` | `GlobVill` (Cloudflare, StackIT DNS) | Wer verwaltet die DNS-Zone? |
-| `<DNS_DELEGATION>` | CNAME-Delegation | Wenn der Kunden-DNS kein API-Access hat (wie bei VÖB → GlobVill → Cloudflare) |
-| `<HA_PROD>` | 2-Node oder 3-Node | HA-Setup je nach Ausfallanforderung |
-| `<RETENTION_LOGS>` | 30 Tage | Loki Log-Retention |
-| `<RETENTION_METRICS>` | 90 Tage | Prometheus-Retention |
+| `<CLOUDFLARE_API_TOKEN>` | Kunden-DNS-Owner (bei VÖB: GlobVill/Leif) | K8s Secret `cloudflare-api-token` in `cert-manager` NS. Permissions: Zone:Zone:Read + Zone:DNS:Edit |
+| `<ENTRA_CLIENT_SECRET>` | Kunden-IT (**Value**, nicht ID — häufiger Fehler!) | GitHub Environment Secret `ENTRA_CLIENT_SECRET` |
+| `<STACKIT_REGISTRY_USER>` / `<STACKIT_REGISTRY_PASSWORD>` | StackIT Portal → Container Registry → Robot Account | GitHub Secret (global) + K8s Secret `stackit-registry` in beiden NS — IMMER synchron halten! |
+| `<STACKIT_KUBECONFIG>` | `terraform output -raw kubeconfig`, Base64-encoded | GitHub Secret (global für DEV, Environment Secret `prod` für PROD). Ablauf 90 Tage. |
+| `<POSTGRES_PASSWORD>`, `<DB_READONLY_PASSWORD>`, `<REDIS_PASSWORD>`, `<S3_ACCESS_KEY_ID>`, `<S3_SECRET_ACCESS_KEY>`, `<OPENSEARCH_PASSWORD>` | `openssl rand` bzw. StackIT CLI | GitHub Environment Secrets (pro Environment). Generierungs-Hinweis: keine URI-Delimiter (`/`, `@`, `:`, `#`) im Passwort — siehe stackit-postgresql.md Lesson 2 |
+
+### 2.3 Generische Kontext-Aliase (in Runbooks verwendet)
+
+Diese Platzhalter sind bewusst **kontextabhängig**: je nach Environment DEV oder PROD eingesetzt. Die Runbooks nennen am Anfang jedes Befehls, welcher Wert gemeint ist.
+
+| Alias | Bedeutet | Beispiel |
+|---|---|---|
+| `<NAMESPACE>` | `<NAMESPACE_DEV>` oder `<NAMESPACE_PROD>` je nach aktuellem Environment | `kubectl get pods -n <NAMESPACE>` |
+| `<CLUSTER>` | `<CLUSTER_DEV>` oder `<CLUSTER_PROD>` | `kubectl --context <CLUSTER> ...` |
+| `<HELM_RELEASE>` | `<HELM_RELEASE_DEV>` oder `<HELM_RELEASE_PROD>` | `helm upgrade <HELM_RELEASE> ...` |
+| `<PG_INSTANCE>` | `<PG_INSTANCE_DEV>` oder `<PG_INSTANCE_PROD>` | `stackit postgresflex instance describe <PG_INSTANCE>` |
+| `<REVISION>` | Helm-Release-Revision (aus `helm history`) | `helm rollback onyx-prod <REVISION>` |
+| `<IMAGE_TAG>` | Container-Image-Tag (Git-SHA oder Semver) | `--set image.tag=<IMAGE_TAG>` |
+| `<NEUES_CLOUDFLARE_TOKEN>` | Neues Token bei Rotation (siehe `secret-rotation.md`) | — |
+| `<PG_INSTANCE_ID>` | StackIT PG Flex UUID (aus `terraform output` oder `stackit postgresflex instance list`) — unterscheidet sich von `<PG_INSTANCE_DEV>`/`<PG_INSTANCE_PROD>` (das sind Namen) | `stackit postgresflex user list --instance-id <PG_INSTANCE_ID>` |
+| `<PG_CLONE_INSTANCE_ID>` | UUID der geklonten Restore-Instanz | `stackit-postgresql.md` "Restore per Clone" |
+| `<DNS_PROVIDER>` | Kunden-DNS-Owner (z.B. `GlobVill`, `Cloudflare`, `StackIT DNS`) | Siehe §2.4 |
+
+### 2.4 Optionale Konfig-Entscheidungen
+
+Keine Platzhalter, sondern frühe Architektur-Entscheidungen — dokumentier sie für den Kunden, sobald sie getroffen sind.
+
+| Thema | Empfehlung | Hinweis |
+|---|---|---|
+| **DNS-Anbieter** (`<DNS_PROVIDER>`) | Cloudflare (wenn API-Zugriff möglich) | Wenn Kunden-DNS kein API-Access hat (VÖB → GlobVill): CNAME-Delegation auf separaten Cloudflare-Account konfigurieren. Siehe `dns-tls-setup.md` Abschnitt "DNS-Architektur". |
+| **PROD-HA-Level** | 3-Node PG Flex (HA) + 2 API-Replicas, 2 Web-Replicas | Bei geringerem Ausfallanspruch: PG Flex Single (spart ~60% PG-Kosten). ADR-004 im Repo dokumentiert die Entscheidung. |
+| **Log-Retention** | 30 Tage (Loki), 90 Tage (Prometheus) | Siehe `monitoring-setup.md` — fix in `values-monitoring-prod.yaml` |
+| **Separate PROD-Cluster** | Ja (empfohlen) | ADR-004 dokumentiert die Trennung. Bei "klein" kann DEV+PROD auf einem Cluster laufen (spart ~280 EUR/Mo). |
 
 ---
 
 ## 3. Phasen-Übersicht
 
-Die Phasen sind sequenziell. Jede hat ein eigenes Runbook, bis auf Phase 0 (nur Vorbereitung).
+Die Phasen sind sequenziell. Jede hat ein eigenes Runbook.
 
 | Phase | Ziel | Runbook | Dauer |
 |---|---|---|---|
-| 0 | Projekt-Initialisierung (Git-Repo, Konventionen) | — | 1 h |
-| 1 | StackIT CLI + Service Account + Container Registry | [stackit-projekt-setup.md](./stackit-projekt-setup.md) | 1 h |
+| 0.1 | Kosten-Kalkulation für Angebot | [kosten-kalkulation-kunde.md](./kosten-kalkulation-kunde.md) | 30 min |
+| 0.2 | Git-Repo-Setup (Fork, Environments, Secrets, Branch Protection) | [github-setup.md](./github-setup.md) | 1 h |
+| 1.1 | StackIT CLI + Container Registry | [stackit-projekt-setup.md](./stackit-projekt-setup.md) | 1 h |
+| 1.2 | StackIT Service Accounts (Terraform-SA, Monitoring-SA) | [stackit-service-accounts.md](./stackit-service-accounts.md) | 30 min |
 | 2 | Terraform: SKE-Cluster + PG Flex + Object Storage | [terraform-setup.md](./terraform-setup.md) | 2–3 h |
 | 3 | PostgreSQL: DB anlegen, Readonly-User, ACL | [stackit-postgresql.md](./stackit-postgresql.md) | 30 min |
 | 4 | DNS + TLS (cert-manager, Let's Encrypt) | [dns-tls-setup.md](./dns-tls-setup.md) | 1 h + DNS-Propagation |
@@ -83,11 +118,16 @@ Die Phasen sind sequenziell. Jede hat ein eigenes Runbook, bis auf Phase 0 (nur 
 | 6 | Entra ID OIDC: App Registration, Redirect URIs | [entra-id-setup.md](./entra-id-setup.md) | 1 h + Kunden-IT-Wartezeit |
 | 7 | Monitoring-Stack: Prometheus + Grafana + Alerts | [monitoring-setup.md](./monitoring-setup.md) | 2 h |
 | 8 | LLM + Embedding-Modelle konfigurieren | [llm-konfiguration.md](./llm-konfiguration.md) | 1 h |
-| 9 | Whitelabel: Logo, App-Name, Consent | [whitelabel-setup.md](./whitelabel-setup.md) | 1 h |
+| 9.1 | Whitelabel: Logo, App-Name, Consent | [whitelabel-setup.md](./whitelabel-setup.md) | 1 h |
+| 9.2 | Extensions aktivieren (alle 9 Module) | [extensions-aktivierung.md](./extensions-aktivierung.md) | 1–2 h |
 | 10 | CI/CD Pipeline: GitHub Actions + Environments | [ci-cd-pipeline.md](./ci-cd-pipeline.md) | 1 h |
 | 11 | PROD-Rollout | [prod-deploy.md](./prod-deploy.md) | 1 h |
+| 12 | Post-Go-Live: Admin + erste Daten + User-Rollout | [post-go-live.md](./post-go-live.md) | 2 h |
 
-**Gesamt:** ca. 12–15 h aktive Arbeit + externe Wartezeiten (DNS-Propagation, Entra-ID-IT).
+**Gesamt:** ca. 15–20 h aktive Arbeit + externe Wartezeiten (DNS-Propagation, Entra-ID-IT).
+
+**Querverweise:**
+- [credentials-inventar.md](./credentials-inventar.md) — zentrale Liste aller Credentials (Single Source of Truth für Secrets)
 
 ---
 

@@ -962,7 +962,7 @@ Falls Leif den Cloudflare API Token erneuert (z.B. Sicherheitsrotation):
 kubectl delete secret cloudflare-api-token -n cert-manager
 kubectl create secret generic cloudflare-api-token \
   --namespace cert-manager \
-  --from-literal=api-token="<NEUER_TOKEN_VON_LEIF>"
+  --from-literal=api-token="<NEUES_CLOUDFLARE_TOKEN>"
 
 # Verifikation: ClusterIssuers pruefen (muessen READY bleiben)
 kubectl get clusterissuer
@@ -1174,7 +1174,7 @@ Falls Cloudflare einen neuen Token-String generiert hat, muss das K8s Secret akt
 kubectl delete secret cloudflare-api-token -n cert-manager
 kubectl create secret generic cloudflare-api-token \
   --namespace cert-manager \
-  --from-literal=api-token="<NEUER_TOKEN>"
+  --from-literal=api-token="<NEUES_CLOUDFLARE_TOKEN>"
 ```
 
 ---

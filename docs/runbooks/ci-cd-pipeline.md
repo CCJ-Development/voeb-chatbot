@@ -181,7 +181,7 @@ gh workflow run "StackIT Build & Deploy" \
   --repo CCJ-Development/voeb-chatbot \
   --ref main \
   -f environment=dev \
-  -f image_tag=<FUNKTIONIERENDER_TAG>
+  -f image_tag=<IMAGE_TAG>
 ```
 
 ### Notfall: Direkter Image-Wechsel
@@ -190,7 +190,7 @@ Ohne Pipeline, direkt auf dem Cluster:
 
 ```bash
 kubectl set image deployment/onyx-dev-api-server \
-  api-server=registry.onstackit.cloud/voeb-chatbot/onyx-backend:<TAG> \
+  api-server=registry.onstackit.cloud/voeb-chatbot/onyx-backend:<IMAGE_TAG> \
   -n onyx-dev
 ```
 
@@ -325,6 +325,108 @@ kubectl logs deployment/onyx-dev-nginx-controller -n onyx-dev --tail=50
 
 ---
 
+## 6b. Typische Fallstricke / Lessons Learned
+
+### 1. Registry-Login Race Condition bei parallelem Build
+
+**Symptom:** Einer von zwei parallelen Build-Jobs (`build-backend`, `build-frontend`) schlaegt mit `401 Unauthorized` beim `docker login` fehl. Zweiter Build-Versuch (via `gh run rerun --failed`) gelingt sofort.
+
+**Ursache:** StackIT Harbor akzeptiert bei paralleler Last gelegentlich nur einen Login — seit Sync #5 beobachtet.
+
+**Quick-Fix:**
+```bash
+gh run rerun --failed -R CCJ-Development/voeb-chatbot
+```
+
+**Langfristig-Fix (empfohlen bei haeufigem Auftreten):** `build-backend needs: build-frontend` im Workflow erzwingen:
+```yaml
+jobs:
+  build-frontend: ...
+  build-backend:
+    needs: build-frontend  # wartet auf frontend-login-release
+```
+Trade-off: +~5 Min Build-Gesamtzeit (sequenziell statt parallel). Seit Sync #5 bereits aktiv.
+
+### 2. Registry-Credentials-Drift zwischen K8s und GitHub
+
+**Symptom:** Build schlaegt mit `401 Unauthorized` fehl, obwohl Pods im Cluster laufen (Image-Pull funktioniert).
+
+**Ursache:** K8s-Secret `stackit-registry` wurde bei Token-Rotation aktualisiert, GitHub-Secret `STACKIT_REGISTRY_PASSWORD` nicht. CI/CD verwendet GitHub-Secret → 401.
+
+**Recovery:** K8s-Secret ist Source of Truth, Credentials extrahieren und in GitHub nachziehen. Details: `docs/runbooks/secret-rotation.md` Abschnitt "Recovery bei Drift".
+
+### 3. PR-Merge scheitert mit "base branch policy prohibits the merge"
+
+**Symptom:** `gh pr merge <NR>` auf Upstream-Sync-PR schlaegt fehl mit "required checks not met".
+
+**Ursache:** Branch Protection auf `main` verlangt Status-Checks `helm-validate`, `build-backend`, `build-frontend`. Diese laufen aber in `ci-checks.yml` nur auf `push: branches: main`, NICHT auf `pull_request`. PR erreicht nie die required Checks.
+
+**Workaround:** `--admin` Flag (Niko ist Repo-Admin):
+```bash
+gh pr merge <NR> -R CCJ-Development/voeb-chatbot --merge --delete-branch --admin
+```
+Checks laufen nach dem Merge auf main und validieren nachtraeglich.
+
+**Alternative (zukuenftig erwaegen):** `ci-checks.yml` auch auf `pull_request` triggern. Trade-off: +~5 Min pro PR, dafuer kein `--admin` mehr noetig. Nicht kritisch solange Solo-Dev.
+
+### 4. `workflow_dispatch` ignoriert `paths`-Filter
+
+**Symptom:** Manueller Deploy wird ausgefuehrt, obwohl nur docs/-Dateien geaendert wurden.
+
+**Ursache:** `paths`-Filter gelten nur fuer `push` und `pull_request` Events, nicht fuer `workflow_dispatch`. Ein manueller Trigger baut immer neu.
+
+**Anwendung:** Bei kleinen Doku-Aenderungen ohne Deploy-Bedarf NICHT manuell triggern, normalen Push-Flow nutzen (der Paths-Filter greift).
+
+### 5. OpenSearch-Passwort MUSS explizit in `--set` stehen (PROD)
+
+**Symptom:** PROD-Deploy crasht OpenSearch-Pod mit Authentication-Fehler. Chart-Default-Passwort wird statt GitHub-Secret verwendet.
+
+**Ursache:** Fehlender `--set "auth.opensearch.values.opensearch_admin_password=${{ secrets.OPENSEARCH_PASSWORD }}"` im Workflow.
+
+**Anwendung:** Bei Helm-Upgrade PROD IMMER `--set` explizit mitgeben. Vergleiche `stackit-deploy.yml`:
+```yaml
+helm upgrade ... \
+  --set "auth.opensearch.values.opensearch_admin_password=${{ secrets.OPENSEARCH_PASSWORD }}"
+```
+
+### 6. Smoke-Test-Timeout zu niedrig fuer Cold Start
+
+**Symptom:** Smoke Test `curl /api/health` schlaegt fehl, obwohl API-Server 2 Minuten spaeter verfuegbar ist.
+
+**Ursache:** Default Smoke-Test-Timeout (12 Versuche × 10s = 2 Min) reicht bei Cold Start (Alembic-Migrations + Model-Server-Pull) nicht aus.
+
+**Anwendung:** Bei Upstream-Syncs oder erster Provisionierung Smoke-Test manuell verlaengern oder nach Deploy-Completion separat pruefen:
+```bash
+for i in $(seq 1 30); do
+  curl -sS https://chatbot.voeb-service.de/api/health && break
+  sleep 10
+done
+```
+
+### 7. `--wait --timeout 15m` bei Helm rollt NICHT zurueck
+
+**Symptom:** Helm-Upgrade Timeout → Pods bleiben in CrashLoop, Release-Status "failed".
+
+**Ursache:** `--wait` ohne `--atomic` rollt bei Timeout NICHT zurueck (das ist beabsichtigt — bessere Debug-Bedingungen).
+
+**Anwendung:** Bei "failed"-Release zuerst Logs pruefen, dann manuell `helm rollback <name> <REVISION>` aufrufen. Siehe `docs/runbooks/rollback-verfahren.md`.
+
+### 8. Recreate-Strategie verschwindet nach `helm rollback`
+
+**Symptom:** Nach Rollback laufen Pods im RollingUpdate-Modus → alte + neue Pods gleichzeitig → DB Pool Exhaustion.
+
+**Ursache:** `kubectl patch` im Workflow setzt `strategy.type: Recreate` nach jedem Helm-Upgrade. Helm-Rollback uebertraegt diese Patch-Aenderung nicht (ist nur auf der Live-Resource, nicht in der Chart-Revision).
+
+**Anwendung:** Nach Rollback SOFORT den Patch-Step manuell wiederholen:
+```bash
+for DEPLOYMENT in $(kubectl get deployments -n onyx-prod -o name); do
+  kubectl patch "$DEPLOYMENT" -n onyx-prod -p '{"spec":{"strategy":{"type":"Recreate"}}}'
+done
+```
+Alternativ: `stackit-deploy.yml` mit dem alten funktionierenden Image-Tag triggern.
+
+---
+
 ## 7. Entscheidungslog
 
 Dokumentation der "Warum"-Fragen für Audits und Nachvollziehbarkeit.
@@ -346,7 +448,7 @@ Docker Hub Image ist öffentlich, schnell, und mit `v2.9.8` gepinnt.
 
 Der DEV-Cluster hat 2 Nodes (g1a.4d, 4 vCPU je, Downgrade seit 2026-03-16). Recreate ist beibehalten um Port-Konflikte bei Model Servern zu vermeiden und bei begrenzten Ressourcen keine Pending-Pods zu erzeugen. Downtime ist für DEV akzeptabel.
 
-> **Wichtig bei Rollback:** `helm rollback` setzt die Deployment-Strategie auf den Helm-Chart-Default (RollingUpdate) zurück. Nach einem Rollback muss der `kubectl patch`-Schritt aus dem CI/CD-Workflow manuell wiederholt werden, um Recreate zu reaktivieren. Alternativ: erneuter Workflow-Run mit dem funktionierenden Image-Tag (`-f image_tag=<TAG>`).
+> **Wichtig bei Rollback:** `helm rollback` setzt die Deployment-Strategie auf den Helm-Chart-Default (RollingUpdate) zurück. Nach einem Rollback muss der `kubectl patch`-Schritt aus dem CI/CD-Workflow manuell wiederholt werden, um Recreate zu reaktivieren. Alternativ: erneuter Workflow-Run mit dem funktionierenden Image-Tag (`-f image_tag=<IMAGE_TAG>`).
 
 ### Warum `LICENSE_ENFORCEMENT_ENABLED: "false"`?
 

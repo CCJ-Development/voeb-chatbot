@@ -50,32 +50,32 @@ Terraform erstellt die PG-Instanz und den Applikations-User, aber NICHT die Date
 ### Befehl (via temporären Pod)
 
 ```bash
-# <NS> = onyx-dev | onyx-test | onyx-prod
-kubectl run pg-createdb --restart=Never --namespace <NS> \
+# <NAMESPACE> = <NAMESPACE_DEV> (onyx-dev) oder <NAMESPACE_PROD> (onyx-prod)
+kubectl run pg-createdb --restart=Never --namespace <NAMESPACE> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d postgres \
   -c "CREATE DATABASE onyx OWNER onyx_app ENCODING 'UTF8';"
 
 # Ergebnis prüfen
-sleep 8 && kubectl logs pg-createdb -n <NS>
+sleep 8 && kubectl logs pg-createdb -n <NAMESPACE>
 # Erwartete Ausgabe: "CREATE DATABASE"
 
 # Aufräumen
-kubectl delete pod pg-createdb -n <NS>
+kubectl delete pod pg-createdb -n <NAMESPACE>
 ```
 
 ### Validierung
 
 ```bash
-# <NS> = onyx-dev | onyx-test | onyx-prod
-kubectl run pg-check --restart=Never --namespace <NS> \
+# <NAMESPACE> = <NAMESPACE_DEV> (onyx-dev) oder <NAMESPACE_PROD> (onyx-prod)
+kubectl run pg-check --restart=Never --namespace <NAMESPACE> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "SELECT 1;"
 
-sleep 5 && kubectl logs pg-check -n <NS>
-kubectl delete pod pg-check -n <NS>
+sleep 5 && kubectl logs pg-check -n <NAMESPACE>
+kubectl delete pod pg-check -n <NAMESPACE>
 ```
 
 ---
@@ -127,14 +127,14 @@ Die Alembic-Migration prüft per `IF NOT EXISTS` ob der User existiert und über
 Temporärer Pod mit PostgreSQL-Client:
 
 ```bash
-# <NS> = onyx-dev | onyx-test | onyx-prod
-kubectl run pg-client --restart=Never --namespace <NS> \
+# <NAMESPACE> = <NAMESPACE_DEV> (onyx-dev) oder <NAMESPACE_PROD> (onyx-prod)
+kubectl run pg-client --restart=Never --namespace <NAMESPACE> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "\dt"
 
-sleep 8 && kubectl logs pg-client -n <NS>
-kubectl delete pod pg-client -n <NS>
+sleep 8 && kubectl logs pg-client -n <NAMESPACE>
+kubectl delete pod pg-client -n <NAMESPACE>
 ```
 
 ---
@@ -185,7 +185,7 @@ stackit postgresflex instance clone $INSTANCE_ID \
 stackit postgresflex instance list --project-id $PROJECT_ID
 # → Clone-Instanz suchen (Name: *-clone, Status: Progressing → Ready)
 
-CLONE_ID="<CLONE_INSTANCE_ID>"  # Aus der instance list ablesen
+CLONE_ID="<PG_CLONE_INSTANCE_ID>"  # Aus der instance list ablesen
 
 # === 2. Passwort-Reset (PFLICHT — Clone erbt KEINE Passwoerter!) ===
 # User-ID ermitteln:
@@ -253,15 +253,15 @@ kubectl rollout status deployment/${NS}-api-server -n $NS --timeout=300s
 
 ```bash
 # Pruefen ob PG-Instanz erreichbar und Daten konsistent
-# <NS> = onyx-dev | onyx-test | onyx-prod
-kubectl run pg-backup-check --restart=Never --namespace <NS> \
+# <NAMESPACE> = <NAMESPACE_DEV> (onyx-dev) oder <NAMESPACE_PROD> (onyx-prod)
+kubectl run pg-backup-check --restart=Never --namespace <NAMESPACE> \
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx \
   -c "SELECT 'tables' AS check_type, count(*) AS result FROM information_schema.tables WHERE table_schema='public' UNION ALL SELECT 'chat_msgs', count(*) FROM chat_message UNION ALL SELECT 'users', count(*) FROM \"user\";"
 
-sleep 10 && kubectl logs pg-backup-check -n <NS>
-kubectl delete pod pg-backup-check -n <NS>
+sleep 10 && kubectl logs pg-backup-check -n <NAMESPACE>
+kubectl delete pod pg-backup-check -n <NAMESPACE>
 ```
 
 ### PGBackupCheckFailed Alert
@@ -326,6 +326,111 @@ KUBECONFIG=~/.kube/config-prod kubectl run pg-client --restart=Never --namespace
   --image=postgres:16-alpine \
   --env="PGPASSWORD=<PG_PASSWORD>" \
   --command -- psql -h <PG_HOST> -p 5432 -U onyx_app -d onyx -c "\dt"
+```
+
+---
+
+## Typische Fallstricke / Lessons Learned
+
+### 1. `terraform destroy` blockiert wegen user-owned Objects
+
+**Symptom:** `terraform destroy` haengt bei `stackit_postgresflex_user.readonly` mit Fehler `role "db_readonly_user" cannot be dropped because some objects depend on it`.
+
+**Ursache:** Wenn der Readonly-User Objekte besitzt (Default-Grants oder explizite Grants auf Tabellen), kann er nicht geloescht werden. StackIT-API laesst kein `DROP OWNED BY` per Terraform zu.
+
+**Workaround:** Direkt via StackIT CLI die Instanz loeschen (CLI umgeht User-Dependency-Check):
+```bash
+stackit postgresflex instance delete <PG_INSTANCE_ID> \
+  --project-id <PROJECT_ID> --assume-yes
+
+# Danach state aufraeumen:
+terraform state rm stackit_postgresflex_user.readonly
+terraform state rm stackit_postgresflex_database.onyx
+terraform state rm stackit_postgresflex_instance.main
+```
+
+**Angewandt:** 2026-04-21 beim TEST-Teardown.
+
+### 2. Passwoerter mit `/` brechen Connection-URIs
+
+**Symptom:** PG-Exporter oder Onyx API Server crasht beim Start mit `URI parse error`.
+
+**Ursache:** `openssl rand -base64 32` produziert gelegentlich Passwoerter mit `/`. PostgreSQL-URIs haben Format `postgresql://user:password@host`. Das `/` wird als Pfad-Delimiter interpretiert.
+
+**Loesung:**
+```bash
+# Option A: Passwort ohne URI-Delimiter generieren
+openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32
+
+# Option B: URL-encoden (in allen URIs wo das Passwort verwendet wird)
+#   /  → %2F
+#   @  → %40
+#   :  → %3A
+#   #  → %23
+```
+
+**Wichtig:** Helm codiert Passwoerter in Connection-URIs NICHT automatisch. Wenn `POSTGRES_PASSWORD` Secret ein `/` enthaelt, muss der Helm-Chart-Template explizit `urlEncode` anwenden oder das Passwort muss Delimiter-frei generiert werden.
+
+### 3. ACL mit `0.0.0.0/0` ist akzeptiertes Risiko fuer Cluster-IP-Ausgang
+
+**Hintergrund:** StackIT SKE-Nodes haben wechselnde ausgehende IPs (NAT-Gateway kann wechseln bei Node-Austausch). Whitelisting einzelner `/32`-Adressen bricht bei Node-Rotation.
+
+**Entscheidung (dokumentiert in `memory/project_cluster-acl-entscheidung.md`):** Fuer Cluster-Egress wird `0.0.0.0/0` akzeptiert, weil:
+- Cluster-Egress-IP wechselt bei Node-Pool-Updates
+- StackIT PG Flex hat keine Private-Networking-Option (Stand 2026-04)
+- Passwort + TLS (StackIT-managed) sind primaere Auth-Mechanismen
+
+**Ausnahmen:**
+- Admin-IP (Niko's Homeoffice): `/32` explizit
+- Monitoring-Cluster-Egress fuer `pg-backup-check`: `0.0.0.0/0` (StackIT API)
+
+### 4. PG-Flex 2.4 Single kann nicht auf 4.8 HA upgegradet werden
+
+**Symptom:** Upgrade auf HA-Setup blockiert mit "instance type change not supported".
+
+**Ursache:** StackIT PG Flex erlaubt keinen In-Place-Wechsel zwischen Single und HA.
+
+**Workaround:** Neue HA-Instanz erstellen, `pg_dump` + `pg_restore`, Applikation auf neue Instanz umschwenken. Fuer PROD wurde `vob-prod` von Anfang an als 4.8 HA (3-Node) aufgesetzt (dedizierter Cluster, keine Migration noetig).
+
+### 5. `alembic upgrade head` holt eingefuegte Migrationen nicht nach
+
+**Symptom:** Nach Upstream-Sync zeigt `alembic current` = `<unser Head>`, aber neue DB-Spalten (z.B. `user.account_type`) fehlen.
+
+**Ursache:** Unsere ext-Chain setzt auf `<alter_upstream_head>` auf. Upstream fuegt neue Migrationen in der Mitte ein → unser Head zeigt jetzt auf `<neuer_upstream_head>`, aber DB ist schon auf unserem Head gestempelt → Alembic sieht `current == head` und fuehrt nichts aus.
+
+**Recovery:** 3-Phasen-Rotation (DB zurueck → alembic upgrade → DB vor). Details: `docs/runbooks/upstream-sync.md` Szenario A und `docs/runbooks/prod-deploy.md` Schritt 3.
+
+### 6. Clone erbt KEINE Passwoerter
+
+**Symptom:** Nach `stackit postgresflex instance clone` schlaegt `psql -U onyx_app` mit `password authentication failed` fehl.
+
+**Ursache:** Clone-Instanz ist technisch eine neue Instanz. User existieren, aber ihre Passwoerter sind zufaellig neu gesetzt.
+
+**Loesung:** IMMER nach Clone-Befehl: `stackit postgresflex user reset-password <USER_ID> --instance-id <CLONE_ID>`. Das neue Passwort wird nur einmal angezeigt — SOFORT speichern.
+
+**Dokumentiert im Restore-Test 2026-03-15** in diesem Runbook (Abschnitt "Restore per Clone").
+
+### 7. `stackit` CLI v0.53.1 Bug: 404 beim Clone-Tracking
+
+**Symptom:** `stackit postgresflex instance clone ...` endet mit HTTP 404, Clone scheint fehlgeschlagen.
+
+**Ursache:** Bug in CLI v0.53.1 — die Clone-Operation wird auf Backend-Seite trotzdem durchgefuehrt, das Tracking-Endpoint antwortet aber mit 404.
+
+**Workaround:** Status per `stackit postgresflex instance list` pruefen. Clone-Instanz hat Namen `<original>-clone`, Status geht durch `Progressing` → `Ready` (dauert 3-5 Min bei DB < 100 MB).
+
+### 8. `\dt` listet Tabellen, aber Onyx erwartet speziellen Schema-Namen
+
+**Symptom:** Tabellen mit `\dt` sichtbar, aber Onyx crasht mit `relation "user" does not exist`.
+
+**Ursache:** Die Tabelle heisst exakt `user` (PostgreSQL-Keyword). In Queries muss sie immer als `"user"` (mit Double-Quotes) referenziert werden.
+
+**Anwendung:** Bei DB-Queries in Runbooks IMMER `"user"` schreiben, nicht `user`:
+```sql
+-- FALSCH
+SELECT count(*) FROM user;
+
+-- RICHTIG
+SELECT count(*) FROM "user";
 ```
 
 ---

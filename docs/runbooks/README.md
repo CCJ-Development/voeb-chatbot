@@ -12,8 +12,11 @@ Verifizierte Step-by-Step-Anleitungen für Setup, Deployment und Betrieb der Sta
 
 | # | Phase | Runbook | Dauer |
 |---|---|---|---|
-| — | Master-Playbook (Einstieg) | [kunden-klon-onboarding.md](./kunden-klon-onboarding.md) | Übersicht |
-| 1 | StackIT CLI + Service Account + Registry | [stackit-projekt-setup.md](./stackit-projekt-setup.md) | 1 h |
+| — | **Master-Playbook (Einstieg)** | [kunden-klon-onboarding.md](./kunden-klon-onboarding.md) | Übersicht |
+| 0.1 | Kosten-Kalkulation für Angebot | [kosten-kalkulation-kunde.md](./kosten-kalkulation-kunde.md) | 30 min |
+| 0.2 | GitHub-Setup (Environments, Secrets, Branch Protection) | [github-setup.md](./github-setup.md) | 1 h |
+| 1.1 | StackIT CLI + Container Registry | [stackit-projekt-setup.md](./stackit-projekt-setup.md) | 1 h |
+| 1.2 | StackIT Service Accounts | [stackit-service-accounts.md](./stackit-service-accounts.md) | 30 min |
 | 2 | Terraform: SKE-Cluster + PG Flex + Object Storage | [terraform-setup.md](./terraform-setup.md) | 2–3 h |
 | 3 | PostgreSQL: DB anlegen, Readonly-User, ACL | [stackit-postgresql.md](./stackit-postgresql.md) | 30 min |
 | 4 | DNS + TLS (cert-manager, Let's Encrypt) | [dns-tls-setup.md](./dns-tls-setup.md) | 1 h + DNS-Propagation |
@@ -21,11 +24,15 @@ Verifizierte Step-by-Step-Anleitungen für Setup, Deployment und Betrieb der Sta
 | 6 | Entra ID OIDC einrichten | [entra-id-setup.md](./entra-id-setup.md) | 1 h + Kunden-IT |
 | 7 | Monitoring-Stack aufsetzen | [monitoring-setup.md](./monitoring-setup.md) | 2 h |
 | 8 | LLM + Embedding-Modelle konfigurieren | [llm-konfiguration.md](./llm-konfiguration.md) | 1 h |
-| 9 | Whitelabel (Logo, App-Name, Consent) | [whitelabel-setup.md](./whitelabel-setup.md) | 1 h |
+| 9.1 | Whitelabel (Logo, App-Name, Consent) | [whitelabel-setup.md](./whitelabel-setup.md) | 1 h |
+| 9.2 | Extensions aktivieren (alle 9 Module) | [extensions-aktivierung.md](./extensions-aktivierung.md) | 1–2 h |
 | 10 | CI/CD Pipeline: GitHub Actions + Environments | [ci-cd-pipeline.md](./ci-cd-pipeline.md) | 1 h |
 | 11 | PROD-Rollout-Prozess | [prod-deploy.md](./prod-deploy.md) | 1 h |
+| 12 | Post-Go-Live: Admin + erste Daten + User-Rollout | [post-go-live.md](./post-go-live.md) | 2 h |
 
-**Gesamt-Setup:** ca. 12–15 h aktive Arbeit + externe Wartezeiten.
+**Querverweis:** [credentials-inventar.md](./credentials-inventar.md) — zentrale Single-Source-of-Truth für alle Credentials (GitHub, K8s, Terraform, StackIT).
+
+**Gesamt-Setup:** ca. 15–20 h aktive Arbeit + externe Wartezeiten.
 
 ---
 

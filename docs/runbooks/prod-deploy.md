@@ -239,7 +239,7 @@ curl -sS https://chatbot.voeb-service.de/api/enterprise-settings | head -c 100
 # Letztes funktionierendes Image Tag finden
 helm --kube-context vob-prod history onyx-prod -n onyx-prod --max 3
 # Rollback auf vorherige Revision
-helm --kube-context vob-prod rollback onyx-prod <REV> -n onyx-prod
+helm --kube-context vob-prod rollback onyx-prod <REVISION> -n onyx-prod
 ```
 
 **Falls Schritt 3 (Alembic) schiefgeht:**
@@ -257,6 +257,84 @@ with engine.connect() as conn:
 # API-Server neustarten
 kubectl --context vob-prod delete pod -l app=api-server -n onyx-prod
 ```
+
+---
+
+## Typische Fallstricke / Lessons Learned
+
+### 1. Schritt-Reihenfolge ist kritisch
+
+**Reihenfolge: Pre-Patch → Code-Deploy → Alembic → Restart → Monitoring-Upgrade.**
+
+- **Alembic VOR Code-Deploy** = API-Server crasht beim Start, wenn neue Migrationen alte Models referenzieren, die noch nicht im Pod sind.
+- **Code-Deploy VOR Alembic** = API-Server laeuft mit neuem Code, aber DB-Schema haengt hinterher. Meist "nur" 500-Errors fuer Models die neue Spalten lesen. Meist tolerierbar waehrend der ~5 Min Alembic-Recovery.
+- **OOM-Fix VOR CI/CD-Deploy** = Neue Pods starten nicht nochmal mit altem OOM-Limit. Alte Pods werden durch Rolling Update ersetzt.
+
+### 2. Alembic-Chain-Recovery ist der Regelfall bei Upstream-Syncs
+
+**Wann notwendig:** Bei JEDEM Upstream-Sync, der neue Migrationen in die Chain einfuegt.
+
+**Erkennung vorab:** `git diff main..upstream/main --name-only | grep alembic/versions` — wenn neue Files in `backend/alembic/versions/` erscheinen, ist Recovery noetig.
+
+**Die 3-Phasen-Rotation:**
+1. `UPDATE alembic_version SET version_num = '<alter_upstream_head>'` (reset zurueck)
+2. `alembic upgrade <neuer_upstream_head>` (die neuen Migrationen laufen)
+3. `UPDATE alembic_version SET version_num = '<unser_ext_head>'` (zurueck auf unseren aktuellen Head)
+
+Details: `docs/runbooks/upstream-sync.md` Szenario A.
+
+### 3. `seed_default_groups` Migration ueberschreibt existierende VÖB-Gruppen
+
+**Symptom:** Nach Upstream-Sync #5 heissen unsere Gruppen "Admin (Custom)" und "Basic (Custom)" statt "Admin" / "Basic".
+
+**Ursache:** Upstream PR #9795 fuehrte `seed_default_groups` Migration ein, die existierende "Admin"/"Basic"-Gruppen zu "(Custom)" umbenennt und neue Default-Gruppen anlegt.
+
+**Anwendung:**
+- **Gruppen-Check VOR der Migration durchfuehren** (siehe Schritt 3 "VOR der Migration").
+- Wenn "Admin"/"Basic" existieren UND umbenannt werden soll: Migration einfach laufen lassen.
+- Wenn "Admin"/"Basic" existieren UND NICHT umbenannt werden soll: Gruppen temporaer umbenennen (`UPDATE user_group SET name='Admin-vob' WHERE name='Admin'`), Migration laufen lassen, dann zurueck umbenennen + die neu erstellten "Admin"/"Basic" loeschen.
+
+### 4. `kubectl patch` verschwindet beim naechsten `helm upgrade` (wenn values nicht nachziehen)
+
+**Symptom:** OOM-Fix via `kubectl patch` war live, aber nach einer Woche OOM-Kills wieder da. Helm-Upgrade hat den Patch zurueckgerollt.
+
+**Ursache:** `kubectl patch` aendert nur die Live-Deployment-Resource, nicht die Helm-Values. Beim naechsten `helm upgrade` schreibt Helm die Values wieder, der Patch ist weg.
+
+**Anwendung:** Jeder `kubectl patch` fuer Production muss SOFORT auch in `values-prod.yaml` committet werden. Die Sync-#5-OOM-Fix-Werte (API 4Gi, docfetching 2Gi, docprocessing 2Gi) sind deshalb **beide** — im Sofort-Patch und in values-prod.yaml.
+
+### 5. Helm-Release-History-Cleanup bei failed Upgrades
+
+**Symptom:** Helm History zeigt Rev 5 (deployed) + Rev 6 (failed) + Rev 7 (failed). Naechstes `helm upgrade` schlaegt fehl mit "another operation in progress".
+
+**Ursache:** Failed Upgrades lassen das Release in "pending-upgrade" oder "failed" Status. Secrets `sh.helm.release.v1.<name>.v<N>` enthalten die gesamte Release-History und blockieren.
+
+**Recovery:**
+```bash
+# Failed Release-Secrets identifizieren
+kubectl --context vob-prod get secrets -n monitoring -l owner=helm | grep monitoring
+
+# Failed Revisionen loeschen (sh.helm.release.v1.*.v<FAILED_REV>)
+kubectl --context vob-prod delete secret -n monitoring \
+  sh.helm.release.v1.monitoring.v6 \
+  sh.helm.release.v1.monitoring.v7
+
+# Naechster helm upgrade nutzt den letzten "deployed" Stand als Basis
+helm --kube-context vob-prod upgrade monitoring ... --force-replace --server-side=false
+```
+
+### 6. Deep-Health-Endpoint als Readiness-Probe
+
+**Warum:** `/api/health` prueft nur Python-Prozess, nicht DB. Pod bleibt "ready" bei PG-Ausfall → Traffic geht auf kaputten Pod.
+
+**Seit Sync #5 in values-prod.yaml:** `readinessProbe.httpGet.path: /api/ext/health/deep` (prueft PG + Redis + OpenSearch). Liveness bleibt auf `/api/health` (schnell, nur fuer Deadlock-Detection).
+
+**Wichtig bei initialem Deploy:** `initialDelaySeconds: 30` nicht niedriger — Deep-Health braucht alle 3 Stores bereit, was beim ersten Start 10-20s dauern kann.
+
+### 7. CI/CD `--admin` Flag ist Workaround fuer Branch-Protection
+
+**Warum:** `ci-checks.yml` laeuft nur auf `push: branches: main`, nicht auf `pull_request`. PR erreicht nie die "required" Status-Checks.
+
+**Anwendung:** Upstream-Sync-PRs mit `gh pr merge --admin` (Niko ist Repo-Admin). Checks laufen dann nach dem Merge auf main. Trade-off: Kurzes Fenster ohne Validierung. Bei haeufigem PR-Workflow: `ci-checks.yml` auch auf `pull_request` triggern.
 
 ---
 

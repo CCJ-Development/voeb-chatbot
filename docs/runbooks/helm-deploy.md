@@ -122,6 +122,98 @@ Die `values-{env}-secrets.yaml` Dateien sind gitignored und enthalten:
 
 ---
 
+## Helm Values Pattern — 3-Dateien-Konsistenz
+
+**Regel:** Wenn ein neuer Config-Wert (z.B. Feature Flag, Ressource-Limit) hinzugefuegt wird, muss er in **ALLEN DREI** Values-Dateien gesetzt werden — `values-common.yaml`, `values-dev.yaml`, `values-prod.yaml`.
+
+**Warum (Lessons Learned 2026-03-xx):**
+- Rein funktional reicht `values-common.yaml`. Aber Paritaet macht den Config-Stand pro Environment **sichtbar** (12-Factor Principle X: Dev/Prod Parity).
+- Wer `values-prod.yaml` liest, muss den kompletten PROD-Config-Stand sehen koennen, ohne `values-common.yaml` diffen zu muessen.
+- Helm merged Values hierarchisch (`-f` Reihenfolge), aber Listen werden NICHT deep-merged — sie werden komplett ersetzt. Bei Listen (z.B. `extraEnvVars`) ist Paritaet zwingend.
+
+**Anwendung:**
+1. `values-common.yaml` = Source of Truth fuer Gemeinsames
+2. `values-prod.yaml` = explizite Wiederholung PROD-spezifisch + PROD-Overrides
+3. `values-dev.yaml` = explizite Wiederholung DEV-spezifisch + DEV-Overrides
+4. Alle drei Dateien in EINEM Schritt aendern, nicht nachtraeglich
+
+**Beispiel:** Feature Flag `EXT_NEW_MODULE_ENABLED` hinzufuegen → alle drei Values-Dateien bekommen den Eintrag unter `configMap`, auch wenn der Wert gleich ist:
+
+```yaml
+# values-common.yaml
+configMap:
+  EXT_NEW_MODULE_ENABLED: "true"
+
+# values-prod.yaml
+configMap:
+  EXT_NEW_MODULE_ENABLED: "true"  # explizite Paritaet
+
+# values-dev.yaml
+configMap:
+  EXT_NEW_MODULE_ENABLED: "true"
+```
+
+**Absicherung:** Vor jedem Commit: `diff` zwischen den drei Dateien fuer den geaenderten Abschnitt — alle drei sollten den Key enthalten.
+
+### Stolperfalle — Helm Deep-Merge bei Nested Maps
+
+**WICHTIG:** Helm merged `-f`-Values-Dateien hierarchisch, aber **Nested Maps werden nicht Key-by-Key zusammengefuehrt, sondern komplett ersetzt**.
+
+**Konkretes Beispiel:** NGINX Controller Config fuer HSTS + Upload-Limit
+```yaml
+# values-common.yaml
+nginx:
+  controller:
+    config:
+      hsts: "true"
+      hsts-max-age: "31536000"
+      proxy-body-size: "20m"
+      client-max-body-size: "20m"
+
+# values-prod.yaml — FALSCH (ueberschreibt GANZEN Map)
+nginx:
+  controller:
+    config:
+      hsts-preload: "true"   # nur dieser eine Key — alle anderen aus common.yaml sind WEG
+```
+
+**Ergebnis:** `hsts`, `hsts-max-age`, `proxy-body-size`, `client-max-body-size` sind in PROD nicht mehr gesetzt. NGINX liefert Default-Werte → HSTS aus, Body-Size 1 MB default.
+
+**Richtig:** Wenn ein `*-prod.yaml` einen Nested-Map-Key setzt, **ALLE** Keys aus `values-common.yaml` mit duplizieren:
+```yaml
+# values-prod.yaml — RICHTIG
+nginx:
+  controller:
+    config:
+      hsts: "true"                         # Duplikat aus common
+      hsts-max-age: "31536000"             # Duplikat aus common
+      hsts-preload: "true"                 # PROD-spezifisch neu
+      proxy-body-size: "20m"               # Duplikat aus common
+      client-max-body-size: "20m"          # Duplikat aus common
+```
+
+**Betroffene Keys im Onyx-Chart** (wo Deep-Merge greift, aber Map-Override es aushebelt):
+- `nginx.controller.config.*` (NGINX ConfigMap)
+- `configMap.*` (Onyx-Env-Vars — kein Problem weil Top-Level in values-common, nicht nested)
+- `ingress.*.annotations.*` (Ingress-Annotationen)
+- `api_server.*`, `web_server.*` Resource-Limits
+
+**Absicherung:** Nach jeder `values-{env}.yaml`-Aenderung ein `helm template ...` ausfuehren und den gerenderten Output gegen den erwarteten Stand pruefen:
+```bash
+helm template test deployment/helm/charts/onyx/ \
+  -f deployment/helm/values/values-common.yaml \
+  -f deployment/helm/values/values-prod.yaml \
+  --set auth.postgresql.values.password=d \
+  --set auth.redis.values.redis_password=d \
+  --set auth.objectstorage.values.s3_aws_access_key_id=d \
+  --set auth.objectstorage.values.s3_aws_secret_access_key=d \
+  --set auth.dbreadonly.values.db_readonly_password=d \
+  2>/dev/null | grep -A20 "nginx-ingress-controller"
+# Erwartung: Alle 5 Config-Keys sichtbar
+```
+
+---
+
 ## Object Storage Credentials anlegen
 
 Credentials werden über die StackIT CLI erstellt (nicht über Terraform):
