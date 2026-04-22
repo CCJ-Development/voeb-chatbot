@@ -173,8 +173,8 @@ Alle genannten Dienste sind im BSI-C5-Typ-2-Scope von StackIT enthalten (Details
 
 | Dienst | Nutzung |
 |---|---|
-| SKE (Managed Kubernetes) | Cluster `vob-prod` (PROD), `vob-chatbot` (DEV/TEST) |
-| PostgreSQL Flex (Managed Database) | Flex 4.8 HA (PROD), Flex 2.4 Single (DEV/TEST) |
+| SKE (Managed Kubernetes) | Cluster `vob-prod` (PROD), `vob-chatbot` (DEV) |
+| PostgreSQL Flex (Managed Database) | Flex 4.8 HA (PROD), Flex 2.4 Single (DEV) |
 | Object Storage (S3-kompatibel) | Buckets `vob-prod`, `vob-dev` |
 | AI Model Serving | GPT-OSS, Qwen3-VL, Llama 3.3, Qwen3-VL-Embedding |
 | Container Registry | Private Registry für Backend- und Frontend-Images |
@@ -376,7 +376,7 @@ Das Embedding-Modell vektorisiert hochgeladene Dokumente und Nutzer-Fragen, dami
 
 ### 10.2 Geplanter Downgrade (Kostenoptimierung)
 
-Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV/TEST vorgesehen:
+Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV vorgesehen:
 
 | Parameter | Aktuell | Geplant | Änderung |
 |---|---|---|---|
@@ -925,7 +925,7 @@ Der Upstream-Sync mit Onyx läuft über einen separaten Branch mit Pull-Request-
 
 ### 23.3 Warum Feature-Flags für jede Erweiterung?
 
-- **Selektive Aktivierung** pro Umgebung (DEV / TEST / PROD)
+- **Selektive Aktivierung** pro Umgebung (DEV / PROD)
 - **Rollback-Fähigkeit** ohne Deployment (nur Flag umstellen)
 - **Clean Baseline**: Wenn alle Flags aus sind, läuft die Plattform wie Onyx FOSS — ohne Code-Rückstände
 
