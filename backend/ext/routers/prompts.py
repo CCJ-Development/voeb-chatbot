@@ -4,6 +4,7 @@ All endpoints require admin auth. Prefix: /ext/prompts
 """
 
 import logging
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter
 from fastapi import Depends
@@ -25,15 +26,17 @@ from ext.services.prompt_manager import create_prompt
 from ext.services.prompt_manager import delete_prompt
 from ext.services.prompt_manager import get_all_prompts
 from ext.services.prompt_manager import get_assembled_prompt_text
-from ext.services.prompt_manager import get_prompt_by_id
 from ext.services.prompt_manager import update_prompt
+
+if TYPE_CHECKING:
+    from ext.models.prompts import ExtCustomPrompt
 
 logger = logging.getLogger("ext.prompts")
 
 router = APIRouter(prefix="/ext/prompts", tags=["ext-prompts"])
 
 
-def _to_response(row: "ExtCustomPrompt") -> PromptResponse:  # type: ignore[name-defined]
+def _to_response(row: "ExtCustomPrompt") -> PromptResponse:
     return PromptResponse(
         id=row.id,
         name=row.name,

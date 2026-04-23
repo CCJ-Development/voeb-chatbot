@@ -26,7 +26,7 @@ _ANONYMIZE_INTERVAL = 86400
     soft_time_limit=120,
     bind=True,
 )
-def ext_audit_ip_anonymize_task(self) -> None:  # type: ignore[no-untyped-def]
+def ext_audit_ip_anonymize_task(self) -> None:  # type: ignore[no-untyped-def]  # noqa: ARG001
     """DSGVO: IP-Adressen aelter als 90 Tage anonymisieren. Laeuft taeglich."""
     try:
         from ext.config import EXT_AUDIT_ENABLED

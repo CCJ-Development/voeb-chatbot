@@ -21,7 +21,6 @@ from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import joinedload
 
 from onyx.auth.schemas import UserRole
 from onyx.db.models import ConnectorCredentialPair

@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 from unittest.mock import patch
 from uuid import uuid4
 
-import pytest
 
 
 def _mock_user(email: str = "admin@voeb-service.de", role_value: str = "admin"):

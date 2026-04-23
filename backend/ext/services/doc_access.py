@@ -10,13 +10,10 @@ Architektur (Ansatz C):
 """
 
 import logging
-from datetime import datetime
-from datetime import timezone
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from onyx.access.models import DocumentAccess
 from onyx.access.utils import prefix_user_group
 from onyx.db.models import ConnectorCredentialPair
 from onyx.db.models import DocumentByConnectorCredentialPair
@@ -129,7 +126,6 @@ def sync_usergroup_acls(db_session: Session) -> dict:
     neu und aktualisiert den OpenSearch-Index.
     """
     from onyx.access.access import get_access_for_document
-    from onyx.db.engine.sql_engine import get_session_with_current_tenant
     from onyx.document_index.factory import get_default_document_index
     from onyx.document_index.interfaces import UpdateRequest
 
