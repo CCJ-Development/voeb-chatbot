@@ -6,7 +6,6 @@ Run: docker exec onyx-api_server-1 python -m pytest /app/ext/tests/test_analytic
 
 from datetime import date
 from datetime import datetime
-from datetime import timedelta
 from unittest.mock import MagicMock
 from unittest.mock import patch
 

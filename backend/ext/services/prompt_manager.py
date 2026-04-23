@@ -8,10 +8,15 @@ import logging
 import os
 import threading
 import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
 from ext.models.prompts import ExtCustomPrompt
+
+if TYPE_CHECKING:
+    from ext.schemas.prompts import PromptCreate
+    from ext.schemas.prompts import PromptUpdate
 
 logger = logging.getLogger("ext.prompts")
 

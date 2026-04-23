@@ -11,7 +11,6 @@ Architekturentscheidung: Ansatz C (docs/technisches-feinkonzept/ext-access.md)
 """
 
 import logging
-import time
 
 from celery import shared_task
 
@@ -26,7 +25,7 @@ EXT_DOC_ACCESS_SYNC_INTERVAL = 60
     soft_time_limit=300,  # 5 Min Timeout
     bind=True,
 )
-def ext_doc_access_sync_task(self) -> None:  # type: ignore[no-untyped-def]
+def ext_doc_access_sync_task(self) -> None:  # type: ignore[no-untyped-def]  # noqa: ARG001
     """Periodischer Sync: UserGroup-Aenderungen → OpenSearch ACLs."""
     try:
         from ext.config import EXT_DOC_ACCESS_ENABLED

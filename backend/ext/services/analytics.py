@@ -15,7 +15,6 @@ import io
 import logging
 from datetime import date
 from datetime import datetime
-from datetime import timedelta
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
