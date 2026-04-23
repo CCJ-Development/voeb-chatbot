@@ -203,6 +203,41 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Workflow | Branch + PR (#19), Squash Merge |
 | PROD-Deploy | Manueller `helm upgrade` am selben Tag (Chart 0.4.32 → 0.4.36, OpenSearch + ext-i18n) |
 
+## Sechster Upstream-Merge (2026-04-23) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Upstream-Commits | 234 |
+| Konflikte | 3 trivial: `.gitignore` (manuell, VOeB-Block + `.claude/CLAUDE.md`-Append), `AGENTS.md` + `README.md` (`--ours`) |
+| Core-Datei-Konflikte | 0 (alle 16 gepatchten Core-Dateien auto-gemergt, semantisch verifiziert) |
+| ext_-Code Konflikte | 0 |
+| ext-Code Anpassung | 0 (keine Upstream-Rename trifft ext-Code) |
+| Alembic-Migrationen | 5 neue Upstream (`d129f37b3d87`, `a6fcd3d631f9`, `91d150c361f6`, `856bcbe14d79`, `a7c3e2b1d4f8`) + 3 kosmetisch modifiziert (nur `# type: ignore`-Kommentar-Refactors). Chain: `ff7273065d0d` down von `503883791c39` auf `a7c3e2b1d4f8` umgehaengt |
+| Chart-Version | 0.4.44 → 0.4.47 |
+| Helm-Repos | Keine neuen Repos (alle 7 bereits in CI) |
+| Neue Features relevant fuer uns | `ONYX_DISABLE_VESPA`-ENV-Flag (#10330) — erlaubt Vespa-Entfernung als eigenes Epic; Skills-Framework erweitert (#10418, `ods install-skill`); xlsx-Performance-Fixes (Streaming, Cell-Limit); `fix(security)` chat session ownership enforcement (#10413); `fix(files)` chat-file-download authorization hardening (#10380) |
+| Breaking Changes ohne ext-Impact | `/admin/configuration/llm` → `/admin/configuration/language-models` (#10327, nicht verlinkt), `multilingual_expansion` removal (#10282, nicht genutzt), Opal-Component-Renames (`topRightChildren`, `nonInteractive`, Tooltip-Migration — keine ext-Komponente nutzt sie) |
+| Force-Push auf upstream/main | Ja (von Upstream vor dem Merge beobachtet) — unser Fork war davon unberueht, Merge-Base war stabil |
+| Workflow | Branch + PR #22, Admin-Merge (`--admin --merge`) |
+| Commits auf Sync-Branch | 1 (initialer Merge-Commit) |
+| Fix-Commits nach Deploy | 2 auf Follow-up-Branches: `d73d2353b` (ruff unused imports, pre-existing Lint-Drift) + `d5540594d` (helm-prod celery_worker_primary 2→1, unabhaengig vom Sync) |
+
+### Lessons Learned Sync #6
+
+1. **Alembic 3-Step-Recovery ist jetzt robustes Pattern.** Zum zweiten Mal in Folge (Sync #5 + Sync #6) reichte der dokumentierte 3-Step-Ansatz ohne Abweichungen: `UPDATE alembic_version = <alter Upstream-Head>` → `alembic upgrade <neuer Upstream-Head>` → `UPDATE alembic_version = <unser Head>`. Laufen kann die Sequenz auf jedem Pod mit `psycopg2` + `alembic`-CLI — bei Sync #6 war der api-server down (CrashLoopBackOff), wir haben auf `deploy/onyx-dev-celery-worker-primary` ausgefuehrt. Entscheidender Detail: Der neue Container-Build enthaelt die umgehaengte `ff7273065d0d` (down_revision auf neuen Upstream-Head), also findet `alembic upgrade` die Chain-Struktur korrekt — egal von welchem Pod aus.
+
+2. **Helm-Release-Status `failed` ist nur kosmetisch, wenn der Cluster gesund ist.** Der erste Deploy-Versuch timeoutete bei `helm upgrade --wait --timeout 15m` weil api-server in CrashLoopBackOff blieb. Helm setzte Release-Status auf `failed` (Rev 64). Nach manueller Alembic-Recovery kamen alle Pods hoch, **aber der Helm-Status blieb `failed`**, bis ein naechster `helm upgrade` drueberlief. Jeder Push auf main heilt das automatisch (der naechste Deploy erzeugt eine neue Release-Revision). Wir haben das durch die Ruff-Fix + Helm-Singleton-Fix-Commits "mitgenommen" — Rev 65 deployed = Status `deployed`.
+
+3. **Ruff-Lint-Drift entdeckt sich nur durch CI.** Die 17 pre-existing Lint-Errors in `backend/ext/` (12 unused imports + 3 F821 + 2 ARG001) waren Monate alt, aber nie aufgefallen weil die Lint-Stage erst kuerzlich in `ci-checks.yml` scharf geschaltet wurde. Konsequenz: **Bei neuen CI-Stages immer den aktuellen Code gegenchecken**, damit Baseline sauber ist — sonst wird die erste Nutzung zum Merge-Blocker. Ruff-Config in `pyproject.toml` fuer `line-length` + `quote-style` waere der naechste Schritt, um auch die 28 Format-Drift-Files deterministisch zu fixen.
+
+4. **`ci-checks.yml` triggert NICHT auf PRs** (nur `push: branches: main`). Bei PR-basierten Upstream-Syncs gibt es daher **keinen PR-Check-Status** — GitHub's Branch-Protection-Rule "N of M status checks expected" kann nie erfuellt werden, Merge erfordert Admin-Bypass (`gh pr merge --admin --merge`). Fuer zukuenftige Syncs entweder (a) akzeptieren und dokumentieren, (b) CI-Config auf `pull_request` erweitern, oder (c) Branch-Protection-Rules anpassen. Option (b) ist sauber, verdoppelt aber CI-Kosten (Run auf PR + Run auf main-Push).
+
+5. **Concurrency-Config cancelt laufende Deploys.** `stackit-deploy.yml` hat `concurrency: group: stackit-deploy-${{ github.ref }}, cancel-in-progress: true`. Bei zwei schnellen main-Pushes hintereinander (hier: Ruff-Fix-Merge direkt gefolgt vom Helm-Singleton-Fix-Merge) wird der erste Deploy nach 1-2 Min gecancelt. **Kein Problem**, weil der zweite Commit den ersten enthaelt (Merge-Kette). Aber: Bei schneller Commit-Abfolge sollte man wissen, dass nur der letzte Push wirklich deployed wird — vorsichtig bei "parallel vermuteten" Fixes.
+
+6. **Vespa bleibt weiterhin aktiv — PR #10330 bringt nur das Feature, nicht die Auto-Entfernung.** `ONYX_DISABLE_VESPA` ist eine neue ENV-Variable, aber unsere Helm-Config hat sie nicht gesetzt. Vespa-Pod unveraendert (35d Uptime nach Sync #6). Separater Task: Vespa-Entfernen als eigenes Epic (2-4h inkl. PVC-Aufraeumung, NetworkPolicy-Anpassung, Smoke-Test dass OpenSearch alle Ops abdeckt).
+
+7. **Upstream force-pushed main vor dem Merge.** Beim `git fetch upstream` kam `forced update` fuer `main`. Der alte Upstream-Head (vor Force-Push) wurde verworfen. Unser Merge-Base (`cc5a74511`, Sync #5) blieb durch den Force-Push unangetastet, weil er nicht am Ende der Branch-Historie lag. **Lesson fuer Sync #7+:** `git log HEAD..upstream/main` zeigt den echten Drift, unabhaengig von Force-Pushes.
+
 ## Fuenfter Upstream-Merge (2026-04-13/14) — Referenz
 
 | Metrik | Wert |
