@@ -135,7 +135,7 @@ celery_beat:
       memory: 1Gi
 
 celery_worker_primary:
-  replicaCount: 2  # HA: 2 Worker fuer Ausfallsicherheit
+  replicaCount: 1  # Singleton by design: Redis-Lock erlaubt nur 1 aktiven Primary. Bei Pod-Crash startet K8s <30s nach. HA via Replicas ist unmoeglich.
   resources:
     requests:
       cpu: 500m
