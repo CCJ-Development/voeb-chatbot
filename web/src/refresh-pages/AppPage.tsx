@@ -522,7 +522,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     onSubmit({
       message: lastUserMsg.message,
       currentMessageFiles: currentMessageFiles,
-      deepResearch: deepResearchEnabledForCurrentWorkflow,
+      deepResearch:
+        deepResearchEnabledForCurrentWorkflow && !multiModel.isMultiModelActive,
       messageIdToResend: lastUserMsg.messageId,
     });
   }, [
@@ -530,6 +531,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     onSubmit,
     currentMessageFiles,
     deepResearchEnabledForCurrentWorkflow,
+    multiModel.isMultiModelActive,
   ]);
 
   const toggleDocumentSidebar = useCallback(() => {
@@ -553,7 +555,9 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       onSubmit({
         message,
         currentMessageFiles,
-        deepResearch: deepResearchEnabledForCurrentWorkflow,
+        deepResearch:
+          deepResearchEnabledForCurrentWorkflow &&
+          !multiModel.isMultiModelActive,
         selectedModels: multiModel.isMultiModelActive
           ? multiModel.selectedModels
           : undefined,
@@ -607,7 +611,9 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
         onSubmit({
           message,
           currentMessageFiles,
-          deepResearch: deepResearchEnabledForCurrentWorkflow,
+          deepResearch:
+            deepResearchEnabledForCurrentWorkflow &&
+            !multiModel.isMultiModelActive,
           selectedModels: multiModel.isMultiModelActive
             ? multiModel.selectedModels
             : undefined,
@@ -980,6 +986,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           deepResearchEnabledForCurrentWorkflow
                         }
                         toggleDeepResearch={toggleDeepResearch}
+                        isMultiModelActive={multiModel.isMultiModelActive}
                         filterManager={filterManager}
                         llmManager={llmManager}
                         initialMessage={
@@ -1001,7 +1008,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         // Intentionally enabled during name-only onboarding (showOnboarding=false)
                         // since LLM providers are already configured and the user can chat.
                         disabled={
-                          awaitingPreferredSelection ||
                           (!llmManager.isLoadingProviders &&
                             llmManager.hasAnyProvider === false) ||
                           (showOnboarding &&
@@ -1009,6 +1015,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                             onboardingState.currentStep !==
                               OnboardingStep.Complete)
                         }
+                        awaitingPreferredSelection={awaitingPreferredSelection}
                       />
                       <div
                         className={cn(

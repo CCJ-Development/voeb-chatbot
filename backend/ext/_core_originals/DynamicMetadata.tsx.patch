@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/DynamicMetadata.tsx.original	2026-04-20 16:28:19
-+++ web/src/providers/DynamicMetadata.tsx	2026-04-20 17:02:04
+--- backend/ext/_core_originals/DynamicMetadata.tsx.original	2026-04-23 11:17:56
++++ web/src/providers/DynamicMetadata.tsx	2026-04-20 17:21:18
 @@ -1,17 +1,23 @@
  "use client";
  

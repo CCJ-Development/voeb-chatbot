@@ -1,4 +1,4 @@
---- backend/ext/_core_originals/LoginText.tsx.original	2026-03-22 15:13:47
+--- backend/ext/_core_originals/LoginText.tsx.original	2026-04-23 11:17:56
 +++ web/src/app/auth/login/LoginText.tsx	2026-03-22 14:55:16
 @@ -3,18 +3,21 @@
  import React, { useContext } from "react";

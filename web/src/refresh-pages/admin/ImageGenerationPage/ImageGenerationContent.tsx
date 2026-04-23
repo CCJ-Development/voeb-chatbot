@@ -18,12 +18,11 @@ import {
   unsetDefaultImageGenerationConfig,
   deleteImageGenerationConfig,
 } from "@/refresh-pages/admin/ImageGenerationPage/svc";
-import ModelIcon from "@/app/admin/configuration/llm/ModelIcon";
-import Message from "@/refresh-components/messages/Message";
+import ModelIcon from "@/app/admin/configuration/language-models/ModelIcon";
 import ConfirmationModalLayout from "@/refresh-components/layouts/ConfirmationModalLayout";
 import InputSelect from "@/refresh-components/inputs/InputSelect";
-import { Button, SelectCard, Text } from "@opal/components";
-import { Content, Card } from "@opal/layouts";
+import { Button, MessageCard, SelectCard, Text } from "@opal/components";
+import { Content, ContentAction, Card } from "@opal/layouts";
 import { Hoverable } from "@opal/core";
 import {
   SvgArrowExchange,
@@ -222,13 +221,9 @@ export default function ImageGenerationContent() {
         />
 
         {connectedProviderIds.size === 0 && (
-          <Message
-            info
-            static
-            large
-            close={false}
-            text="Connect an image generation model to use in chat."
-            className="w-full"
+          <MessageCard
+            variant="info"
+            title="Connect an image generation model to use in chat."
           />
         )}
 
@@ -261,50 +256,6 @@ export default function ImageGenerationContent() {
                     }
                   >
                     <Card.Header
-                      sizePreset="main-ui"
-                      variant="section"
-                      icon={() => (
-                        <ModelIcon
-                          provider={provider.provider_name}
-                          size={16}
-                        />
-                      )}
-                      title={provider.title}
-                      description={provider.description}
-                      rightChildren={
-                        isDisconnected ? (
-                          <Button
-                            prominence="tertiary"
-                            rightIcon={SvgArrowExchange}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConnect(provider);
-                            }}
-                          >
-                            Connect
-                          </Button>
-                        ) : isConnected ? (
-                          <Button
-                            prominence="tertiary"
-                            rightIcon={SvgArrowRightCircle}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSelect(provider);
-                            }}
-                          >
-                            Set as Default
-                          </Button>
-                        ) : isSelected ? (
-                          <div className="p-2">
-                            <Content
-                              title="Current Default"
-                              sizePreset="main-ui"
-                              variant="section"
-                              icon={SvgCheckSquare}
-                            />
-                          </div>
-                        ) : undefined
-                      }
                       bottomRightChildren={
                         !isDisconnected ? (
                           <div className="flex flex-row px-1 pb-1">
@@ -335,7 +286,55 @@ export default function ImageGenerationContent() {
                           </div>
                         ) : undefined
                       }
-                    />
+                    >
+                      <ContentAction
+                        sizePreset="main-ui"
+                        variant="section"
+                        icon={() => (
+                          <ModelIcon
+                            provider={provider.provider_name}
+                            size={16}
+                          />
+                        )}
+                        title={provider.title}
+                        description={provider.description}
+                        padding="lg"
+                        rightChildren={
+                          isDisconnected ? (
+                            <Button
+                              prominence="tertiary"
+                              rightIcon={SvgArrowExchange}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConnect(provider);
+                              }}
+                            >
+                              Connect
+                            </Button>
+                          ) : isConnected ? (
+                            <Button
+                              prominence="tertiary"
+                              rightIcon={SvgArrowRightCircle}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelect(provider);
+                              }}
+                            >
+                              Set as Default
+                            </Button>
+                          ) : isSelected ? (
+                            <div className="p-2">
+                              <Content
+                                title="Current Default"
+                                sizePreset="main-ui"
+                                variant="section"
+                                icon={SvgCheckSquare}
+                              />
+                            </div>
+                          ) : undefined
+                        }
+                      />
+                    </Card.Header>
                   </SelectCard>
                 </Hoverable.Root>
               );

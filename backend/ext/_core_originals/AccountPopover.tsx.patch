@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/AccountPopover.tsx.original	2026-04-20 22:51:41
-+++ web/src/sections/sidebar/AccountPopover.tsx	2026-04-20 22:52:11
+--- backend/ext/_core_originals/AccountPopover.tsx.original	2026-04-23 11:17:56
++++ web/src/sections/sidebar/AccountPopover.tsx	2026-04-20 23:00:48
 @@ -26,6 +26,16 @@
  import { useVectorDbEnabled } from "@/providers/SettingsProvider";
  import UserAvatar from "@/refresh-components/avatars/UserAvatar";

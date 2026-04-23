@@ -1,9 +1,9 @@
---- backend/ext/_core_originals/main.py.original	2026-04-13 15:23:15
-+++ backend/onyx/main.py	2026-04-13 15:13:45
-@@ -520,7 +520,19 @@
-     include_router_with_global_prefix_prepended(application, mcp_admin_router)
+--- backend/ext/_core_originals/main.py.original	2026-04-23 11:17:56
++++ backend/onyx/main.py	2026-04-23 11:15:49
+@@ -528,7 +528,19 @@
  
      include_router_with_global_prefix_prepended(application, pat_router)
+     include_router_with_global_prefix_prepended(application, captcha_router)
 +
 +    # === VÖB Extension Framework Hook ===
 +    try:

@@ -64,6 +64,9 @@ from onyx.error_handling.exceptions import register_onyx_exception_handlers
 from onyx.file_store.file_store import get_default_file_store
 from onyx.hooks.registry import validate_registry
 from onyx.server.api_key.api import router as api_key_router
+from onyx.server.auth.captcha_api import CaptchaCookieMiddleware
+from onyx.server.auth.captcha_api import LoginCaptchaMiddleware
+from onyx.server.auth.captcha_api import router as captcha_router
 from onyx.server.auth_check import check_router_auth
 from onyx.server.documents.cc_pair import router as cc_pair_router
 from onyx.server.documents.connector import router as connector_router
@@ -166,6 +169,7 @@ from shared_configs.configs import CORS_ALLOWED_ORIGIN
 from shared_configs.configs import MULTI_TENANT
 from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA
 from shared_configs.configs import SENTRY_DSN
+from shared_configs.configs import SENTRY_TRACES_SAMPLE_RATE
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 
 warnings.filterwarnings(
@@ -434,11 +438,14 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
         lifespan=lifespan_override or lifespan,
     )
     if SENTRY_DSN:
+        from onyx.configs.sentry import _add_instance_tags
+
         sentry_sdk.init(
             dsn=SENTRY_DSN,
             integrations=[StarletteIntegration(), FastApiIntegration()],
-            traces_sample_rate=0.1,
+            traces_sample_rate=SENTRY_TRACES_SAMPLE_RATE,
             release=__version__,
+            before_send=_add_instance_tags,
         )
         logger.info("Sentry initialized")
     else:
@@ -520,6 +527,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, mcp_admin_router)
 
     include_router_with_global_prefix_prepended(application, pat_router)
+    include_router_with_global_prefix_prepended(application, captcha_router)
 
     # === VÖB Extension Framework Hook ===
     try:
@@ -663,6 +671,11 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Gate the OAuth callback on a signed captcha cookie set by the frontend
+    # before the Google redirect. No-op unless is_captcha_enabled() is true
+    # (requires CAPTCHA_ENABLED=true and RECAPTCHA_SECRET_KEY set).
+    application.add_middleware(CaptchaCookieMiddleware)
+    application.add_middleware(LoginCaptchaMiddleware)
     if LOG_ENDPOINT_LATENCY:
         add_latency_logging_middleware(application, logger)
 

@@ -181,8 +181,10 @@ class EncryptedString(_EncryptedBase):
             # Handle both raw strings and SensitiveValue wrappers
             if isinstance(value, SensitiveValue):
                 # Get raw value for storage
-                value = value.get_value(apply_mask=False)
-            return encrypt_string_to_bytes(value)
+                value = value.get_value(  # ty: ignore[invalid-assignment]
+                    apply_mask=False
+                )
+            return encrypt_string_to_bytes(value)  # ty: ignore[invalid-argument-type]
         return value
 
     def process_result_value(
@@ -210,7 +212,9 @@ class EncryptedJson(_EncryptedBase):
     ) -> bytes | None:
         if value is not None:
             if isinstance(value, SensitiveValue):
-                value = value.get_value(apply_mask=False)
+                value = value.get_value(  # ty: ignore[invalid-assignment]
+                    apply_mask=False
+                )
             json_str = json.dumps(value)
             return encrypt_string_to_bytes(json_str)
         return value
@@ -294,8 +298,8 @@ Auth/Authz (users, permissions, access) Tables
 
 class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
     # even an almost empty token from keycloak will not fit the default 1024 bytes
-    access_token: Mapped[str] = mapped_column(Text, nullable=False)  # type: ignore
-    refresh_token: Mapped[str] = mapped_column(Text, nullable=False)  # type: ignore
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    refresh_token: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
@@ -890,7 +894,7 @@ class HierarchyNode(Base):
     # For hierarchy nodes that are also documents (e.g., Confluence pages)
     # SET NULL when document is deleted - node can exist without its document
     document_id: Mapped[str | None] = mapped_column(
-        ForeignKey("document.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("document.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # Self-referential FK for tree structure
@@ -948,6 +952,7 @@ class Document(Base):
     semantic_id: Mapped[str] = mapped_column(NullFilteredString)
     # First Section's link
     link: Mapped[str | None] = mapped_column(NullFilteredString, nullable=True)
+    file_id: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # The updated time is also used as a measure of the last successful state of the doc
     # pulled from the source (to help skip reindexing already updated docs in case of
@@ -1050,9 +1055,9 @@ class Document(Base):
 
     __table_args__ = (
         Index(
-            "ix_document_sync_status",
-            last_modified,
-            last_synced,
+            "ix_document_needs_sync",
+            "id",
+            postgresql_where=text("last_modified > last_synced OR last_synced IS NULL"),
         ),
     )
 
@@ -2095,10 +2100,6 @@ class SearchSettings(Base):
         String, nullable=True
     )
 
-    multilingual_expansion: Mapped[list[str]] = mapped_column(
-        postgresql.ARRAY(String), default=[]
-    )
-
     cloud_provider: Mapped["CloudEmbeddingProvider"] = relationship(
         "CloudEmbeddingProvider",
         back_populates="search_settings",
@@ -2199,6 +2200,7 @@ class IndexAttempt(Base):
     connector_credential_pair_id: Mapped[int] = mapped_column(
         ForeignKey("connector_credential_pair.id"),
         nullable=False,
+        index=True,
     )
 
     # Some index attempts that run from beginning will still have this as False
@@ -2402,10 +2404,12 @@ class IndexAttemptError(Base):
     index_attempt_id: Mapped[int] = mapped_column(
         ForeignKey("index_attempt.id"),
         nullable=False,
+        index=True,
     )
     connector_credential_pair_id: Mapped[int] = mapped_column(
         ForeignKey("connector_credential_pair.id"),
         nullable=False,
+        index=True,
     )
 
     document_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -2421,6 +2425,8 @@ class IndexAttemptError(Base):
 
     failure_message: Mapped[str] = mapped_column(Text)
     is_resolved: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    error_type: Mapped[str | None] = mapped_column(String, nullable=True)
 
     time_created: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
@@ -4502,7 +4508,7 @@ class UserFile(Base):
     file_id: Mapped[str] = mapped_column(nullable=False)
     name: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        default=datetime.datetime.utcnow
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
     user: Mapped["User"] = relationship(back_populates="files")
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -4580,6 +4586,25 @@ class TenantAnonymousUserPath(Base):
     tenant_id: Mapped[str] = mapped_column(String, primary_key=True, nullable=False)
     anonymous_user_path: Mapped[str] = mapped_column(
         String, nullable=False, unique=True
+    )
+
+
+# Lifetime invite counter per tenant. Incremented atomically on every
+# invite reservation; never decremented — removals do not free quota, so
+# loops of invite → remove → invite cannot bypass the trial cap.
+class TenantInviteCounter(Base):
+    __tablename__ = "tenant_invite_counter"
+    __table_args__ = {"schema": "public"}
+
+    tenant_id: Mapped[str] = mapped_column(String, primary_key=True)
+    total_invites_sent: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
 

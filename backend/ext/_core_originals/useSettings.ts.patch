@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/useSettings.ts.original	2026-04-16 11:33:56
-+++ web/src/hooks/useSettings.ts	2026-04-20 22:09:36
+--- backend/ext/_core_originals/useSettings.ts.original	2026-04-23 11:17:56
++++ web/src/hooks/useSettings.ts	2026-04-23 11:15:49
 @@ -9,6 +9,13 @@
  } from "@/interfaces/settings";
  import { EE_ENABLED } from "@/lib/constants";
@@ -14,7 +14,7 @@
  // Longer retry delay for critical settings fetches — avoids rapid error→success
  // flicker in the SettingsProvider error boundary when there's a transient blip.
  const SETTINGS_ERROR_RETRY_INTERVAL = 5_000;
-@@ -60,7 +67,7 @@
+@@ -61,7 +68,7 @@
    // /api/settings. The build-time flag (NEXT_PUBLIC_ENABLE_PAID_EE_FEATURES)
    // may be unset even when the server enables EE via LICENSE_ENFORCEMENT_ENABLED,
    // so the runtime check is needed as a fallback.
@@ -23,7 +23,7 @@
  
    const { data, error, isLoading } = useSWR<EnterpriseSettings>(
      shouldFetch ? SWR_KEYS.enterpriseSettings : null,
-@@ -89,6 +96,11 @@
+@@ -90,6 +97,11 @@
  export function useCustomAnalyticsScript(
    eeEnabledRuntime: boolean
  ): string | null {
