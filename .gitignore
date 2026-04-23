@@ -62,6 +62,7 @@ plans/
 
 # Added context for LLMs
 onyx-llm-context/
+.claude/CLAUDE.md
 
 # ===========================================================
 # VÖB Fork — Alle Ergänzungen unterhalb dieser Linie

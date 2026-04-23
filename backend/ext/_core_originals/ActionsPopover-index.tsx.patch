@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/ActionsPopover-index.tsx.original	2026-03-26 11:50:29
-+++ web/src/refresh-components/popovers/ActionsPopover/index.tsx	2026-03-26 11:50:13
-@@ -450,6 +450,9 @@
+--- backend/ext/_core_originals/ActionsPopover-index.tsx.original	2026-04-23 11:17:56
++++ web/src/refresh-components/popovers/ActionsPopover/index.tsx	2026-04-23 11:15:49
+@@ -387,6 +387,9 @@
      ]
    );
  

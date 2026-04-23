@@ -1,8 +1,14 @@
 """ext_branding: Create ext_branding_config table
 
 Revision ID: ff7273065d0d
-Revises: 503883791c39
+Revises: a7c3e2b1d4f8
 Create Date: 2026-03-08 22:00:00.000000
+
+Hinweis (Sync #6, 2026-04-23):
+down_revision wurde von "503883791c39" auf "a7c3e2b1d4f8" umgehaengt, damit
+unsere ext-Migrationskette hinter den neuen Upstream-Head ruesckt. Beim Upgrade
+einer bestehenden DB (DEV/PROD) ist SQL-Recovery notwendig:
+siehe docs/runbooks/upstream-sync.md.
 
 """
 
@@ -11,7 +17,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "ff7273065d0d"
-down_revision = "503883791c39"
+down_revision = "a7c3e2b1d4f8"
 branch_labels: None = None
 depends_on: None = None
 

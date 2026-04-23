@@ -1,8 +1,8 @@
---- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-04-13 15:32:41
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-04-13 15:32:16
-@@ -23,8 +23,16 @@
+--- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-04-23 11:17:56
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-04-23 11:15:49
+@@ -21,8 +21,16 @@
+ import { Divider, SidebarTab } from "@opal/components";
  import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";
- import Separator from "@/refresh-components/Separator";
  import Spacer from "@/refresh-components/Spacer";
 -import { SvgArrowUpCircle, SvgSearch, SvgX } from "@opal/icons";
  import {
@@ -18,7 +18,7 @@
    useBillingInformation,
    useLicense,
    hasActiveSubscription,
-@@ -133,41 +141,81 @@
+@@ -126,41 +134,81 @@
    }
  
    // 5. Permissions

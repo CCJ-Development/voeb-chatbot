@@ -5,6 +5,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
+import sentry_sdk
 from celery import Celery
 from sqlalchemy.orm import Session
 
@@ -57,6 +58,10 @@ from onyx.db.indexing_coordination import IndexingCoordination
 from onyx.db.models import IndexAttempt
 from onyx.file_store.document_batch_storage import DocumentBatchStorage
 from onyx.file_store.document_batch_storage import get_document_batch_storage
+from onyx.file_store.staging import build_raw_file_callback
+from onyx.file_store.staging import cleanup_staged_files_for_attempt
+from onyx.file_store.staging import RawFileCallback
+from onyx.file_store.staging import reap_prior_attempt_staged_files
 from onyx.indexing.indexing_heartbeat import IndexingHeartbeatInterface
 from onyx.indexing.indexing_pipeline import index_doc_batch_prepare
 from onyx.redis.redis_hierarchy import cache_hierarchy_nodes_batch
@@ -89,6 +94,7 @@ def _get_connector_runner(
     end_time: datetime,
     include_permissions: bool,
     leave_connector_active: bool = LEAVE_CONNECTOR_ACTIVE_ON_INITIALIZATION_FAILURE,
+    raw_file_callback: RawFileCallback | None = None,
 ) -> ConnectorRunner:
     """
     NOTE: `start_time` and `end_time` are only used for poll connectors
@@ -107,6 +113,7 @@ def _get_connector_runner(
             input_type=task,
             connector_specific_config=attempt.connector_credential_pair.connector.connector_specific_config,
             credential=attempt.connector_credential_pair.credential,
+            raw_file_callback=raw_file_callback,
         )
 
         # validate the connector settings
@@ -274,14 +281,49 @@ def run_docfetching_entrypoint(
         f"credentials='{credential_id}'"
     )
 
-    connector_document_extraction(
-        app,
-        index_attempt_id,
-        attempt.connector_credential_pair_id,
-        attempt.search_settings_id,
-        tenant_id,
-        callback,
+    raw_file_callback = build_raw_file_callback(
+        index_attempt_id=index_attempt_id,
+        cc_pair_id=connector_credential_pair_id,
+        tenant_id=tenant_id,
     )
+
+    # Reap STAGING orphans from prior attempts on this cc_pair BEFORE we
+    # start fetching. Catches the crashed-worker case where the previous
+    # attempt couldn't run its own `finally` cleanup (OOM kill, pod
+    # eviction). Scoped by cc_pair + tenant so the sweep stays bounded.
+    with get_session_with_current_tenant() as reap_session:
+        reap_prior_attempt_staged_files(
+            current_attempt_id=index_attempt_id,
+            cc_pair_id=connector_credential_pair_id,
+            tenant_id=tenant_id,
+            db_session=reap_session,
+        )
+
+    try:
+        connector_document_extraction(
+            app,
+            index_attempt_id,
+            attempt.connector_credential_pair_id,
+            attempt.search_settings_id,
+            tenant_id,
+            callback,
+            raw_file_callback=raw_file_callback,
+        )
+    finally:
+        # Reap any STAGING files this attempt created but never promoted.
+        # Runs on both the success path (docs filtered / ingestion-hook
+        # rejected) and the exception path.
+        try:
+            with get_session_with_current_tenant() as cleanup_session:
+                cleanup_staged_files_for_attempt(
+                    index_attempt_id=index_attempt_id,
+                    db_session=cleanup_session,
+                )
+        except Exception:
+            logger.exception(
+                "Failed to run attempt-end staging cleanup; orphans will be "
+                "caught by the next attempt's start-of-run sweep."
+            )
 
     logger.info(
         f"Docfetching finished{tenant_str}: "
@@ -300,6 +342,7 @@ def connector_document_extraction(
     search_settings_id: int,
     tenant_id: str,
     callback: IndexingHeartbeatInterface | None = None,
+    raw_file_callback: RawFileCallback | None = None,
 ) -> None:
     """Extract documents from connector and queue them for indexing pipeline processing.
 
@@ -450,6 +493,7 @@ def connector_document_extraction(
             start_time=window_start,
             end_time=window_end,
             include_permissions=should_fetch_permissions_during_indexing,
+            raw_file_callback=raw_file_callback,
         )
 
         # don't use a checkpoint if we're explicitly indexing from
@@ -556,6 +600,27 @@ def connector_document_extraction(
 
                 # save record of any failures at the connector level
                 if failure is not None:
+                    if failure.exception is not None:
+                        with sentry_sdk.new_scope() as scope:
+                            scope.set_tag("stage", "connector_fetch")
+                            scope.set_tag("connector_source", db_connector.source.value)
+                            scope.set_tag("cc_pair_id", str(cc_pair_id))
+                            scope.set_tag("index_attempt_id", str(index_attempt_id))
+                            scope.set_tag("tenant_id", tenant_id)
+                            if failure.failed_document:
+                                scope.set_tag(
+                                    "doc_id", failure.failed_document.document_id
+                                )
+                            if failure.failed_entity:
+                                scope.set_tag(
+                                    "entity_id", failure.failed_entity.entity_id
+                                )
+                            scope.fingerprint = [
+                                "connector-fetch-failure",
+                                db_connector.source.value,
+                                type(failure.exception).__name__,
+                            ]
+                            sentry_sdk.capture_exception(failure.exception)
                     total_failures += 1
                     with get_session_with_current_tenant() as db_session:
                         create_index_attempt_error(

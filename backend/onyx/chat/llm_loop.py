@@ -4,9 +4,8 @@ from collections.abc import Callable
 from typing import Any
 from typing import Literal
 
-from sqlalchemy.orm import Session
-
 from onyx.chat.chat_state import ChatStateContainer
+from onyx.chat.chat_utils import build_python_chat_files_from_search_docs
 from onyx.chat.chat_utils import create_tool_call_failure_messages
 from onyx.chat.citation_processor import CitationMapping
 from onyx.chat.citation_processor import CitationMode
@@ -635,7 +634,6 @@ def run_llm_loop(
     user_memory_context: UserMemoryContext | None,
     llm: LLM,
     token_counter: Callable[[str], int],
-    db_session: Session,
     forced_tool_id: int | None = None,
     user_identity: LLMUserIdentity | None = None,
     chat_session_id: str | None = None,
@@ -658,6 +656,11 @@ def run_llm_loop(
         )  # Here for lazy load LiteLLM
 
         initialize_litellm()
+
+        # Normalize chat_files to a mutable list so we can extend it mid-loop
+        # when a search hit carries an attached file the Python tool should
+        # see.
+        chat_files = list(chat_files or [])
 
         # Track when the loop starts for calculating time-to-answer
         loop_start_time = time.monotonic()
@@ -1000,6 +1003,21 @@ def run_llm_loop(
                     if search_docs and tool_call.tool_name == WebSearchTool.NAME:
                         just_ran_web_search = True
 
+                    # Stage any raw source files attached to these hits into
+                    # the session's chat_files so the next Python tool call
+                    # sees them already uploaded under their display names.
+                    if search_docs:
+                        staged = build_python_chat_files_from_search_docs(
+                            search_docs=search_docs,
+                        )
+                        if staged:
+                            existing_filenames = {cf.filename for cf in chat_files}
+                            chat_files.extend(
+                                cf
+                                for cf in staged
+                                if cf.filename not in existing_filenames
+                            )
+
                 # Extract generated_images if this is an image generation tool response
                 generated_images = None
                 if isinstance(
@@ -1020,20 +1038,16 @@ def run_llm_loop(
                     persisted_memory_id: int | None = None
                     if user_memory_context and user_memory_context.user_id:
                         if tool_response.rich_response.index_to_replace is not None:
-                            memory = update_memory_at_index(
+                            persisted_memory_id = update_memory_at_index(
                                 user_id=user_memory_context.user_id,
                                 index=tool_response.rich_response.index_to_replace,
                                 new_text=tool_response.rich_response.memory_text,
-                                db_session=db_session,
                             )
-                            persisted_memory_id = memory.id if memory else None
                         else:
-                            memory = add_memory(
+                            persisted_memory_id = add_memory(
                                 user_id=user_memory_context.user_id,
                                 memory_text=tool_response.rich_response.memory_text,
-                                db_session=db_session,
                             )
-                            persisted_memory_id = memory.id
                     operation: Literal["add", "update"] = (
                         "update"
                         if tool_response.rich_response.index_to_replace is not None
@@ -1171,7 +1185,10 @@ def run_llm_loop(
 
         emitter.emit(
             Packet(
-                placement=Placement(turn_index=llm_cycle_count + reasoning_cycles),
+                placement=Placement(
+                    turn_index=llm_cycle_count  # ty: ignore[possibly-unresolved-reference]
+                    + reasoning_cycles
+                ),
                 obj=OverallStop(type="stop"),
             )
         )

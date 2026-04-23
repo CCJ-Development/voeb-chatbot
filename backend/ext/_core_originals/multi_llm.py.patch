@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/multi_llm.py.original	2026-04-13 15:23:16
-+++ backend/onyx/llm/multi_llm.py	2026-04-13 15:13:45
-@@ -423,6 +423,21 @@
+--- backend/ext/_core_originals/multi_llm.py.original	2026-04-23 11:17:56
++++ backend/onyx/llm/multi_llm.py	2026-04-23 11:15:49
+@@ -437,6 +437,21 @@
          user_identity: LLMUserIdentity | None = None,
          client: "HTTPHandler | None" = None,
      ) -> Union["ModelResponse", "CustomStreamWrapper"]:
@@ -22,7 +22,7 @@
          # Lazy loading to avoid memory bloat for non-inference flows
          from onyx.llm.litellm_singleton import litellm
          from litellm.exceptions import Timeout, RateLimitError
-@@ -759,7 +774,26 @@
+@@ -780,7 +795,26 @@
              # Track LLM cost for Onyx-managed API keys
              if model_response.usage:
                  self._track_llm_cost(model_response.usage)
@@ -49,7 +49,7 @@
              return model_response
          finally:
              if client is not None:
-@@ -839,6 +873,29 @@
+@@ -860,6 +894,29 @@
                  if model_response.usage:
                      self._track_llm_cost(model_response.usage)
  

@@ -208,9 +208,9 @@ def litellm_exception_to_error_msg(
             api_error = core_exception.api_error
             if isinstance(api_error, dict):
                 upstream_detail = (
-                    api_error.get("message")
-                    or api_error.get("detail")
-                    or api_error.get("error")
+                    api_error.get("message")  # ty: ignore[invalid-argument-type]
+                    or api_error.get("detail")  # ty: ignore[invalid-argument-type]
+                    or api_error.get("error")  # ty: ignore[invalid-argument-type]
                 )
         if not upstream_detail:
             upstream_detail = str(core_exception)
@@ -531,11 +531,13 @@ def llm_max_input_tokens(
         )
         return GEN_AI_MODEL_FALLBACK_MAX_TOKENS
 
-    if "max_input_tokens" in model_obj:
-        return model_obj["max_input_tokens"]
+    max_input_tokens = model_obj.get("max_input_tokens")
+    if max_input_tokens is not None:
+        return max_input_tokens
 
-    if "max_tokens" in model_obj:
-        return model_obj["max_tokens"]
+    max_tokens = model_obj.get("max_tokens")
+    if max_tokens is not None:
+        return max_tokens
 
     logger.warning(
         f"No max tokens found for '{model_name}'. Falling back to {GEN_AI_MODEL_FALLBACK_MAX_TOKENS} tokens."
@@ -561,12 +563,14 @@ def get_llm_max_output_tokens(
         )
         return default_output_tokens
 
-    if "max_output_tokens" in model_obj:
-        return model_obj["max_output_tokens"]
+    max_output_tokens = model_obj.get("max_output_tokens")
+    if max_output_tokens is not None:
+        return max_output_tokens
 
     # Fallback to a fraction of max_tokens if max_output_tokens is not specified
-    if "max_tokens" in model_obj:
-        return int(model_obj["max_tokens"] * 0.1)
+    max_tokens = model_obj.get("max_tokens")
+    if max_tokens is not None:
+        return int(max_tokens * 0.1)
 
     logger.warning(
         f"No max output tokens found for '{model_name}'. Falling back to {default_output_tokens} output tokens."
@@ -663,10 +667,12 @@ def get_bedrock_token_limit(model_id: str) -> int:
         for key in [f"bedrock/{model_id}", model_id]:
             if key in model_map:
                 model_info = model_map[key]
-                if "max_input_tokens" in model_info:
-                    return model_info["max_input_tokens"]
-                if "max_tokens" in model_info:
-                    return model_info["max_tokens"]
+                max_input_tokens = model_info.get("max_input_tokens")
+                if max_input_tokens is not None:
+                    return max_input_tokens
+                max_tokens = model_info.get("max_tokens")
+                if max_tokens is not None:
+                    return max_tokens
     except Exception:
         pass  # Fall through to mapping
 
@@ -743,7 +749,13 @@ def model_is_reasoning_model(model_name: str, model_provider: str) -> bool:
             model_name,
         )
         if model_obj and "supports_reasoning" in model_obj:
-            return model_obj["supports_reasoning"]
+            reasoning = model_obj["supports_reasoning"]
+            if reasoning is None:
+                logger.error(
+                    f"Cannot find reasoning for name={model_name} and provider={model_provider}"
+                )
+                reasoning = False
+            return reasoning
 
         # Fallback: try using litellm.supports_reasoning() for newer models
         try:
