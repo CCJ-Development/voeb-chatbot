@@ -89,19 +89,15 @@ auth:
   opensearch:
     enabled: true
 
-# --- Vespa: MINIMAL (Zombie-Mode) ---
-# v3.x Code erfordert laufenden Vespa-Pod fuer Celery Readiness Check
-# (wait_for_vespa_or_shutdown in app_base.py:517). Ohne Vespa-Pod crashen alle Worker.
-# Minimale Ressourcen: Nur fuer Health-Endpoint, kein produktiver Einsatz.
-# Bei Upstream v4.0.0: Vespa komplett entfernen (Code-seitig entfernt).
+# --- Vespa: DEAKTIVIERT ---
+# Seit Sync #6 (Upstream PR #10330) ist `ONYX_DISABLE_VESPA` verfuegbar — der
+# Worker-Boot-Check `wait_for_vespa_or_shutdown` (app_base.py:549) wird damit
+# uebersprungen. OpenSearch ist Primary-Index seit 2026-03-22
+# (`enable_opensearch_retrieval=true` in `opensearch_tenant_migration_record`,
+# Migration sauber abgeschlossen). Vespa-PVC enthaelt nur noch 2,6 GiB Altdaten.
+# PROD-Verifikation 2026-04-25: 0 Live-Traffic, 0 chunks_in_vespa, 0 Personas mit KG/Research-Tools.
 vespa:
-  enabled: true
-  image:
-    repository: vespa
-    tag: "8.609.39"
-  securityContext:
-    privileged: false
-    runAsUser: 0
+  enabled: false
 
 # --- Redis: IN-CLUSTER ---
 redis:
@@ -230,6 +226,10 @@ configMap:
   # OPENSEARCH_HOST, ENABLE_OPENSEARCH_INDEXING_FOR_ONYX etc. werden automatisch
   # vom Chart-Template gesetzt wenn opensearch.enabled=true (configmap.yaml:15-20).
   # Retrieval-Umschaltung: Per Admin UI (DB-Flag), nicht per Env Var.
+  # Vespa-Disable (Sync #6): Schaltet wait_for_vespa_or_shutdown im Worker-Boot ab,
+  # routet alle Document-Index-Calls zwingend auf OpenSearch. Voraussetzung erfuellt:
+  # opensearch_tenant_migration_record.enable_opensearch_retrieval=true (DB-Check 2026-04-25).
+  ONYX_DISABLE_VESPA: "true"
   # XREF-007 Defense-in-Depth: Backend-Limit auf 20 MB (= Ingress proxy-body-size).
   # Onyx Default: 2 GB. Bei Pod-zu-Pod-Traffic wuerde das Ingress-Limit umgangen.
   # 20 MB = 20 * 1024 * 1024 = 20971520 Bytes.

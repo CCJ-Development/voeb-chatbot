@@ -111,25 +111,26 @@ configMap:
 # --- SEC-06 Phase 2: Non-Root Container (BSI SYS.1.6.A10) ---
 # PROD laeuft von Tag 1 als non-root. Onyx Dockerfile definiert User 'onyx' UID 1001.
 # Ueberschreibt values-common.yaml (Phase 1: privileged=false, runAsUser=0).
-# Vespa bleibt root (runAsUser: 0) — Upstream-Limitation (vm.max_map_count).
-# WICHTIG: Vor PROD-Deploy auf DEV/TEST validieren (E1)!
+# Vespa-securityContext entfaellt seit Vespa-Disable (siehe values-common.yaml).
 celery_shared:
   securityContext:
     privileged: false
     runAsUser: 1001
     runAsNonRoot: true
 
-vespa:
-  securityContext:
-    privileged: false
-    runAsUser: 0  # Dokumentierte Ausnahme: Vespa braucht root (Zombie-Mode, entfernen bei v4.0.0)
+# --- Resource Rebalancing 2026-04-25 ---
+# Basis: 30d-Peaks aus Prometheus PROD (max_over_time + 7d p95) bei realer Last
+# (97 User, 1.476 Sessions/30d, 10.165 Messages/30d, 23.551 Chunks in OpenSearch).
+# Voraussetzung fuer Node-Downgrade g1a.8d -> g1a.4d: Summe Requests < 7.400m CPU
+# (= allocatable bei 2x g1a.4d). Vorher: 8.450m (passt nicht). Nachher: ~3.000m.
+# Limits bleiben grosszuegig fuer Burst-Verhalten (kein OOM-Risiko).
 
 celery_beat:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
-      memory: 512Mi
+      cpu: 100m
+      memory: 320Mi   # 30d-Peak war 413 Mi (Outlier), p95 233 Mi. Headroom auf 320 Mi.
     limits:
       cpu: 500m
       memory: 1Gi
@@ -138,61 +139,58 @@ celery_worker_primary:
   replicaCount: 1  # Singleton by design: Redis-Lock erlaubt nur 1 aktiven Primary. Bei Pod-Crash startet K8s <30s nach. HA via Replicas ist unmoeglich.
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 200m       # 30d-Peak 91m, p95 26m. Reserve fuer Koordinations-Bursts.
+      memory: 512Mi   # 30d-Peak 577 Mi, p95 312 Mi.
     limits:
       cpu: 1000m
-      memory: 2Gi
+      memory: 1Gi
 
 celery_worker_light:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 100m       # 30d-Peak 46m. Worker ist real Idle-dominiert.
+      memory: 384Mi   # 30d-Peak 306 Mi.
     limits:
       cpu: 1000m
-      memory: 2Gi
+      memory: 1Gi
 
 celery_worker_heavy:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 150m       # 30d-Peak 35m. Pruning laeuft selten, dafuer in Bursts.
+      memory: 320Mi   # 30d-Peak 272 Mi.
     limits:
       cpu: 1000m
-      memory: 2Gi
+      memory: 1Gi
 
 celery_worker_docfetching:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 300m       # Reserve fuer Connector-Bursts (heute nur Ingestion-API aktiv).
+      memory: 512Mi   # 30d-Peak nur 233 Mi — bei realen Connectors koennen PDFs RAM ziehen.
     limits:
-      cpu: 1000m
-      # Optimierung 2026-04-17: 30d-Peak nur 224 MiB. 2 GiB = 9x Peak.
-      # War 4 GiB (18x ueberprovisioniert). Spart 2 GiB fuer API-Server OOM-Fix.
+      cpu: 1500m
       memory: 2Gi
 
 celery_worker_docprocessing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 300m       # Reserve fuer Indexing-Pipeline-Bursts.
+      memory: 512Mi   # 30d-Peak nur 232 Mi — Embedding-Batches koennen jedoch hoeher gehen.
     limits:
-      cpu: 1000m
-      # Optimierung 2026-04-17: 30d-Peak nur 225 MiB. 2 GiB = 9x Peak.
+      cpu: 2000m
       memory: 2Gi
 
 celery_worker_monitoring:
   replicaCount: 1
   resources:
     requests:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 50m        # 30d-Peak 31m, p95 13m.
+      memory: 256Mi   # 30d-Peak 216 Mi.
     limits:
       cpu: 500m
       memory: 512Mi
@@ -201,10 +199,10 @@ celery_worker_user_file_processing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 200m       # 30d-Peak 400m war einmaliger Outlier, p95 14m. 200m als Burst-Reserve.
+      memory: 768Mi   # 30d-Peak 978 Mi (echte User-Uploads). Hoechster Worker-RAM-Bedarf.
     limits:
-      cpu: 1000m
+      cpu: 1500m
       memory: 2Gi
 
 # --- Ingress: HTTPS via NGINX Ingress Controller ---
@@ -279,13 +277,13 @@ api:
   replicaCount: 2  # HA: Mindestens 2 Replicas
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 200m       # Rebalanced 2026-04-25: 30d-Peak 1.245m war einmaliger Outlier, p95 87m.
+      memory: 1Gi     # 30d-Peak 1.907 Mi, p95 1.528 Mi. 1 GiB Request gibt Scheduling-Reserve.
     limits:
       cpu: 1000m
-      # OOM-Fix 2026-04-17: API-Server wurde bei grossen LLM-Requests (100k+ Tokens)
-      # OOM-killed (Exit Code 137). Peak-Verbrauch ~1.5 GiB, Bursts ueber 2 GiB.
-      # 30d-Peak laut Prometheus: 1514 MiB. 4 GiB gibt genug Headroom.
+      # OOM-Fix 2026-04-17 (verifiziert 2026-04-25 mit aktualisierten 30d-Daten):
+      # 30d-Peak laut Prometheus: 1.907 MiB (vorher dokumentiert: 1.514 MiB).
+      # 4 GiB Limit = 47% Auslastung am Peak — ausreichend Headroom fuer LLM-Bursts.
       memory: 4Gi
 
 # --- Frontend: HA ---
@@ -293,61 +291,52 @@ webserver:
   replicaCount: 2  # HA: Mindestens 2 Replicas
   resources:
     requests:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 100m       # 30d-Peak 133m, p95 4m. Next.js ist nach Build idle.
+      memory: 192Mi   # 30d-Peak 137 Mi.
     limits:
       cpu: 500m
       memory: 1Gi
 
 # --- OpenSearch: PROD (Upstream-Default seit v3.0.0) ---
-# g1a.8d hat mehr Headroom als DEV/TEST (g1a.4d). Upstream-Defaults leicht reduziert.
+# Rebalanced 2026-04-25: 30d-Peak RAM 3.469 Mi war 85 % vom alten 4 GiB Limit
+# — zu eng fuer Indexing-Bursts. Limit auf 5 GiB hoch, Request auf 2,5 GiB.
+# JavaOpts auf -Xmx3g angehoben (war 2g, OS-Heap sollte ~50% des Limits sein).
 opensearch:
   resources:
     requests:
-      cpu: 1000m
-      memory: 2Gi
+      cpu: 500m       # 30d-Peak 102m, p95 9m. Reserve fuer Indexing-Spikes.
+      memory: 2560Mi  # 30d-Peak 3.469 Mi. Request schedule-freundlich, Limit faengt Peaks.
     limits:
       cpu: 2000m
-      memory: 4Gi
-  opensearchJavaOpts: "-Xmx2g -Xms2g"
+      memory: 5Gi
+  opensearchJavaOpts: "-Xmx3g -Xms3g"
   persistence:
     size: 30Gi
 
-# --- Vespa: ZOMBIE-MODE PROD (nur fuer Readiness Check) ---
-# WICHTIG: Vespa Hard-Minimum 4Gi Memory-Check (cgroup Limit).
-# Entfernen bei Upstream v4.0.0.
-vespa:
-  enabled: true
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
-      cpu: 500m
-      memory: 4Gi
-  volumeClaimTemplates:
-    - metadata:
-        name: vespa-storage
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi  # Immutable: PVC existiert bereits mit 50Gi
+# Vespa-Block entfaellt: vespa.enabled=false in values-common.yaml.
+# Aufraeumen nach Stabilisierung (eigenes Mini-Epic):
+#   - PVC vespa-storage-da-vespa-0 loeschen (50 GiB, davon 2,6 GiB belegt)
+#   - NetworkPolicy 03-allow-intra-namespace.yaml: Vespa-Eintraege entfernen
+#   - Monitoring-Alert VespaStorageFull aus values-monitoring-prod.yaml entfernen
+#   - Veraltete Doku-Kommentare in values-dev.yaml ("Zombie-Mode") entfernen
 
 # --- Redis: PROD ---
+# Rebalanced 2026-04-25: 30d-Peak nur 40 Mi RAM, 7m CPU — bisher massiv ueberprovisioniert.
+# TODO Niko: redis-operator hatte 10 Restarts in 44d (~1x alle 4-5 Tage). Ursache pruefen
+# (Logs, Resource-Druck, Liveness-Probe-Verhalten) — separates Issue, nicht im Rebalancing-Scope.
 redis:
   redisStandalone:
     resources:
       requests:
-        cpu: 250m
-        memory: 512Mi
+        cpu: 100m
+        memory: 128Mi
       limits:
         cpu: 500m
-        memory: 1Gi
+        memory: 512Mi
 
 # --- Model Server: PROD ---
+# Rebalanced 2026-04-25: Embedding/Inference-Calls gehen an StackIT AI Model Serving,
+# lokaler Pod ist nur Proxy. 30d-Peak RAM 280 Mi, CPU 22m — sehr idle.
 inferenceCapability:
   replicaCount: 1
   strategy:
@@ -358,8 +347,8 @@ inferenceCapability:
     runAsNonRoot: true
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 100m
+      memory: 384Mi
     limits:
       cpu: 2000m
       memory: 4Gi
@@ -374,8 +363,8 @@ indexCapability:
     runAsNonRoot: true
   resources:
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: 100m
+      memory: 384Mi
     limits:
       cpu: 2000m
       memory: 4Gi

@@ -89,12 +89,20 @@ configMap:
   LOG_LEVEL: "INFO"
 
 # --- Celery Worker: Standard Mode (8 separate Worker, ADR-005) ---
+# Resource Rebalancing 2026-04-25: 30d-Peaks bei DEV-Idle-Last (1 Tester, 2 Sessions/30d, 0 Docs).
+# DEV ist deutlich idler als PROD → Requests aggressiver gesenkt. Limits bleiben fuer Test-Bursts.
+#
+# Hinweis Single-Node-Pruefung 2026-04-25:
+# Konsolidierung auf 1× g1a.4d wurde geprueft und VERWORFEN. Cluster-Total-Requests
+# (onyx-dev 1.150m + monitoring 750m + kube-system 2.074m = ~3.974m CPU) liegen ueber
+# der g1a.4d-Allocatable (~3.700m). Single-Node g1a.8d kostet identisch zu 2x g1a.4d
+# (lineares vCPU-Pricing) und verliert HA. Empfehlung: 2x g1a.4d beibehalten.
 celery_beat:
   replicaCount: 1
   resources:
     requests:
-      cpu: 50m   # Optimiert: Actual 13m, war 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 256Mi   # 30d-Peak 357 Mi (Outlier), p95 ~200 Mi. Bleibt bei 256.
     limits:
       cpu: 250m
       memory: 512Mi
@@ -103,8 +111,8 @@ celery_worker_primary:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 12m, war 250m (21x over)
-      memory: 512Mi
+      cpu: 100m       # 30d-Peak 87m, p95 14m.
+      memory: 384Mi   # 30d-Peak 476 Mi (Outlier), Live 311 Mi.
     limits:
       cpu: 500m
       memory: 1Gi
@@ -113,18 +121,18 @@ celery_worker_light:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
-      memory: 512Mi
+      cpu: 50m        # 30d-Peak 65m, p95 12m.
+      memory: 320Mi   # 30d-Peak 315 Mi.
     limits:
       cpu: 1000m
-      memory: 2Gi
+      memory: 1Gi
 
 celery_worker_heavy:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
-      memory: 512Mi
+      cpu: 50m        # 30d-Peak 60m, p95 12m.
+      memory: 320Mi   # 30d-Peak 291 Mi.
     limits:
       cpu: 500m
       memory: 1Gi
@@ -133,28 +141,28 @@ celery_worker_docfetching:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
-      memory: 512Mi
+      cpu: 100m       # 30d-Peak 66m, p95 12m. Reserve fuer Connector-Tests.
+      memory: 320Mi   # 30d-Peak 250 Mi.
     limits:
       cpu: 500m
-      memory: 4Gi
+      memory: 2Gi
 
 celery_worker_docprocessing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 10m, war 250m (25x over)
-      memory: 512Mi
+      cpu: 100m       # 30d-Peak 68m, p95 11m. Reserve fuer Indexing-Tests.
+      memory: 320Mi   # 30d-Peak 250 Mi.
     limits:
       cpu: 500m
-      memory: 4Gi
+      memory: 2Gi
 
 celery_worker_monitoring:
   replicaCount: 1
   resources:
     requests:
-      cpu: 50m   # Optimiert: Actual 11m, war 100m
-      memory: 128Mi
+      cpu: 50m
+      memory: 256Mi   # 30d-Peak 226 Mi.
     limits:
       cpu: 250m
       memory: 512Mi
@@ -163,8 +171,8 @@ celery_worker_user_file_processing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 9m, war 250m (28x over)
-      memory: 256Mi
+      cpu: 50m        # 30d-Peak 63m, p95 12m. DEV hat 0 Docs, kaum User-Uploads.
+      memory: 320Mi   # 30d-Peak 254 Mi.
     limits:
       cpu: 500m
       memory: 1Gi
@@ -191,33 +199,31 @@ api:
   replicaCount: 1
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 2m, war 250m (125x over)
-      memory: 512Mi
+      cpu: 100m       # 30d-Peak 289m war einmaliger Outlier, p95 5m. DEV-Idle.
+      memory: 768Mi   # 30d-Peak 791 Mi (single Replica, kein HA-Bedarf).
     limits:
-      cpu: 500m
-      memory: 1Gi
-  # nodeSelector: nicht nötig bei 1 Node Pool. Wird für PROD gesetzt.
+      cpu: 1000m
+      memory: 2Gi     # DEV: 2 GiB reicht (PROD braucht 4 GiB wegen Multi-User-Last).
 
 # --- Frontend: 1 Replica ---
 webserver:
   replicaCount: 1
   resources:
     requests:
-      cpu: 50m   # Optimiert: Actual 1m, war 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 128Mi   # 30d-Peak 98 Mi.
     limits:
       cpu: 250m
       memory: 512Mi
-  # nodeSelector: nicht nötig bei 1 Node Pool. Wird für PROD gesetzt.
 
 # --- OpenSearch: Upstream-Default seit v3.0.0 ---
-# Ressourcen fuer g1a.4d angepasst (Upstream-Default 2000m/4Gi ist zu viel).
-# JVM Heap = 50% vom RAM-Limit.
+# Rebalanced 2026-04-25: 30d-Peak 2.286 Mi fast am alten 3 GiB Limit (76 %) — leichte Erhoehung.
+# DEV hat keine Doku-Last (0 Docs in DB), aber OS legt Audit-Indizes selbststaendig an.
 opensearch:
   resources:
     requests:
-      cpu: 300m
-      memory: 1536Mi
+      cpu: 200m       # 30d-Peak 10m, p95 6m.
+      memory: 1792Mi  # War 1536Mi → Peak 2286 Mi laeuft drueber, Limit faengt es heute.
     limits:
       cpu: 1500m
       memory: 3Gi
@@ -225,38 +231,20 @@ opensearch:
   persistence:
     size: 20Gi
 
-# --- Vespa: ZOMBIE-MODE (nur fuer Readiness Check) ---
-# v3.x Code erfordert Vespa-Pod (app_base.py:517 wait_for_vespa_or_shutdown).
-# Minimale Ressourcen: Health-Endpoint antworten, sonst nichts.
-# WICHTIG: Vespa hat Hard-Minimum 4Gi Memory-Check (Container cgroup Limit).
-# requests.memory=512Mi (Scheduling-Overhead gering), limits.memory=4Gi (Check bestanden).
-# Entfernen bei Upstream v4.0.0 (Vespa wird dort Code-seitig entfernt).
-vespa:
-  enabled: true
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: 50m
-      memory: 512Mi
-    limits:
-      cpu: 200m
-      memory: 4Gi
-  volumeClaimTemplates:
-    - metadata:
-        name: vespa-storage
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi  # Immutable: PVC existiert bereits mit 20Gi
+# Vespa-Block entfaellt: vespa.enabled=false in values-common.yaml.
+# Aufraeumen DEV (eigenes Mini-Epic):
+#   - PVC vespa-storage-da-vespa-0 loeschen (20 GiB, davon kaum belegt)
+#   - Veraltete Doku-Kommentare entfernen
 
 # --- Redis: Minimal ---
+# Rebalanced 2026-04-25: 30d-Peak nur 30 Mi RAM. Schon vorher schlank, weiter senken nicht noetig.
+# TODO: redis-operator hatte 5 Restarts in 39d auf DEV (zus. ~10 auf PROD in 44d).
+# Gleiche Ursache wie PROD — bei separater Untersuchung mit pruefen.
 redis:
   redisStandalone:
     resources:
       requests:
-        cpu: 100m
+        cpu: 50m
         memory: 128Mi
       limits:
         cpu: 250m
@@ -266,7 +254,7 @@ redis:
 redisOperator:
   resources:
     requests:
-      cpu: 50m   # Optimiert: Actual 5m, Chart Default 500m (100x over)
+      cpu: 50m
       memory: 128Mi
     limits:
       cpu: 500m
@@ -281,12 +269,11 @@ inferenceCapability:
     type: Recreate
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 1m, war 250m (250x over)
-      memory: 768Mi
+      cpu: 50m        # 30d-Peak 24m, p95 1m. Embedding-Calls gehen an StackIT AI.
+      memory: 320Mi   # 30d-Peak 297 Mi.
     limits:
       cpu: 1000m
       memory: 2Gi
-  # nodeSelector: nicht nötig bei 1 Node Pool. Wird für PROD gesetzt.
 
 indexCapability:
   replicaCount: 1
@@ -294,9 +281,8 @@ indexCapability:
     type: Recreate
   resources:
     requests:
-      cpu: 150m  # Optimiert: Actual 2m, war 250m (125x over)
-      memory: 768Mi
+      cpu: 50m        # 30d-Peak 23m, p95 1m.
+      memory: 320Mi   # 30d-Peak 294 Mi.
     limits:
       cpu: 1000m
       memory: 2Gi
-  # nodeSelector: nicht nötig bei 1 Node Pool. Wird für PROD gesetzt.
