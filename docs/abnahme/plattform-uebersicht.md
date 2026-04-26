@@ -1,8 +1,8 @@
 # VÖB Service Chatbot — Plattform-Übersicht
 
 **Dokumentstatus**: Entwurf (Arbeitspapier)
-**Version**: 0.4
-**Stand**: 2026-04-25
+**Version**: 0.5
+**Stand**: 2026-04-26
 **Autor**: Nikolaj Ivanov (CCJ Development)
 **Zielgruppe**: IT-Leiter, Fachabteilung, Geschäftsleitung VÖB Service
 **Zweck**: Technische Einordnung der Plattform hinter dem Chatbot — Stack, Dimensionierung, Sicherheits- und Betriebsansatz, Kostenrahmen
@@ -362,38 +362,34 @@ Das Embedding-Modell vektorisiert hochgeladene Dokumente und Nutzer-Fragen, dami
 
 | Parameter | Wert |
 |---|---|
-| Worker Nodes | 2 x g1a.8d |
-| CPU je Node | 8 vCPU |
-| RAM je Node | 32 GB |
+| Worker Nodes | **2 x g1a.4d** (Downgrade durchgeführt 2026-04-26) |
+| CPU je Node | 4 vCPU |
+| RAM je Node | 16 GB |
 | Disk je Node | 100 GB |
-| Gesamt-CPU | 16 vCPU |
-| Gesamt-RAM | 64 GB |
-| Pods im Betrieb | 17 (Vespa entfiel 2026-04-25) |
-| CPU-Auslastung (Live nach Rebalance) | ca. 3–6 % |
-| RAM-Auslastung (Live nach Rebalance) | ca. 22–40 % |
-| Cluster-CPU-Requests-Summe | ca. 7,3 vCPU (vorher 8,5 vCPU) |
+| Gesamt-CPU | 8 vCPU |
+| Gesamt-RAM | 32 GB |
+| Pods im Betrieb | 17 |
+| CPU-Auslastung (Live, Werktag-Avg) | ca. 4–8 % |
+| CPU-Auslastung (Werktag-Spitze 14:00 UTC, p99) | bis 20 % |
+| RAM-Auslastung (Live) | ca. 30–60 % |
+| Cluster-CPU-Requests-Summe | ca. 5,8 vCPU (74 % der Allocatable) |
 | Verfügbarkeit | 99,9 %+ (HA: 2x API, 2x Frontend, 3x PostgreSQL) |
 
-**Sizing-Prognose:** Die aktuelle Konfiguration bedient ca. **150 gleichzeitige Nutzer** komfortabel.
+**Sizing-Prognose:** Die aktuelle Konfiguration bedient ca. **150 gleichzeitige Nutzer** komfortabel. Cluster-Headroom (CPU-Limits) erlaubt p99-Bursts bis ~1.500m ohne Throttling.
 
-> **Anpassung 2026-04-25:** Worker-Resources nach 30-Tage-Prometheus-Peaks rebalanciert (Onyx-Komponenten Cluster-CPU-Requests 8.450m → 2.600m), Vespa-Pod deaktiviert (siehe Abschnitt 8). Cluster-Headroom hat sich für aktuelle Last vergrößert; eine HA-Reserve bleibt erhalten.
+> **Anpassungen 2026-04-25/26:**
+> - **Vespa deaktiviert**: PVCs (50 GiB PROD + 20 GiB DEV) gelöscht, Worker-Boot-Pfad uses `ONYX_DISABLE_VESPA=true` (siehe Abschnitt 8).
+> - **Worker-Resources** nach 30-Tage-Prometheus-Werktagspeaks rebalanciert (Onyx-Komponenten CPU-Requests 8.450m → 2.350m).
+> - **Node-Downgrade** g1a.8d → g1a.4d durchgeführt nach Verifikation der Last-Profile. **Einsparung: ~283 EUR/Mo** (PROD Worker Nodes 566 → 283 EUR/Mo).
 
-### 10.2 Geplanter Downgrade (Kostenoptimierung)
-
-Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV vorgesehen — **frühestens nach 7 Tagen Soak unter dem rebalancierten Stack** (verfügbar ab 2026-05-02):
+### 10.2 Weitere Optimierungspotenziale (geplant, noch offen)
 
 | Parameter | Aktuell | Geplant | Änderung |
 |---|---|---|---|
-| Node-Typ | g1a.8d | g1a.4d | –50 % |
-| CPU je Node | 8 vCPU | 4 vCPU | –50 % |
-| RAM je Node | 32 GB | 16 GB | –50 % |
-| Gesamt-CPU | 16 vCPU | 8 vCPU | –50 % |
-| Gesamt-RAM | 64 GB | 32 GB | –50 % |
-| Erwartete CPU-Auslastung | 15–20 % | 30–40 % | |
-| Erwartete RAM-Auslastung | 25 % | 50–60 % | |
-| Einsparung | — | ~283 EUR netto/Monat | |
+| PostgreSQL Flex (PROD) | 4.8 HA 3-Node | 2.4 HA 3-Node | –174 EUR/Mo möglich (nach 6 Mo Live-Daten, frühestens Q3 2026) |
+| DEV-Konsolidierung | 2 × g1a.4d | 1 × g1a.4d (mit Monitoring-Ausbau) | –141 EUR/Mo möglich |
 
-**Umsetzung:** Terraform-gestützt in einem Wartungsfenster am Wochenende. Rollback durch Terraform-Revert jederzeit möglich, Rollback-Zeit ca. 15 Minuten.
+**Umsetzung jeweils Terraform-gestützt im Wartungsfenster.** Rollbacks über Terraform-Revert jederzeit möglich.
 
 ---
 
@@ -970,13 +966,13 @@ Aktueller Stand (vor dem geplanten Downgrade der PROD-Nodes):
 | Posten | Leistungsumfang | DEV | PROD |
 |---|---|---|---|
 | Kubernetes-Management-Fee | 1× Managed Control Plane je Cluster (Auto-Patching, Maintenance-Fenster, HA-Masters) | 71,71 EUR | 71,71 EUR |
-| Worker Nodes | **DEV:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk) — **PROD:** 2× g1a.8d (je 8 vCPU, 32 GB RAM, 100 GB Disk) | 283,18 EUR | 566,36 EUR |
+| Worker Nodes | **DEV:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk) — **PROD:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk; Downgrade von g1a.8d am 2026-04-26) | 283,18 EUR | 283,18 EUR |
 | PostgreSQL Flex | **DEV:** Flex 2.4 Single (2 vCPU, 4 GB RAM, 20 GB SSD) — **PROD:** Flex 4.8 HA 3-Node-Cluster (je 4 vCPU, 8 GB RAM). Beide inkl. täglicher Backups + 30-Tage-Retention; PROD zusätzlich PITR sekundengenau | 105,54 EUR | 316,23 EUR |
 | Object Storage | verbrauchsabhängig (ca. 0,027 EUR/GB/Monat); aktueller Stand entspricht ca. 10 GB je Bucket | 0,27 EUR | 0,27 EUR |
 | Load Balancer | Essential-10 Tier (Basis-Stufe der StackIT Network Load Balancer, 1 öffentliche IPv4) | 9,39 EUR | 9,39 EUR |
-| **Summe** | | **470,09 EUR** | **963,96 EUR** |
+| **Summe** | | **470,09 EUR** | **680,78 EUR** |
 
-**Gesamt beide Umgebungen: 1.434,05 EUR netto/Monat**
+**Gesamt beide Umgebungen: ~1.150,87 EUR netto/Monat** (vorher 1.434 EUR/Monat, –283 EUR/Mo / –20 % nach PROD-Node-Downgrade 2026-04-26).
 
 ### 25.1 Anmerkungen zur Kostenlogik
 
@@ -985,8 +981,7 @@ Aktueller Stand (vor dem geplanten Downgrade der PROD-Nodes):
 - **Nicht enthalten:**
   - StackIT Container Registry (minimal, nutzungsabhängig)
   - StackIT AI Model Serving — abhängig vom Chat-Volumen; aktuell überschaubar (StackIT rechnet hier per Token ab, nicht per Grundgebühr)
-
-**Nach dem geplanten Downgrade** der PROD-Nodes auf g1a.4d reduziert sich die PROD-Summe um ca. **283 EUR** auf rund **681 EUR / Monat** (Gesamt: ~1.151 EUR).
+- **Weitere Optimierungspotenziale (geplant):** PROD-PostgreSQL-Downgrade auf Flex 2.4 HA (–174 EUR/Mo) nach 6 Monaten Live-Daten, DEV-Single-Node-Konsolidierung (–141 EUR/Mo) bei nicht mehr benötigtem DEV-Monitoring.
 
 Alle Preise netto, zuzüglich MwSt. Preisstand März 2026.
 

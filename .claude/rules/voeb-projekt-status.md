@@ -93,6 +93,13 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
+**PROD Node-Downgrade `g1a.8d → g1a.4d` LIVE (2026-04-26)** + Vespa-PVC-Cleanup + Final Resource-Rightsizing nach Werktagsdaten. Terraform apply 12m1s, Cluster-Capacity halbiert (16 vCPU/64 GiB → 8 vCPU/32 GiB), alle 17 Pods Running, Health 200, Live-Auslastung Node 1: 12 % CPU / 57 % RAM, Node 2: 21 % CPU / 32 % RAM. **Cluster-Total-Requests PROD:** 7.274m → 5.824m (74 % statt 92 % der g1a.4d-Allocatable). Vespa-PVCs (DEV 20 GiB + PROD 50 GiB) geloescht, `VespaStorageFull`-Alert raus, NetworkPolicy bereinigt. Final-Tuning: docfetching/docprocessing 300m → 100m, opensearch 500m → 250m, prometheus 500m → 250m, loki 250m → 100m, redis-operator 500m → 100m (DEV+PROD). DEV-Cluster-Requests: 3.974m → 3.574m. **Kostenstand: ~1.261 EUR/Monat** (war 1.434, **−173 EUR/Mo, −12 %**).
+
+**Lessons Learned 2026-04-26:**
+1. **Helm-Release-State kann verloren gehen.** DEV redis-operator hatte Helm-Annotations aber `helm history` lieferte "release: not found" — Pod als orphan-Deployment, gefixt per `kubectl patch`.
+2. **Sonntag-Snapshots sind nicht repraesentativ.** Werktagsmessungen (Mo-Fr per `EXTRACT(dow ...)` filtern) zeigen mittel 130-200 % der Wochenend-Last. Resource-Tuning IMMER auf Werktag-Daten.
+3. **Loki-Stack 2.10.3 ist deprecated** und blockiert Helm 3.13+ Server-Side-Apply via `kubectl-patch` Field-Manager. Workaround: ConfigMap manuell loeschen vor Helm-Upgrade. Langfristig: Migration auf grafana/loki-distributed.
+
 **Sync #6 PROD + Vespa-Disable + Worker-Resource-Rebalance LIVE auf PROD (2026-04-25).** Helm Rev 23 `deployed`, Chart 0.4.47, Image `a211c3b`, alle 17 Pods Running, Health 200. Vorgang: kombinierter Rollout in einer Session — DEV-Deploy via Push-to-main (Run 24925683562, ~7 Min, kein Issue), dann PROD via workflow_dispatch (Run 24925872185, Helm Rev 21 `failed` durch erwarteten Alembic-Crash) + 3-Step-Recovery (`UPDATE 503883791c39` → `alembic upgrade a7c3e2b1d4f8` → `UPDATE d8a1b2c3e4f5`) auf laufendem celery-worker-primary-Pod. Nach Recovery: ~50 Min ungeplante Outage durch eigenen Branch-Hygiene-Fehler (manuelles `helm upgrade` aus `docs/plattform-acl-praezisierung` mit alten Working-Dir-Files setzte Vespa wieder hoch + Image auf `:latest`). Recovery via Workflow-Re-Trigger (Run 24928356519) + Required-Reviewer-Approval, danach Helm Rev 23 sauber `deployed`. **Cluster-Total-Requests PROD:** 7.294m CPU / 14,7 Gi RAM (war 8.450m / 15+ Gi). Vespa-Pod existiert nicht mehr, ONYX_DISABLE_VESPA=true gesetzt. Recovery-Pattern Sync #5 PROD + Sync #6 PROD = **2/2 erfolgreich, robust validiert**.
 
 **Worker-Resource-Rebalance:** Alle Worker-Resources nach 30d-Prometheus-Peaks neu dimensioniert (PROD: 97 User, 1.476 Sessions/30d, 10.165 Messages/30d, 23.551 Chunks in OpenSearch). API-Server bleibt RAM-Limit 4 GiB (30d-Peak 1.907 Mi). OpenSearch RAM-Limit 4 → 5 GiB (30d-Peak 3.469 Mi war 85 % am alten Limit, zu eng). docfetching/docprocessing RAM-Request 512 Mi (30d-Peak nur 233 Mi), Limit 2 GiB. user-file-processing RAM-Request 768 Mi (30d-Peak 978 Mi — hoechster Worker-RAM-Bedarf). Alle anderen Celery-Worker auf reale Idle-Last gesenkt (CPU-Requests 500m → 100-300m). Doku im Header von `values-prod.yaml` und `values-dev.yaml`.
@@ -106,13 +113,12 @@
 **Ruff-Format-Drift:** Unveraendert. 28 Files pre-existing Drift. Voraussetzung fuer sauberes Fixen: explizite Ruff-Config in `pyproject.toml`.
 
 **Offen:**
-- **Soak Sync #6 PROD** — 7 Tage Beobachtung der neuen Resource-Werte unter realer Last
-- **Vespa-PVC-Cleanup** (DEV `vespa-storage-da-vespa-0` 20 GiB + PROD 50 GiB) — nach 7 Tage Soak
-- **NetworkPolicy `03-allow-intra-namespace.yaml`** Vespa-Eintraege entfernen
-- **Monitoring-Alert `VespaStorageFull`** aus `values-monitoring*.yaml` entfernen
-- **redis-operator Restarts:** 5/39d DEV + 10/44d PROD — Ursache pruefen (Logs, Liveness-Probe-Verhalten, Resource-Druck)
-- **PROD-Node-Downgrade g1a.8d → g1a.4d** (~283 EUR/Mo) — nach Soak
-- **DEV-Monitoring-Removal + DEV-Single-Node** (~143 EUR/Mo) — bei Bedarf
+- **Soak PROD nach Node-Downgrade** — 24-48h aktive Beobachtung, 7d passive Beobachtung. Memory-Druck bei Werktag-Spitzen pruefen
+- **redis-operator Restart-Pattern** auf neuem Pod beobachten (~7d). Falls weiter Restarts: Liveness-Probe `timeoutSeconds: 1 → 3`
+- **DEV-Single-Node-Frage** — nach 7d-Soak mit neuen Werktagsdaten unter optimiertem Stack neu rechnen. Voraussetzung: DEV-Monitoring-Removal (eigenes Mini-Branch) erhoeht den Spielraum
+- **DEV-Monitoring-Removal** (eigener Branch) — dann ggf. Single-Node moeglich (~143 EUR/Mo)
+- **Loki-Chart-Migration** auf nicht-deprecated Variante (grafana/loki-distributed oder loki-Chart 6.x)
+- **PROD PG-Downgrade Flex 4.8 HA → Flex 2.4 HA** (~174 EUR/Mo) — nach 6 Mo PROD-Live-Daten (Q3 2026)
 - **Ruff-Format-Baseline** (pyproject.toml-Config + 28 Files formatten)
 - **2 neue Default-UserGroups** ("Admin" id 54/56, "Basic" id 55/57) — optional löschen falls VÖB nicht will
 - **Rate-Limit-Retry Feature** aus Stash fertigstellen
