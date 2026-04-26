@@ -1,8 +1,8 @@
 # VÖB Service Chatbot — Plattform-Übersicht
 
 **Dokumentstatus**: Entwurf (Arbeitspapier)
-**Version**: 0.3
-**Stand**: 2026-04-21
+**Version**: 0.4
+**Stand**: 2026-04-25
 **Autor**: Nikolaj Ivanov (CCJ Development)
 **Zielgruppe**: IT-Leiter, Fachabteilung, Geschäftsleitung VÖB Service
 **Zweck**: Technische Einordnung der Plattform hinter dem Chatbot — Stack, Dimensionierung, Sicherheits- und Betriebsansatz, Kostenrahmen
@@ -223,19 +223,20 @@ StackIT verfügt über folgende Zertifizierungen und Attestierungen:
 | API-Server (FastAPI) | 2 (HA) | 1 vCPU | 4 GiB | REST-API für Frontend + Celery |
 | Frontend (Next.js) | 2 (HA) | 0,5 vCPU | 1 GiB | Web-Oberfläche |
 | NGINX Ingress | 1 | — | — | TLS-Terminierung, Rate-Limit |
-| Redis | 1 | 0,5 vCPU | 1 GiB | Session-Cache, Celery-Broker |
+| Redis | 1 | 0,5 vCPU | 0,5 GiB | Session-Cache, Celery-Broker |
 | Celery Beat | 1 | 0,5 vCPU | 1 GiB | Scheduler für periodische Jobs |
-| Celery Worker "Primary" | 2 (HA) | 1 vCPU | 2 GiB | Koordination Hintergrundjobs |
-| Celery Worker "Light" | 1 | 1 vCPU | 2 GiB | OpenSearch-Ops, Permission-Sync |
-| Celery Worker "Heavy" | 1 | 1 vCPU | 2 GiB | Dokument-Pruning |
-| Celery Worker "Docfetching" | 1 | 1 vCPU | 2 GiB | Dokumente von Datenquellen abholen |
-| Celery Worker "Docprocessing" | 1 | 1 vCPU | 2 GiB | Indexierung-Pipeline (Chunking + Embedding) |
+| Celery Worker "Primary" | 1 (Singleton, Redis-Lock) | 1 vCPU | 1 GiB | Koordination Hintergrundjobs |
+| Celery Worker "Light" | 1 | 1 vCPU | 1 GiB | OpenSearch-Ops, Permission-Sync |
+| Celery Worker "Heavy" | 1 | 1 vCPU | 1 GiB | Dokument-Pruning |
+| Celery Worker "Docfetching" | 1 | 1,5 vCPU | 2 GiB | Dokumente von Datenquellen abholen |
+| Celery Worker "Docprocessing" | 1 | 2 vCPU | 2 GiB | Indexierung-Pipeline (Chunking + Embedding) |
 | Celery Worker "Monitoring" | 1 | 0,5 vCPU | 0,5 GiB | System-Health, Queue-Längen |
-| Celery Worker "User-File-Processing" | 1 | 1 vCPU | 2 GiB | Nutzer-Uploads |
-| OpenSearch | 1 | 2 vCPU | 4 GiB + 30 GiB PV | Dokument-Index |
-| Vespa (Zombie-Mode) | 1 | 0,5 vCPU | 4 GiB + 50 GiB PV | Legacy-Abhängigkeit (entfällt mit Onyx v4) |
+| Celery Worker "User-File-Processing" | 1 | 1,5 vCPU | 2 GiB | Nutzer-Uploads (höchster Worker-RAM-Bedarf) |
+| OpenSearch | 1 | 2 vCPU | 5 GiB + 30 GiB PV | Dokument-Index (RAM erhöht 2026-04-25 nach 30d-Peak 3,4 GiB) |
 | Model Server (Inference) | 1 | 2 vCPU | 4 GiB | Optionale lokale Inferenz |
 | Model Server (Indexing) | 1 | 2 vCPU | 4 GiB | Alternative zu StackIT-Embedding |
+
+> **Anpassung 2026-04-25:** Worker-Resources nach 30-Tage-Prometheus-Peaks neu dimensioniert (PROD: 97 User, 1.476 Sessions/30d, 10.165 Messages/30d). Resource-Requests wurden gegenüber dem vorherigen Stand deutlich gesenkt (Cluster-Total 8.450m → 2.600m CPU für Onyx-Komponenten); Limits bleiben großzügig für Burst-Verhalten. Vespa-Pod entfiel komplett (siehe Abschnitt 8).
 
 ### 5.3 Cluster-Varianten nach Umgebung
 
@@ -303,7 +304,7 @@ Der Bucket nimmt alle **von Nutzern hochgeladenen Dokumente** auf. Die eigentlic
 
 OpenSearch dient als **RAG-Backend**: Die Chat-Frage wird vektorisiert und mit den ebenfalls vektorisierten Dokument-Chunks verglichen. Relevante Treffer werden als Kontext an das LLM übergeben.
 
-**Hintergrund:** Onyx hat mit v3.0.0 von Vespa auf OpenSearch als Primär-Index migriert. Aus Kompatibilitätsgründen läuft Vespa minimal weiter ("Zombie-Mode"), bis Onyx v4 erscheint — er verarbeitet aber keine produktiven Daten mehr.
+**Hintergrund:** Onyx hat mit v3.0.0 von Vespa auf OpenSearch als Primär-Index migriert. Vespa lief bis 2026-04-25 in einem minimalen "Zombie-Mode" weiter, weil der Worker-Boot-Pfad einen Vespa-Health-Check erzwang. Mit Upstream PR #10330 (verfügbar seit Onyx-Sync #6) ist die Umgebungsvariable `ONYX_DISABLE_VESPA` eingeführt worden, die diesen Check überspringt. Auf DEV und PROD wurde Vespa am **2026-04-25** vollständig deaktiviert (`vespa.enabled=false`, `ONYX_DISABLE_VESPA=true`); der Vespa-Pod existiert nicht mehr, alle Document-Index-Operationen laufen ausschließlich auf OpenSearch. Der vorhandene Vespa-PVC (50 GiB PROD, 20 GiB DEV) wird in einem separaten Cleanup-Schritt gelöscht.
 
 ---
 
@@ -367,16 +368,19 @@ Das Embedding-Modell vektorisiert hochgeladene Dokumente und Nutzer-Fragen, dami
 | Disk je Node | 100 GB |
 | Gesamt-CPU | 16 vCPU |
 | Gesamt-RAM | 64 GB |
-| Pods im Betrieb | 20 |
-| CPU-Auslastung (30-Tage-Schnitt) | ca. 15–20 % |
-| RAM-Auslastung (30-Tage-Schnitt) | ca. 25 % |
+| Pods im Betrieb | 17 (Vespa entfiel 2026-04-25) |
+| CPU-Auslastung (Live nach Rebalance) | ca. 3–6 % |
+| RAM-Auslastung (Live nach Rebalance) | ca. 22–40 % |
+| Cluster-CPU-Requests-Summe | ca. 7,3 vCPU (vorher 8,5 vCPU) |
 | Verfügbarkeit | 99,9 %+ (HA: 2x API, 2x Frontend, 3x PostgreSQL) |
 
 **Sizing-Prognose:** Die aktuelle Konfiguration bedient ca. **150 gleichzeitige Nutzer** komfortabel.
 
+> **Anpassung 2026-04-25:** Worker-Resources nach 30-Tage-Prometheus-Peaks rebalanciert (Onyx-Komponenten Cluster-CPU-Requests 8.450m → 2.600m), Vespa-Pod deaktiviert (siehe Abschnitt 8). Cluster-Headroom hat sich für aktuelle Last vergrößert; eine HA-Reserve bleibt erhalten.
+
 ### 10.2 Geplanter Downgrade (Kostenoptimierung)
 
-Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV vorgesehen:
+Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV vorgesehen — **frühestens nach 7 Tagen Soak unter dem rebalancierten Stack** (verfügbar ab 2026-05-02):
 
 | Parameter | Aktuell | Geplant | Änderung |
 |---|---|---|---|
@@ -514,7 +518,7 @@ Jeder Namespace startet mit einem `default-deny-all` — alle erlaubten Verbindu
 - **`privileged: false`** ohne Ausnahme
 - **Capabilities Drop** (ALL) in den Exporter-Pods
 - **`readOnlyRootFilesystem: true`** für Exporter-Pods
-- Ausnahme: Vespa (Zombie-Mode, keine produktiven Daten) läuft aus Upstream-Gründen noch als Root. Entfällt mit Onyx v4.
+- Vorherige Ausnahme: Vespa lief im Zombie-Mode aus Upstream-Gründen als Root. Vespa wurde 2026-04-25 vollständig deaktiviert (siehe Abschnitt 8) — die Ausnahme entfällt damit auf DEV und PROD.
 
 ### Layer 5 — Applikation
 

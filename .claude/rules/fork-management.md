@@ -203,6 +203,38 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 | Workflow | Branch + PR (#19), Squash Merge |
 | PROD-Deploy | Manueller `helm upgrade` am selben Tag (Chart 0.4.32 → 0.4.36, OpenSearch + ext-i18n) |
 
+## Sync #6 PROD-Rollout (2026-04-25) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Auslöser | Kombinierter Rollout: Sync #6 PROD + Vespa-Disable + Worker-Resource-Rebalance |
+| Image-Tag deployed | `a211c3b` (Commit `a211c3b6b` aus `feature/prod-vespa-out-and-rebalance`) |
+| Helm-Rev-Sequenz | 20 (Sync #5, deployed) → 21 (Sync #6 erste Trigger, **failed** durch Alembic-Crash) → 22 (eigenes manuelles Helm aus falschem Branch, **failed**) → 23 (Workflow-Re-Trigger, **deployed**) |
+| Chart-Version | 0.4.44 → 0.4.47 |
+| Alembic-Recovery | 3-Step-Pattern auf laufendem celery-worker-primary-Pod (api-server war im CrashLoopBackoff): `UPDATE 503883791c39` → `alembic upgrade a7c3e2b1d4f8` → `UPDATE d8a1b2c3e4f5` |
+| Crash-Trigger DB | `psycopg2.errors.UndefinedColumn: column document.file_id does not exist` — Sync-#6-Code liest sofort beim Boot von der durch `91d150c361f6` neu eingefuehrten Spalte |
+| Vespa-Pod | Removed — `vespa.enabled=false` in values-common.yaml + `ONYX_DISABLE_VESPA=true` in configMap. Vespa-Pod nicht mehr existent, alle 8 Celery-Worker uebergehen `wait_for_vespa_or_shutdown` |
+| Worker-Resources rebalanced | Onyx-Komponenten Total-CPU-Requests 8.450m → 2.600m. RAM gleich (1 Worker mit hoeherem RAM-Bedarf: user-file-processing 512 → 768 Mi) |
+| OpenSearch | RAM-Limit 4 → 5 GiB (Peak 3.469 Mi = 85 % am alten Limit), JavaOpts -Xmx 2g → 3g |
+| PROD-Outage geplant | ~50 Min (Alembic-Crash bis Recovery durch) |
+| PROD-Outage ungeplant | ~50 Min (eigener Branch-Hygiene-Fehler — siehe Lessons unten) |
+| Final-State | 17/17 Pods Running, Health 200, Cluster-Requests 7.294m CPU / 14,7 Gi RAM |
+| Workflow-Runs | DEV: 24925683562 (push-to-main, 7 Min, success). PROD #1: 24925872185 (workflow_dispatch, 16 Min, failure — Helm-Timeout durch Alembic). PROD #2: 24928356519 (Recovery, ~5 Min, success nach Required-Reviewer-Approval) |
+
+### Lessons Learned Sync #6 PROD
+
+1. **3-Step-Alembic-Recovery ist robustes Pattern (2/2 erfolgreich).** Sync #5 PROD + Sync #6 PROD. Identische Sequenz, beide Male auf einem laufenden Celery-Pod ausgefuehrt (api-server war in CrashLoopBackoff). PG-Backup vorab (`/tmp/prod-alembic-version-backup-<ts>.txt` mit dem aktuellen `version_num`) ist ausreichend — kein voller `pg_dump` noetig, weil ext-Tabellen nicht angefasst werden.
+
+2. **Branch-Hygiene bei manuellen Helm-Upgrades ist KRITISCH.** Heute live erlebt: `helm upgrade` aus `docs/plattform-acl-praezisierung` (mit alten Working-Dir-Files) hat Vespa wieder hochgefahren UND Image-Tag auf `:latest` gesetzt (CI/CD setzt sonst Commit-SHA per `--set global.version=$SHA`). `:latest` zeigt auf Onyx-Mainline ohne unsere ext-Migrationen → CrashLoopBackoff `Can't locate revision identified by 'd8a1b2c3e4f5'`. **Regel:** Vor `helm upgrade <release>` immer `git rev-parse HEAD` und `git status` checken. Besser: nur ueber Workflow oder explicite `git checkout main && git pull` davor. Korrekturpfad: `gh workflow run stackit-deploy.yml -f environment=prod --ref main` (checkt automatisch main aus).
+
+3. **Required-Reviewer-Gate auf PROD-Workflow** verzoegert Recovery um die Zeit zwischen Trigger und Approval. Im Vorfall heute ~3 Min. Vorab kommunizieren: bei kritischen PROD-Recoveries entweder Niko-on-Standby oder PR-Approval-Gate temporaer suspendieren (heute nicht noetig — Niko war on-call).
+
+4. **Helm-Status `failed` ist kosmetisch** (nur das Helm-Release-Tracking ist auf failed, der Cluster kann gesund sein) — aber das Heilen darf nicht aus falschem Branch erfolgen (siehe Lesson 2). Bessere Heil-Strategie: warten bis ein neuer main-Push (z.B. Doku-Commit oder anderer Fix) durchlaeuft, das setzt automatisch eine neue Helm-Revision.
+
+5. **Cluster-Total-Requests sinken massiv durch Worker-Rebalance** (PROD 8.450m → ~2.600m Onyx-Komponenten, +Monitoring +System ~7.294m gesamt). Aber: Cluster-Total auf 2x g1a.4d-Allocatable (~7.400m) waere bei aktueller Auslastung 99 %. **API-Peak 1.245m (einmaliger 30d-Outlier) frisst Headroom**, deshalb Node-Downgrade g1a.8d → g1a.4d nicht direkt nach Rollout, sondern erst nach 7-Tage-Soak unter Sync-#6-Stack mit neuen 30d-Daten zu pruefen.
+
+6. **DEV-Single-Node-Konsolidierung ist mathematisch nicht machbar** mit aktivem Monitoring-Stack. Cluster-Total ~3.974m CPU > 1× g1a.4d-Allocatable ~3.700m. 1× g1a.8d kostet identisch zu 2× g1a.4d (lineares vCPU-Pricing bei StackIT) und verliert HA. → DEV bleibt 2× g1a.4d, dokumentiert in `values-dev.yaml`-Header. Alternative: DEV-Monitoring-Removal eroeffnet den Single-Node-Pfad (~143 EUR/Mo Ersparnis), Niko nutzt DEV-Monitoring selten — eigener Branch bei Bedarf.
+
 ## Sechster Upstream-Merge (2026-04-23) — Referenz
 
 | Metrik | Wert |

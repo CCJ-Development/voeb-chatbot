@@ -93,20 +93,28 @@
 - **Phase 5-6:** Geplant (Testing, Production Go-Live)
 
 ## Nächster Schritt
-**Sync #6 auf DEV abgeschlossen (2026-04-23).** 234 Upstream-Commits seit Merge-Base `cc5a74511` (2026-04-10, Sync #5). Chart 0.4.44 → 0.4.47. 3 triviale Konflikte (`.gitignore` manuell, `AGENTS.md` + `README.md` per `--ours`). Alle 16 gepatchten Core-Dateien auto-gemergt und semantisch verifiziert, kein neuer Core-Patch noetig. Keine ext-Code-Anpassung (keine Upstream-Renames treffen ext/). Alembic: 5 neue Upstream-Migrationen (`d129f37b3d87 → a6fcd3d631f9 → 91d150c361f6 → 856bcbe14d79 → a7c3e2b1d4f8`), `ff7273065d0d` (ext-branding) von `503883791c39` auf `a7c3e2b1d4f8` umgehaengt. Recovery auf DEV-DB per dokumentiertem 3-Step-Pattern (UPDATE → `alembic upgrade` → UPDATE). Deploy: Helm Rev 64 timeoutete wegen api-server CrashLoopBackOff (DB fehlte `document.file_id`), nach Recovery + zweitem Deploy Rev 65 `deployed`. **Upstream-Drift nach Deploy: 0 Commits** — DEV auf neuestem Onyx-Stand. Workflow: PR #22 + `gh pr merge --admin --merge`. Nebenbei: zwei unabhaengige Fix-Commits auf eigenen Branches — `d73d2353b` (ruff unused imports + F821/ARG001, pre-existing Lint-Drift), `d5540594d` (helm-prod `celery_worker_primary` replicaCount 2→1, Singleton by design wegen Redis-Lock). Doku: `CHANGELOG.md`, `.claude/rules/fork-management.md` (Sync-#6-Section + 7 Lessons Learned), dieser Status-Eintrag.
+**Sync #6 PROD + Vespa-Disable + Worker-Resource-Rebalance LIVE auf PROD (2026-04-25).** Helm Rev 23 `deployed`, Chart 0.4.47, Image `a211c3b`, alle 17 Pods Running, Health 200. Vorgang: kombinierter Rollout in einer Session — DEV-Deploy via Push-to-main (Run 24925683562, ~7 Min, kein Issue), dann PROD via workflow_dispatch (Run 24925872185, Helm Rev 21 `failed` durch erwarteten Alembic-Crash) + 3-Step-Recovery (`UPDATE 503883791c39` → `alembic upgrade a7c3e2b1d4f8` → `UPDATE d8a1b2c3e4f5`) auf laufendem celery-worker-primary-Pod. Nach Recovery: ~50 Min ungeplante Outage durch eigenen Branch-Hygiene-Fehler (manuelles `helm upgrade` aus `docs/plattform-acl-praezisierung` mit alten Working-Dir-Files setzte Vespa wieder hoch + Image auf `:latest`). Recovery via Workflow-Re-Trigger (Run 24928356519) + Required-Reviewer-Approval, danach Helm Rev 23 sauber `deployed`. **Cluster-Total-Requests PROD:** 7.294m CPU / 14,7 Gi RAM (war 8.450m / 15+ Gi). Vespa-Pod existiert nicht mehr, ONYX_DISABLE_VESPA=true gesetzt. Recovery-Pattern Sync #5 PROD + Sync #6 PROD = **2/2 erfolgreich, robust validiert**.
 
-**Sync #6 auf PROD:** Offen. Gleiche 3-Step-Alembic-Recovery wird auf PROD noetig sein (identisches Pattern wie Sync #5 PROD-Rollout). Plus: Der `fix(helm-prod)` celery_worker_primary Singleton-Change wird erst beim naechsten PROD-Deploy wirksam.
+**Worker-Resource-Rebalance:** Alle Worker-Resources nach 30d-Prometheus-Peaks neu dimensioniert (PROD: 97 User, 1.476 Sessions/30d, 10.165 Messages/30d, 23.551 Chunks in OpenSearch). API-Server bleibt RAM-Limit 4 GiB (30d-Peak 1.907 Mi). OpenSearch RAM-Limit 4 → 5 GiB (30d-Peak 3.469 Mi war 85 % am alten Limit, zu eng). docfetching/docprocessing RAM-Request 512 Mi (30d-Peak nur 233 Mi), Limit 2 GiB. user-file-processing RAM-Request 768 Mi (30d-Peak 978 Mi — hoechster Worker-RAM-Bedarf). Alle anderen Celery-Worker auf reale Idle-Last gesenkt (CPU-Requests 500m → 100-300m). Doku im Header von `values-prod.yaml` und `values-dev.yaml`.
 
-**Vespa-Entfernen:** Mit Sync #6 ist `ONYX_DISABLE_VESPA`-ENV-Flag verfuegbar (Upstream #10330). Unsere Config hat ihn noch nicht gesetzt, Vespa-Pod laeuft weiter im Zombie-Modus (35d Uptime). Eigenes Epic, nicht heute — geschaetzt 2-4h inkl. `vespa.enabled: false` + ENV-Setup + PVC-Aufraeumung + NetworkPolicy-Check + Smoke-Test dass OpenSearch alle Operations abdeckt.
+**DEV-Single-Node geprueft + verworfen:** Cluster-Total-Requests inkl. Monitoring + kube-system (~3.974m CPU) liegen ueber 1× g1a.4d-Allocatable (~3.700m). Single-Node g1a.8d kostet identisch zu 2× g1a.4d (lineares vCPU-Pricing) und verliert HA. → DEV bleibt bei 2× g1a.4d. Vermerkt im Header von `values-dev.yaml`.
 
-**Ruff-Format-Drift:** `ruff format --check backend/ext/` meldet 28 Files pre-existing Drift (ca. 640 Zeilen entfernt / 443 neu — multi-line-zu-single-line Statements). Nicht im Sync-#6-Scope. Voraussetzung fuer sauberes Fixen: explizite Ruff-Config in `pyproject.toml` (`line-length`, `quote-style`) damit Format deterministisch ist.
+**DEV-Monitoring-Removal als Folge-Idee:** Niko nutzt DEV-Prometheus/Grafana selten (PROD-Monitoring ist primaer). Direkter EUR-Effekt vernachlaessigbar (~1,40 EUR/Mo Block-Storage), aber im Paket mit DEV-Single-Node = ~143 EUR/Mo Ersparnis (Cluster-Requests sinken unter 1× g1a.4d). Eigener Branch `chore/dev-monitoring-removal` bei Bedarf.
+
+**PROD-Node-Downgrade:** Nach Soak (mind. 7 Tage). Cluster-Total 7.294m passt mathematisch auf 2× g1a.4d (7.400m allocatable = 99 %), aber API-Peak 1.245m (einmaliger 30d-Outlier) frisst zuviel Headroom bei aktiver User-Last. Erst mit neuen 30d-Daten unter Sync-#6-Stack pruefen ob stabil. Eigener Branch `feature/prod-node-downgrade`.
+
+**Ruff-Format-Drift:** Unveraendert. 28 Files pre-existing Drift. Voraussetzung fuer sauberes Fixen: explizite Ruff-Config in `pyproject.toml`.
 
 **Offen:**
-- **Sync #6 PROD-Rollout** (inkl. Alembic-Recovery + Helm-Singleton-Fix)
-- **Vespa-Entfernen** als eigenes Epic (ENV + Helm + PVC + NetworkPolicy + Smoke-Test)
+- **Soak Sync #6 PROD** — 7 Tage Beobachtung der neuen Resource-Werte unter realer Last
+- **Vespa-PVC-Cleanup** (DEV `vespa-storage-da-vespa-0` 20 GiB + PROD 50 GiB) — nach 7 Tage Soak
+- **NetworkPolicy `03-allow-intra-namespace.yaml`** Vespa-Eintraege entfernen
+- **Monitoring-Alert `VespaStorageFull`** aus `values-monitoring*.yaml` entfernen
+- **redis-operator Restarts:** 5/39d DEV + 10/44d PROD — Ursache pruefen (Logs, Liveness-Probe-Verhalten, Resource-Druck)
+- **PROD-Node-Downgrade g1a.8d → g1a.4d** (~283 EUR/Mo) — nach Soak
+- **DEV-Monitoring-Removal + DEV-Single-Node** (~143 EUR/Mo) — bei Bedarf
 - **Ruff-Format-Baseline** (pyproject.toml-Config + 28 Files formatten)
-- **Kostenoptimierung:** Node-Downgrade g1a.8d → g1a.4d (~283 EUR/Mo Ersparnis, separates Terraform-Maintenance-Window)
-- **2 neue Default-UserGroups** ("Admin" id 54, "Basic" id 55) — optional löschen falls VÖB nicht will
+- **2 neue Default-UserGroups** ("Admin" id 54/56, "Basic" id 55/57) — optional löschen falls VÖB nicht will
 - **Rate-Limit-Retry Feature** aus Stash fertigstellen
 - **Monitoring Phase 7-11** (optional): Incident-Playbook, Post-Incident-Review, Chaos-Test, On-Call-Konzept
 - **M1-Abnahmeprotokoll** — wartet auf VÖB-Termin
