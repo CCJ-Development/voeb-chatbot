@@ -6,6 +6,7 @@
 |---------|-------|-------|-----------|
 | 0.1 | 2026-03-15 | COFFEESTUDIOS | Erstversion — basierend auf Kickoff-Anforderungen, StackIT Service Certificate V1.1, IST-Analyse |
 | 0.2 | 2026-03-19 | COFFEESTUDIOS | OpenSearch als primaerer Document Index Store: PVC-basiert (StackIT Default Storage Class), kein dediziertes Backup noetig (vollstaendig aus Connectors rekonstruierbar, RPO = Re-Index-Zeit). Vespa auf Zombie-Mode aktualisiert (kein Produktiv-Traffic, kein Backup-Bedarf, Daten in OpenSearch dupliziert). B7 aktualisiert. |
+| 0.3 | 2026-04-26 | COFFEESTUDIOS | Vespa **vollstaendig entfernt** (`vespa.enabled=false`, `ONYX_DISABLE_VESPA=true` aus Sync #6). PVCs (DEV 20 GiB + PROD 50 GiB) und Service geloescht. Document-Index laeuft alleinig auf OpenSearch. Backup-Konzept fuer Vespa entfaellt. |
 
 **Normativer Rahmen:** BSI CON.3 (Datensicherungskonzept), DSGVO Art. 32 (Sicherheit der Verarbeitung), ISO/IEC 27001 A.12.3 (Backup)
 
@@ -25,7 +26,7 @@ Dieses Konzept deckt alle persistenten Datenbestaende des VÖB Chatbot-Systems a
 - **PostgreSQL-Datenbanken** (DEV, PROD) — StackIT Managed PG Flex. `vob-test` wurde am 2026-04-21 abgebaut.
 - **Object Storage Buckets** (vob-dev, vob-prod) — StackIT Object Storage (S3-kompatibel). `vob-test` wurde am 2026-04-21 geloescht.
 - **OpenSearch-Indizes** (Dokument-Chunks, Embeddings) — In-Cluster PersistentVolumeClaims (primaerer Document Index Store)
-- **Vespa** (Zombie-Mode, kein Produktiv-Traffic) — In-Cluster PersistentVolume, Daten in OpenSearch dupliziert
+- ~~Vespa~~ — Entfernt 2026-04-26 (Vespa-Disable + PVC-Loeschung)
 - **Kubernetes-Konfiguration** — Helm Values, Secrets, Manifeste
 - **Applikations-Code und IaC** — Git Repository (GitHub)
 - **Monitoring-Daten** — Prometheus PersistentVolumes
@@ -49,7 +50,7 @@ Dieses Konzept deckt alle persistenten Datenbestaende des VÖB Chatbot-Systems a
 | Branding-Konfiguration (ext-branding) | PostgreSQL | Niedrig | Nein | Taegliches Backup | Unbegrenzt |
 | Agent-Templates / Knowledge-Dokumente | PostgreSQL + Object Storage | **Hoch** | Ggf. (hochgeladene Dokumente) | Taegliches Backup | Bis manuelles Loeschen (Kickoff-Beschluss: persistent, nicht durch Chat-Retention betroffen) |
 | Dokument-Chunks + Embeddings (OpenSearch) | PersistentVolumeClaim (in-cluster) | Mittel | Nein (nur Chunks/Vektoren) | **Kein dediziertes Backup** — vollstaendig aus Connectors rekonstruierbar (RPO = Connector Re-Index-Zeit). StackIT Default Storage Class unterstuetzt PVC Snapshots. | n/a |
-| Vespa-Daten (Zombie-Mode) | PersistentVolume (in-cluster) | Niedrig | Nein | **Kein Backup** — Zombie-Mode, kein Produktiv-Traffic. Daten in OpenSearch dupliziert. | n/a |
+| ~~Vespa-Daten~~ | — | — | — | **Vespa entfernt 2026-04-26** | n/a |
 | Helm Values / K8s Manifeste | Git (GitHub) | **Hoch** | Nein | Git = Backup | Unbegrenzt (Git History) |
 | Terraform State | Lokal (.tfstate) | **Hoch** | Nein | Lokale Kopie (.tfstate.backup) | Unbegrenzt (lokal) |
 | Secrets (DB-Passwoerter, API Keys) | GitHub Environments + K8s Secrets | **Hoch** | Nein (technisch) | GitHub = Backup fuer CI/CD, K8s Secrets bei Cluster-Neuaufbau manuell | n/a |
@@ -67,7 +68,7 @@ Dieses Konzept deckt alle persistenten Datenbestaende des VÖB Chatbot-Systems a
 | PostgreSQL (Flex 4.8 HA, 3-Node) | StackIT Managed Backup + WAL-Archivierung | `0 1 * * *` (01:00 UTC taeglich) | 30 Tage | **Ja** — sekundengenau | StackIT (Ausfuehrung), CCJ (Restore-Initiation) |
 | Object Storage (vob-prod) | StackIT Managed Replikation (3 AZs) | Kontinuierlich | Unbegrenzt (Objekte bleiben bis Loeschung) | Nein | StackIT |
 | OpenSearch-Index | **Kein dediziertes Backup** — vollstaendig aus Connectors rekonstruierbar. PVC auf StackIT Default Storage Class (Snapshots moeglich). | n/a | RPO = Connector Re-Index-Zeit | n/a | CCJ |
-| Vespa (Zombie-Mode) | **Kein Backup** — kein Produktiv-Traffic, Daten in OpenSearch dupliziert | n/a | n/a | n/a | n/a |
+| ~~Vespa~~ | **Entfernt 2026-04-26** (Vespa-Disable + PVC-Loeschung) | n/a | n/a | n/a | n/a |
 | Helm Release History | Helm-intern (5 Revisionen) | Bei jedem Deploy | 5 Revisionen | n/a | CI/CD |
 | Applikations-Code | Git (GitHub) | Bei jedem Push | Unbegrenzt | n/a | CCJ |
 | Terraform State | Lokale Datei + .tfstate.backup | Bei jedem `terraform apply` | Unbegrenzt (lokal) | n/a | CCJ |
@@ -157,7 +158,7 @@ Solange die Instanzen existieren, laufen StackIT Managed Backups automatisch (DE
 
 | Massnahme | Risiko | Empfehlung |
 |-----------|--------|------------|
-| **OpenSearch-Index Backup** | Niedrig — Daten vollstaendig aus Connectors rekonstruierbar (RPO = Connector Re-Index-Zeit). PVC auf StackIT Default Storage Class. | Kein dediziertes Backup noetig. Bei Bedarf: PVC Snapshot via StackIT Storage Class oder Velero. Vespa (Zombie-Mode) nicht backup-relevant. |
+| **OpenSearch-Index Backup** | Niedrig — Daten vollstaendig aus Connectors rekonstruierbar (RPO = Connector Re-Index-Zeit). PVC auf StackIT Default Storage Class. | Kein dediziertes Backup noetig. Bei Bedarf: PVC Snapshot via StackIT Storage Class oder Velero. |
 | **Backup-Monitoring / Alerting** | **Hoch** — Backup-Fehler werden nicht bemerkt | Alert-Rule in Prometheus: PG-Metriken auf letzte Backup-Zeit pruefen (falls StackIT-Metrik verfuegbar) |
 | **Backup-Restore-Tests** | **Hoch** — Restore nie getestet, Audit M7 offen | Quartalmaessige Restore-Tests einfuehren (siehe Abschnitt 9) |
 | **Cross-Instance PG Backup** | Mittel — Bei Instanz-Loeschung alle Backups verloren | Periodischer `pg_dump` als Fallback in Object Storage (z.B. monatlich per CronJob) |
@@ -234,7 +235,7 @@ Falls der gesamte K8s-Cluster verloren geht:
 | **Deployment-Fehler** | `helm rollback onyx-{env} [REVISION]` | ~5 Min | `docs/runbooks/rollback-verfahren.md` |
 | **Alembic-Migration-Fehler** | `alembic downgrade -1` | ~2 Min | `docs/runbooks/rollback-verfahren.md` |
 | **OpenSearch-Index** | Re-Indexierung ueber Connector-Sync triggern (Daten vollstaendig aus Connectors rekonstruierbar) | Stunden (abhaengig von Dokumentenmenge) | Onyx Admin UI |
-| **Vespa (Zombie-Mode)** | Nicht relevant — kein Produktiv-Traffic, Daten in OpenSearch dupliziert | n/a | n/a |
+| ~~Vespa~~ | Entfernt 2026-04-26 (Vespa-Disable + PVC-Loeschung) | n/a | n/a |
 | **Object Storage Datei** | Version Recovery (wenn Versionierung aktiviert) | Minuten | StackIT Portal |
 | **Secrets verloren** | Aus Terraform Output + GitHub Environments rekonstruieren | ~30 Min | Manuell |
 | **Monitoring-Stack** | `helm upgrade monitoring` mit values-Datei | ~10 Min | `docs/referenz/monitoring-konzept.md` |
@@ -278,7 +279,7 @@ Falls der gesamte K8s-Cluster verloren geht:
 | PG Failover (PROD HA) | < 60 Sek | 0 | Patroni automatisches Failover |
 | PG Restore aus Clone | 1-2 Stunden | Sekundengenau (PITR) | Clone-Erstellung + Umstellung |
 | Cluster-Neuaufbau | 2-4 Stunden | Bis letztes PG-Backup | Terraform + Helm + PG Restore |
-| OpenSearch Re-Indexierung | 2-8 Stunden (schaetzung) | Chunks/Embeddings verloren, Quelldaten (Connectors) intakt | Abhaengig von Dokumentenmenge. Vespa (Zombie-Mode) nicht relevant. |
+| OpenSearch Re-Indexierung | 2-8 Stunden (schaetzung) | Chunks/Embeddings verloren, Quelldaten (Connectors) intakt | Abhaengig von Dokumentenmenge. |
 
 ---
 
@@ -415,7 +416,7 @@ kubectl logs -n monitoring job/pg-backup-check-manual -f
 | B4 | Erster Restore-Test durchfuehren und dokumentieren (Audit M7) | **HOCH** | CCJ | AUSSTEHEND |
 | B5 | PITR-Verfuegbarkeit fuer Flex 2.4 Single (DEV/TEST) klaeren | NIEDRIG | StackIT Support (S6) | AUSSTEHEND |
 | B6 | Periodischer `pg_dump` als Cross-Instance-Fallback evaluieren | MITTEL | CCJ | AUSSTEHEND |
-| B7 | Velero fuer PV-Snapshots (OpenSearch) evaluieren — Vespa nicht mehr relevant (Zombie-Mode) | NIEDRIG | CCJ | Geplant fuer spaeter |
+| B7 | Velero fuer PV-Snapshots (OpenSearch) evaluieren | NIEDRIG | CCJ | Geplant fuer spaeter |
 | B8 | Backup-Kosten in Kostenaufstellung aufnehmen | NIEDRIG | CCJ | AUSSTEHEND |
 
 ---

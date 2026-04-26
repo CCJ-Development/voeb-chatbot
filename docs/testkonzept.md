@@ -163,9 +163,9 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 ### DEV-Umgebung (StackIT) -- LIVE seit 2026-02-27
 
 **Charakteristiken**:
-- **Cluster**: SKE `vob-chatbot`, Node Pool `devtest`, Node 1 (g1a.8d: 8 vCPU, 32 GB RAM)
+- **Cluster**: SKE `vob-chatbot`, Node Pool `devtest`, 2x g1a.4d (4 vCPU, 16 GB RAM)
 - **Namespace**: `onyx-dev`
-- **Pods**: 16 Pods Running (API Server, Background, Web Server, Model Server, Vespa, Redis, Nginx)
+- **Pods**: 15 Pods Running (API Server, Background, Web Server, Model Server, Redis, Nginx; Vespa entfiel 2026-04-26)
 - **Datenbank**: PostgreSQL Flex `vob-dev` (2 CPU, 4 GB RAM, Single)
 - **Object Storage**: Bucket `vob-dev`
 - **Zugriff**: `https://dev.chatbot.voeb-service.de` (HTTPS LIVE seit 2026-03-09)
@@ -185,11 +185,11 @@ PROD (StackIT K8s, eigener SKE-Cluster)   ← Manuell + GitHub Environment Appro
 
 **Charakteristiken**:
 - **Cluster**: SKE `vob-prod` (eigener Cluster, ADR-004 — Blast-Radius-Minimierung, eigenes Maintenance-Window 03:00-05:00 UTC)
-- **K8s**: v1.33.9, Flatcar 4459.2.3
-- **Nodes**: 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)
+- **K8s**: v1.33.10, Flatcar 4459.2.3
+- **Nodes**: 2x g1a.4d (4 vCPU, 16 GB RAM, 100 GB Disk; Downgrade von g1a.8d am 2026-04-26 nach Vespa-Disable + Resource-Rightsizing)
 - **Namespace**: `onyx-prod`
-- **Pods**: 20 Pods Running — 2x API Server (HA, 4Gi Limit nach OOM-Fix 2026-04-17), 2x Web Server (HA), 8 Celery-Worker (Standard Mode), 2x Model Server, OpenSearch (primary), Vespa (Zombie-Mode), 1x Redis, 1x NGINX Ingress
-- **Chart**: `onyx-0.4.44`, Helm Rev 18 (aktualisiert 2026-04-17 mit Sync #5 + Monitoring-Optimierung)
+- **Pods**: 17 Pods Running — 2x API Server (HA, 4Gi Limit nach OOM-Fix 2026-04-17), 2x Web Server (HA), 8 Celery-Worker (Standard Mode), 2x Model Server, OpenSearch (alleiniger Document-Index), 1x Redis, 1x NGINX Ingress (Vespa entfiel 2026-04-26)
+- **Chart**: `onyx-0.4.47`, Helm Rev 24 (aktualisiert 2026-04-26 mit Final-Resource-Rightsizing)
 - **Datenbank**: PostgreSQL Flex 4.8 HA (3-Node Replica)
 - **Object Storage**: Bucket `vob-prod`
 - **Load Balancer**: `188.34.92.162`

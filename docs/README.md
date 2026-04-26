@@ -31,7 +31,7 @@ Enterprise-AI-Chatbot basierend auf Onyx FOSS mit Custom Extension Layer für di
 | [ADR-002](./adr/adr-002-extension-architektur.md) | Akzeptiert | Extension-Architektur ("Extend, don't modify") |
 | [ADR-003](./adr/adr-003-stackit-als-cloud-provider.md) | Akzeptiert | StackIT als Cloud Provider |
 | [ADR-004](./adr/adr-004-umgebungstrennung-dev-test-prod.md) | Akzeptiert | Umgebungstrennung DEV / TEST / PROD |
-| [ADR-005](./adr/adr-005-node-upgrade-g1a8d.md) | Akzeptiert | Node-Upgrade g1a.4d → g1a.8d |
+| [ADR-005](./adr/adr-005-node-upgrade-g1a8d.md) | Akzeptiert (mit zwei Addenda 2026-03-16 + 2026-04-26: DEV+TEST+PROD wieder auf g1a.4d) | Node-Sizing g1a.4d ↔ g1a.8d |
 | [ADR-006](./adr/adr-006-vpn-zu-https-oidc.md) | In Diskussion | VPN-Schicht vs. HTTPS+OIDC |
 
 ## Runbooks (22 Verifizierte Step-by-Step-Anleitungen)

@@ -80,6 +80,25 @@ Mit dem bisherigen g1a.4d Node-Typ (4 vCPU, 16 GB RAM, 50 GB Disk) reichen die R
 
 ---
 
+## Addendum 2: PROD-Downgrade auf g1a.4d (2026-04-26)
+
+**PROD ebenfalls auf g1a.4d herabgestuft.** Voraussetzungen waren erfuellt durch zwei vorhergehende Optimierungen:
+
+1. **Vespa-Disable** (2026-04-25): Mit Sync #6 (Upstream PR #10330) ist `ONYX_DISABLE_VESPA=true` verfuegbar. Vespa-Pod entfernt (vorher Zombie-Mode 100m/512Mi/4Gi-Limit), PVCs (DEV 20 GiB + PROD 50 GiB) geloescht.
+2. **Worker-Resource-Rebalance** (2026-04-25/26): Resource Requests aller Onyx-Komponenten nach 30-Tage-Prometheus-Werktagsdaten neu dimensioniert (PROD: 97 User, 1.476 Sessions/30d, 10.165 Messages/30d). Cluster-CPU-Requests Onyx-Komponenten 8.450m → 2.350m. OpenSearch RAM-Limit 4 → 5 GiB (30d-Peak 3.469 Mi). Plus Monitoring-Tuning (Prometheus, Loki, redis-operator).
+
+**Terraform:** `machine_type = "g1a.4d"` in `environments/prod/main.tf` (2026-04-26). `terraform apply` 12m1s, 0 added, 1 changed, 0 destroyed. Rolling Node-Replacement, keine Pending Pods.
+
+**Auslastung nach Downgrade (Live, Werktag-Avg):** ca. 4–8 % CPU, 30–60 % RAM (entspannt, nicht eng wie auf DEV). Cluster-CPU-Requests 5.824m / 7.900m allocatable = **74 %**, Werktagsspitze (p99) 1.573m = 20 % der Allocatable.
+
+**Einsparung:** 283,18 EUR/Mo (PROD Worker Nodes 566,36 → 283,18 EUR/Mo). Total beider Environments: 1.434 → 1.151 EUR/Mo (−20 %).
+
+**Rollback:** `machine_type = "g1a.8d"` + `terraform apply` (~10 Min Rolling Update).
+
+**Details:** `docs/CHANGELOG.md` Eintraege 2026-04-25 + 2026-04-26, `.claude/rules/voeb-projekt-status.md`, `.claude/rules/fork-management.md` Sync #6 PROD-Section.
+
+---
+
 ## Approval & Sign-off
 
 | Role | Name | Date | Signature |

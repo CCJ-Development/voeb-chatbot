@@ -1,7 +1,7 @@
 # Technische Parameter — Single Source of Truth
 
 > Alle technischen Spezifikationen an EINER Stelle. Andere Dokumente verweisen hierher.
-> Letzte Aktualisierung: 2026-03-25
+> Letzte Aktualisierung: 2026-04-26
 
 ---
 
@@ -13,10 +13,10 @@
 | Namespace | onyx-dev | onyx-prod |
 | K8s Version | v1.33.9 | v1.33.9 |
 | Flatcar | 4459.2.3 | 4459.2.3 |
-| Node Pool | devtest (2x g1a.4d) | prod (2x g1a.8d) |
-| Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 8 vCPU, 32 GB RAM, 100 GB Disk |
-| Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | 15.820m CPU, ~55 Gi RAM (56.666 Mi) |
-| Pods | 17 | 20 (inkl. OpenSearch, seit 2026-03-22) |
+| Node Pool | devtest (2x g1a.4d) | prod (2x g1a.4d, downgraded 2026-04-26) |
+| Node Specs | 4 vCPU, 16 GB RAM, 100 GB Disk | 4 vCPU, 16 GB RAM, 100 GB Disk |
+| Allocatable (gesamt) | ~7.400m CPU, ~28 Gi RAM | ~7.900m CPU, ~28 Gi RAM |
+| Pods | 17 | 17 (Vespa entfiel 2026-04-25, ONYX_DISABLE_VESPA=true) |
 | API Replicas | 1 | 2 (HA) |
 | Web Replicas | 1 | 2 (HA) |
 | Celery Worker | 8 (Standard Mode, 7 Worker + 1 Beat) | 8 |
@@ -144,14 +144,14 @@ Historisch: TEST war LIVE von 2026-03-03 bis 2026-03-19 (15 Pods), dann Compute-
 
 ## 5b. Document Index
 
-> **Hintergrund:** Onyx migriert von Vespa zu OpenSearch (seit v3.0.0). Vollstaendige Analyse: `docs/analyse-opensearch-vs-vespa.md`.
+> **Hintergrund:** Onyx hat von Vespa auf OpenSearch migriert (seit v3.0.0). Vespa wurde am 2026-04-25/26 vollstaendig deaktiviert (`vespa.enabled=false`, `ONYX_DISABLE_VESPA=true` aus Sync #6 / Upstream PR #10330). Vollstaendige Analyse der historischen Migration: `docs/analyse-opensearch-vs-vespa.md`.
 
-### Architektur (Stand v3.x)
+### Architektur (Stand 2026-04-26)
 
 | Komponente | Rolle | Version | Status |
 |------------|-------|---------|--------|
-| **OpenSearch** | Primaeres Document Index Backend (Indexing + Retrieval) | 3.4.0 | Aktiv (Upstream-Default seit v3.0.0) |
-| **Vespa** | Zombie-Mode (nur fuer Readiness Check, kein aktiver Index-Traffic) | 8.609.39 | Aktiv (MUSS bis v4.0.0 laufen) |
+| **OpenSearch** | Document Index Backend (Indexing + Retrieval) | 3.4.0 | Aktiv (alleinig) |
+| Vespa | — | — | **Entfernt 2026-04-26** (Pod, PVC und vespa-service geloescht) |
 
 ### OpenSearch
 
@@ -159,29 +159,12 @@ Historisch: TEST war LIVE von 2026-03-03 bis 2026-03-19 (15 Pods), dann Compute-
 |-----------|-----|------|
 | Cluster-Name | onyx-opensearch | onyx-opensearch |
 | Modus | Single-Node (discovery.type: single-node) | Single-Node |
-| CPU Request / Limit | 300m / 1000m | 1000m / 2000m |
-| RAM Request / Limit | 1.5Gi / 4Gi | 2Gi / 4Gi |
-| JVM Heap | 512m (Docker Compose) | [Helm Default] |
-| PVC | 30Gi | 30Gi |
+| CPU Request / Limit | 200m / 1500m | 250m / 2000m (CPU-Request 2026-04-26 von 500m gesenkt) |
+| RAM Request / Limit | 1792Mi / 3Gi (2026-04-25 leicht erhoeht, 30d-Peak 2.286 Mi war 76 % am alten Limit) | 2560Mi / 5Gi (2026-04-25 von 2Gi/4Gi erhoeht, 30d-Peak 3.469 Mi war 85 % am alten Limit) |
+| JVM Heap | 1.5g (-Xmx1536m -Xms1536m) | 3g (-Xmx3g -Xms3g) |
+| PVC | 20Gi | 30Gi |
 | Port (REST API) | 9200 | 9200 |
 | Auth | admin / [Secret] | admin / [Secret] |
-
-### Vespa (Zombie-Mode)
-
-| Parameter | DEV | PROD |
-|-----------|-----|------|
-| CPU Request / Limit | 50m / 200m | 100m / 500m |
-| RAM Request / Limit | 512Mi / 4Gi | 512Mi / 4Gi |
-| PVC | 20Gi | 50Gi |
-| Port (Application) | 8081 | 8081 |
-| Port (Config) | 19071 | 19071 |
-| privileged | false (Override, Upstream Default true) | false |
-| runAsUser | 0 (Upstream-Limitation: benoetigt Root fuer vm.max_map_count) | 0 |
-
-**Vespa Einschraenkungen (KRITISCH):**
-- **Memory LIMIT >= 4 Gi Pflicht:** Vespa-Container prueft beim Start ob memory LIMIT >= 4 Gi (Hard-Check). Pod startet nicht bei niedrigerem Limit. `requests` koennen niedriger sein.
-- **StatefulSet PVC immutable:** `volumeClaimTemplates` koennen in Kubernetes NICHT per Helm geaendert werden. Bei PVC-Groessenaenderung: StatefulSet + PVC manuell loeschen, neu erstellen. Daten gehen verloren.
-- **`vespa.enabled: true` Pflicht (bis v4.0.0):** v3.x Code prueft Vespa-Erreichbarkeit (`wait_for_vespa_or_shutdown` in `app_base.py:517`). Ohne Vespa-Pod crashen alle Celery-Worker.
 
 ---
 
@@ -298,28 +281,31 @@ Historisch: TEST war LIVE von 2026-03-03 bis 2026-03-19 (15 Pods), dann Compute-
 | Posten | Anzahl | EUR/Mo (je) | EUR/Mo (gesamt) |
 |--------|--------|-------------|-----------------|
 | SKE Cluster Management Fee | 1 | 71,71 | 71,71 |
-| Worker Node g1a.8d | 2 | 283,18 | 566,36 |
+| Worker Node g1a.4d | 2 | 141,59 | 283,18 |
 | PostgreSQL Flex 4.8 Replica (HA 3-Node) | 1 | 316,23 | 316,23 |
 | Object Storage Bucket | 1 | 0,27 | 0,27 |
 | Load Balancer Essential-10 | 1 | 9,39 | 9,39 |
-| **Gesamt PROD** | | | **963,96** |
+| **Gesamt PROD** | | | **680,78** |
 
 ### 7.3 Gesamtkosten
 
 | Posten | EUR/Mo |
 |--------|--------|
 | DEV | 470,09 |
-| PROD | 963,96 |
-| **Gesamt alle aktiven Environments** | **1.434,05** |
+| PROD | 680,78 |
+| **Gesamt alle aktiven Environments** | **~1.150,87** |
 
 **Historie der Kosten-Aenderungen:**
 - **2026-03-16:** DEV+TEST Node-Downgrade g1a.8d → g1a.4d (von 868,47 auf 585,29 EUR/Mo). Details: `audit-output/kostenoptimierung-ergebnis.md`.
 - **2026-03-19:** TEST auf 0 Pods skaliert (Compute-Kosten entfallen, Managed-Services liefen noch ~115 EUR/Mo).
 - **2026-04-21:** **TEST-Live-Infrastruktur vollstaendig abgebaut** — PostgreSQL Flex `vob-test`, Object Storage Bucket `vob-test` und Load Balancer geloescht via StackIT CLI. Einsparung: ~115 EUR/Mo. Template-Code bleibt im Repo fuer Reaktivierung / Klon-Projekte.
+- **2026-04-25/26:** **PROD Vespa-Disable + Worker-Resource-Rebalance + Node-Downgrade g1a.8d → g1a.4d** durchgefuehrt. Vespa-PVCs (DEV 20 GiB + PROD 50 GiB) geloescht. Worker-Resources nach 30d-Werktagsdaten neu dimensioniert. PROD-Kosten 963,96 → 680,78 EUR/Mo. Einsparung: −283,18 EUR/Mo.
 
-**Geplanter PROD-Node-Downgrade** (g1a.8d → g1a.4d): reduziert PROD um ca. 283 EUR auf ~681 EUR/Mo. Gesamt danach: ~1.151 EUR/Mo.
+**Weitere Optimierungspotenziale (geplant):**
+- PROD-PostgreSQL-Downgrade Flex 4.8 HA → Flex 2.4 HA (~−174 EUR/Mo) nach 6 Monaten Live-Daten (frühestens Q3 2026).
+- DEV-Single-Node-Konsolidierung (~−141 EUR/Mo) — voraussetzt DEV-Monitoring-Removal, da Cluster-Total-Requests sonst 1× g1a.4d-Allocatable überschreiten.
 
-**Nicht enthalten:** Block Storage (Vespa + OpenSearch PVCs pro Environment), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG-Flex-Preis enthalten.
+**Nicht enthalten:** Block Storage (OpenSearch PVCs pro Environment, ~3 EUR/Mo gesamt), StackIT Container Registry, StackIT AI Model Serving (nutzungsabhaengig). PG-Backups sind im PG-Flex-Preis enthalten.
 
 **Preisquelle:** StackIT Preisliste v1.0.36 (03.03.2026). Alle Preise netto.
 
@@ -333,8 +319,8 @@ Historisch: TEST war LIVE von 2026-03-03 bis 2026-03-19 (15 Pods), dann Compute-
 | Kubernetes PROD | v1.33.9 | Flatcar 4459.2.3 |
 | PostgreSQL | 16 | StackIT Managed Flex |
 | Redis | 7.0.15 | In-Cluster, OT Operator |
-| OpenSearch | 3.4.0 | In-Cluster, primaeres Document Index Backend |
-| Vespa | 8.609.39 | In-Cluster, Zombie-Mode (nur Readiness Check, wird in v4.0.0 entfernt) |
+| OpenSearch | 3.4.0 | In-Cluster, alleiniges Document Index Backend |
+| Vespa | — | Entfernt 2026-04-26 (vespa.enabled=false, ONYX_DISABLE_VESPA=true via Sync #6 / Upstream PR #10330) |
 | Python | 3.11 | Backend |
 | FastAPI | 0.133.1 | |
 | SQLAlchemy | 2.0.15 | |

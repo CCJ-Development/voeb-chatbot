@@ -269,7 +269,7 @@ Die folgende Matrix dokumentiert alle Zugriffsrechte auf Infrastruktur- und Anwe
 |----------|----------|-----------|--------|
 | SEC-05: Namespace-scoped ServiceAccounts | Kubernetes RBAC | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — PROD = eigener Cluster |
 | SEC-04: Remote State Backend | Terraform | ~~P1~~ → P3 | **ZURÜCKGESTELLT** (2026-03-08) — Solo-Dev, FileVault |
-| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
+| SEC-06: Container SecurityContext | Helm Values | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD. Vespa-Ausnahme entfiel mit Vespa-Disable 2026-04-26. |
 | Branch Protection auf `main` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-07): PR required, 3 Status Checks, kein Review (Solo-Dev) |
 | Environment Protection auf `prod` | GitHub | P1 (vor PROD) | **ERLEDIGT** (2026-03-11): Required Reviewer + 7 environment-getrennte Secrets (inkl. OPENSEARCH_PASSWORD seit 2026-03-22) |
 | VÖB als Required Reviewer | GitHub Environment `prod` | Langfristig | Offen |
@@ -353,7 +353,7 @@ Die Kommunikation zwischen Pods innerhalb des Kubernetes-Clusters (z.B. API → 
 - PostgreSQL-Verbindung: TLS wird von StackIT Managed PG Flex unterstützt, ist aber aktuell nicht erzwungen
 - Redis: Passwort-geschützt, aber kein TLS
 - **OpenSearch: SSL/TLS aktiviert** (inter-node + client-to-node, selbstsignierte Zertifikate via `plugins.security.ssl`). Admin-Credentials im K8s Secret `onyx-opensearch`. DEV/TEST-Passwort: `OnyxDev1!` (Standard aus Onyx Helm Chart). **PROD bekommt sicheres Passwort per GitHub Secret** (analog PG/Redis-Handling).
-- Vespa: Laeuft als Zombie-Pod (Legacy, keine produktiven Daten). Cluster-intern, kein TLS. Wird perspektivisch entfernt.
+- Vespa: **Entfernt 2026-04-26** (Pod, PVCs und Service). Document-Index laeuft jetzt ausschliesslich auf OpenSearch.
 
 #### StackIT AI Model Serving (LLM-API)
 
@@ -381,12 +381,11 @@ API Base: https://api.openai-compat.model-serving.eu01.onstackit.cloud/v1
 - **PROD:** Sicheres Passwort wird per GitHub Secret injiziert (analog PostgreSQL/Redis-Handling)
 - Verschlüsselung des PersistentVolume über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest (SEC-07 verifiziert 2026-03-08, StackIT Default — nicht deaktivierbar)
 
-#### Vespa (Legacy — Zombie, keine produktiven Daten)
+#### Vespa — Entfernt 2026-04-26
 
-- Laeuft noch als StatefulSet mit PersistentVolume (20 Gi), enthaelt aber **keine produktiven Daten** mehr
-- Dokumenten-Chunks und Embeddings liegen jetzt in OpenSearch
-- Verschlüsselung über StackIT StorageClass (`premium-perf2-stackit`) mit AES-256 Encryption-at-Rest
-- Wird perspektivisch aus dem Helm Release entfernt
+- Vespa lief bis Sync #6 im "Zombie-Mode" (Pod war für den Worker-Boot-Check erforderlich, enthielt aber keine produktiven Daten).
+- Mit `ONYX_DISABLE_VESPA=true` (Upstream PR #10330) wurde der Boot-Check abgeschaltet, Pod und PVCs (DEV 20 GiB + PROD 50 GiB) wurden gelöscht.
+- Document Index läuft seither ausschließlich auf OpenSearch.
 
 #### Object Storage (StackIT S3-kompatibel)
 
@@ -450,18 +449,18 @@ Internet
   ├─→ [SKE Cluster vob-chatbot (DEV)]
   │     NGINX Ingress (LoadBalancer)
   │       DEV: 188.34.118.222 (IngressClass: nginx)
-  │     [onyx-dev Namespace] — 17 Pods
+  │     [onyx-dev Namespace] — 15 Pods (Vespa entfiel 2026-04-26)
   │       API Server → OpenSearch, Redis, Celery (8 Worker)
-  │       Web Server (Frontend), Model Server, Vespa (Zombie)
+  │       Web Server (Frontend), Model Server
   │     [onyx-test Namespace] — ABGEBAUT (2026-04-21, war 15 Pods)
   │     [monitoring Namespace] — DEV Monitoring
   │
-  └─→ [SKE Cluster vob-prod (PROD, eigener Cluster)]
+  └─→ [SKE Cluster vob-prod (PROD, eigener Cluster, 2x g1a.4d seit 2026-04-26)]
         NGINX Ingress (LoadBalancer)
           PROD: 188.34.92.162 (HTTPS LIVE seit 2026-03-17)
-        [onyx-prod Namespace] — 20 Pods
+        [onyx-prod Namespace] — 17 Pods (Vespa entfiel 2026-04-26)
           2x API Server HA, 2x Web Server HA
-          OpenSearch, Redis, Celery (8 Worker), 2x Model Server, NGINX, Vespa (Zombie)
+          OpenSearch, Redis, Celery (8 Worker), 2x Model Server, NGINX
         [monitoring Namespace] — 9 Pods
           Prometheus, Grafana, AlertManager, kube-state-metrics
           2x node-exporter, PG Exporter, Redis Exporter, Operator
@@ -478,7 +477,7 @@ Externe Services (über Internet):
 |--------|----------------------------------|---------------------------|
 | Region | EU01 (Frankfurt) | EU01 (Frankfurt) |
 | K8s Version | v1.33.8 | v1.33.9 |
-| Node Pool | `devtest`: 2x g1a.8d (8 vCPU, 32 GB RAM) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
+| Node Pool | `devtest`: 2x g1a.4d (4 vCPU, 16 GB RAM, downgraded 2026-03-16) | 2x g1a.4d (4 vCPU, 16 GB RAM, downgraded 2026-04-26) |
 | OS | Flatcar 4459.2.1 | Flatcar 4459.2.3 |
 | Maintenance-Window | 02:00-04:00 UTC | 03:00-05:00 UTC |
 | Egress-IP (NAT Gateway) | `188.34.93.194` | `188.34.73.72` |
@@ -839,7 +838,7 @@ Der VÖB unterliegt als eingetragener Verein (e.V.) primär der DSGVO, dem BDSG 
 | BAIT | Freiwillig | Verschlüsselung im Transit | IMPLEMENTIERT (TLSv1.3 ECDSA P-384 auf DEV + PROD, beide Live-Environments HTTPS LIVE; TEST dauerhaft heruntergefahren) |
 | BAIT | Freiwillig | Zugangskontrolle | UMGESETZT (Entra ID OIDC auf DEV + PROD seit 2026-03-24, TEST heruntergefahren) |
 | BAIT | Freiwillig | Netzwerksegmentierung | ERFÜLLT (SEC-03: 5 NetworkPolicies DEV+TEST, 7 Policies onyx-prod seit 2026-03-24, 13 Policies monitoring-NS alle Cluster inkl. AlertManager-Webhook-Egress) |
-| BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD, Vespa Zombie = dokumentierte Ausnahme, keine produktiven Daten) |
+| BSI-Grundschutz | Freiwillig | Container-Härtung | **ERFÜLLT** (SEC-06 Phase 2: `runAsNonRoot: true` auf allen Environments inkl. PROD. Vespa-Ausnahme entfiel 2026-04-26 mit Vespa-Disable.) |
 | BSI-Grundschutz | Freiwillig | Verschlüsselung at-rest | ERFÜLLT (SEC-07: StackIT Default AES-256, verifiziert 2026-03-08) |
 
 **Hinweis BAIT**: BAIT (Rundschreiben 10/2017, Fassung 16.12.2024) wird am **31.12.2026 vollständig aufgehoben** (DORA-Übergang). Seit 17.01.2025 gilt DORA für CRR-Institute; BAIT gilt noch für Restgruppe bis 01.01.2027. VÖB fällt in keine dieser Kategorien — die BAIT-Orientierung ist rein freiwillig.
@@ -973,7 +972,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 | SEC-03 | Kubernetes NetworkPolicies (Namespace-Isolation) | P1 | **ERLEDIGT** (2026-03-05) |
 | SEC-04 | Terraform Remote State (Secrets im Klartext lokal) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — Quick Win `chmod 600` umgesetzt, Remote State optional |
 | SEC-05 | Separate Kubeconfigs pro Environment (RBAC) | ~~P1~~ → P3 | **ZURÜCKGESTELLT** — PROD = eigener Cluster (ADR-004), löst sich automatisch |
-| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD (Vespa Zombie = Ausnahme, keine produktiven Daten) |
+| SEC-06 | Container SecurityContext (`privileged: true` entfernen) | ~~P2~~ → **P1** | **Phase 2 ERLEDIGT** (2026-03-11) — `runAsNonRoot: true` auf allen Environments inkl. PROD. Vespa-Ausnahme entfiel 2026-04-26 mit Vespa-Disable. |
 | SEC-07 | Encryption-at-Rest verifizieren (PG, S3, Volumes) | P2 | **ERLEDIGT** (2026-03-08) — AES-256 (StackIT Default, verifiziert SEC-07) |
 | SEC-08 | CORS `allow_methods=["*"]` auf PROD einschränken | P2 | **OFFEN** — Onyx Core-Code, evaluieren ob Einschränkung ohne Seiteneffekte möglich |
 | SEC-09 | Rate Limiting (DoS + LLM-Kosten-Schutz) | P2 | **IMPLEMENTIERT** (2026-03-16, auf `/api/*` gescopt 2026-04-20) — Upload-Limit 20 MB (XREF-007) + Request-Rate-Limiting 10 r/s per IP, burst 50 NUR auf `/api/*` (NGINX `map $uri $ratelimit_key` + `limit_req_zone` + `limit_req`) + Backend `MAX_FILE_SIZE_BYTES` 20 MB (Defense-in-Depth). Seiten-Routen und statische Assets nicht limitiert (verhindert 429 bei Next.js RSC-Prefetch). |
@@ -1051,7 +1050,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 |------------|-------------------|--------|
 | Celery (alle 8 Worker) | `privileged: true`, `runAsUser: 0` | **HOCH** — Host-Kernel-Zugriff |
 | Model Server (inference + index) | `privileged: true`, `runAsUser: 0` | **HOCH** — Host-Kernel-Zugriff |
-| Vespa (Zombie — keine produktiven Daten) | `privileged: true`, `runAsUser: 0` (Chart überschreibt Subchart-Default) | **HOCH** — Host-Kernel-Zugriff (reduziertes Risiko da keine produktiven Daten) |
+| ~~Vespa~~ | Entfernt 2026-04-26 (`vespa.enabled=false`, `ONYX_DISABLE_VESPA=true`) | — |
 | API Server | `runAsUser: 0` (Root, aber nicht privileged) | Mittel |
 | Web Server (Next.js) | `USER nextjs` (UID 1001) | OK — bereits non-root |
 | NGINX Ingress | `runAsNonRoot: true`, UID 101, no privilege escalation | OK — bereits gehärtet |
@@ -1060,7 +1059,7 @@ Kubernetes Pod-Logs werden standardmäßig bei Pod-Restart gelöscht. Ohne zentr
 
 **Umsetzung (Stufenplan):**
 1. **Phase 1 (ERLEDIGT, 2026-03-08):** `privileged: false` für Celery, Model Server, Vespa via `values-common.yaml`. Eliminiert das schlimmste Finding mit minimalem Risiko.
-2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Dokumentierte Ausnahmen: (a) Vespa Zombie (Upstream-Limitation: benötigt Root für `vm.max_map_count` — reduziertes Risiko da keine produktiven Daten mehr, perspektivisch zu entfernen), (b) pg-backup-check CronJob (benötigt Root für `apk add` in Alpine-Container, transient alle 4h, nur API-Calls). Kein `privileged` Mode auf keinem Container.
+2. **Phase 2 (ERLEDIGT, 2026-03-11):** `runAsNonRoot: true` für API, Celery, Model Server auf allen Environments inkl. PROD. Dokumentierte Ausnahme: pg-backup-check CronJob (benötigt Root für `apk add` in Alpine-Container, transient alle 4h, nur API-Calls). Kein `privileged` Mode auf keinem Container. Die zuvor dokumentierte Vespa-Ausnahme (Upstream-Limitation `vm.max_map_count`) entfiel mit dem Vespa-Disable am 2026-04-26.
 3. **Phase 3 (optional, vor Abnahme):** `readOnlyRootFilesystem: true` mit vollständigem emptyDir-Mapping. Diminishing Returns für den Aufwand.
 
 **Technischer Hinweis**: Alle Onyx Chart Templates unterstützen `securityContext`-Overrides via Values (`{{- toYaml .Values.<component>.securityContext | nindent 12 }}`). Kein Chart-Umbau nötig — Änderungen ausschließlich in `values-common.yaml`.
@@ -1213,13 +1212,13 @@ Phase 6: NACHBEREITUNG
 |-----------|-----|------|
 | SKE Cluster | `vob-chatbot` | Eigener Cluster (`vob-prod`, ADR-004) |
 | K8s Version | v1.33.9 | v1.33.9 |
-| Node Pool | `devtest` (2 Nodes, g1a.4d, downgraded 2026-03-16) | 2x g1a.8d (8 vCPU, 32 GB RAM) |
-| Pods | 17 | 20 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX, Vespa Zombie) |
+| Node Pool | `devtest` (2 Nodes, g1a.4d, downgraded 2026-03-16) | 2x g1a.4d (4 vCPU, 16 GB RAM, downgraded 2026-04-26) |
+| Pods | 15 (Vespa entfiel 2026-04-26) | 17 (2x API HA, 2x Web HA, 8 Celery, OpenSearch, Redis, 2x Model, NGINX) |
 | PostgreSQL | Flex 2.4 Single (`vob-dev`) | Flex 4.8 HA 3-Node (`vob-prod`) |
 | Object Storage | `vob-dev` | `vob-prod` |
 | Namespace | `onyx-dev` | `onyx-prod` |
 | Monitoring | `monitoring` NS (shared im Cluster) | Eigener (`monitoring` NS, 9 Pods) |
-| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` (Vespa Zombie = Ausnahme) |
+| Container Security | `runAsNonRoot: true` | `runAsNonRoot: true` |
 | Deploy-Strategie | Recreate | Recreate (DB Connection Pool Exhaustion vermeiden) |
 
 > TEST-Live-Infrastruktur seit 2026-04-21 abgebaut (Template-Artefakte im Repo).

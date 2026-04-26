@@ -1,8 +1,8 @@
 # VÖB Service Chatbot — Plattform-Übersicht
 
 **Dokumentstatus**: Entwurf (Arbeitspapier)
-**Version**: 0.4 — Architektur mit Site-to-Site-VPN
-**Stand**: 2026-04-22
+**Version**: 0.5 — Architektur mit Site-to-Site-VPN
+**Stand**: 2026-04-26
 **Autor**: Nikolaj Ivanov (CCJ Development)
 **Zielgruppe**: IT-Leiter, Fachabteilung, Geschäftsleitung VÖB Service
 **Zweck**: Technische Einordnung der Plattform hinter dem Chatbot — Stack, Dimensionierung, Sicherheits- und Betriebsansatz, Kostenrahmen
@@ -312,32 +312,33 @@ Der Tunnel transportiert ausschließlich **Nutzer- und Admin-Traffic Richtung Ch
 | Cluster-Name | `vob-prod` (eigener Cluster) |
 | Kubernetes-Version | v1.33.9 |
 | Node-Betriebssystem | Flatcar 4459.2.3 |
-| Worker Nodes | 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk) |
-| Gesamtressourcen | 15.820 mCPU, 55 GiB RAM |
+| Worker Nodes | 2x g1a.4d (4 vCPU, 16 GB RAM, 100 GB Disk; Downgrade von g1a.8d am 2026-04-26) |
+| Gesamtressourcen | ~7.900 mCPU, ~28 GiB RAM |
 | Namespaces | onyx-prod, monitoring, cert-manager |
 | IngressClass | `nginx-internal` (interner LoadBalancer mit privater IP im VPC, nicht öffentlich) |
 | Maintenance-Fenster | 03:00–05:00 UTC (StackIT-managed) |
 
-### 5.2 Pods im Betrieb (PROD, 20 Pods)
+### 5.2 Pods im Betrieb (PROD, 17 Pods, Vespa entfiel 2026-04-26)
 
 | Komponente | Replicas | CPU-Limit | Speicher-Limit | Zweck |
 |---|---|---|---|---|
 | API-Server (FastAPI) | 2 (HA) | 1 vCPU | 4 GiB | REST-API für Frontend + Celery |
 | Frontend (Next.js) | 2 (HA) | 0,5 vCPU | 1 GiB | Web-Oberfläche |
 | NGINX Ingress | 1 | — | — | TLS-Terminierung, Rate-Limit |
-| Redis | 1 | 0,5 vCPU | 1 GiB | Session-Cache, Celery-Broker |
+| Redis | 1 | 0,5 vCPU | 0,5 GiB | Session-Cache, Celery-Broker |
 | Celery Beat | 1 | 0,5 vCPU | 1 GiB | Scheduler für periodische Jobs |
-| Celery Worker "Primary" | 2 (HA) | 1 vCPU | 2 GiB | Koordination Hintergrundjobs |
-| Celery Worker "Light" | 1 | 1 vCPU | 2 GiB | OpenSearch-Ops, Permission-Sync |
-| Celery Worker "Heavy" | 1 | 1 vCPU | 2 GiB | Dokument-Pruning |
-| Celery Worker "Docfetching" | 1 | 1 vCPU | 2 GiB | Dokumente von Datenquellen abholen |
-| Celery Worker "Docprocessing" | 1 | 1 vCPU | 2 GiB | Indexierung-Pipeline (Chunking + Embedding) |
+| Celery Worker "Primary" | 1 (Singleton, Redis-Lock) | 1 vCPU | 1 GiB | Koordination Hintergrundjobs |
+| Celery Worker "Light" | 1 | 1 vCPU | 1 GiB | OpenSearch-Ops, Permission-Sync |
+| Celery Worker "Heavy" | 1 | 1 vCPU | 1 GiB | Dokument-Pruning |
+| Celery Worker "Docfetching" | 1 | 1,5 vCPU | 2 GiB | Dokumente von Datenquellen abholen |
+| Celery Worker "Docprocessing" | 1 | 2 vCPU | 2 GiB | Indexierung-Pipeline (Chunking + Embedding) |
 | Celery Worker "Monitoring" | 1 | 0,5 vCPU | 0,5 GiB | System-Health, Queue-Längen |
-| Celery Worker "User-File-Processing" | 1 | 1 vCPU | 2 GiB | Nutzer-Uploads |
-| OpenSearch | 1 | 2 vCPU | 4 GiB + 30 GiB PV | Dokument-Index |
-| Vespa (Zombie-Mode) | 1 | 0,5 vCPU | 4 GiB + 50 GiB PV | Legacy-Abhängigkeit (entfällt mit Onyx v4) |
+| Celery Worker "User-File-Processing" | 1 | 1,5 vCPU | 2 GiB | Nutzer-Uploads (höchster Worker-RAM-Bedarf) |
+| OpenSearch | 1 | 2 vCPU | 5 GiB + 30 GiB PV | Dokument-Index (RAM-Limit erhöht 2026-04-25) |
 | Model Server (Inference) | 1 | 2 vCPU | 4 GiB | Optionale lokale Inferenz |
 | Model Server (Indexing) | 1 | 2 vCPU | 4 GiB | Alternative zu StackIT-Embedding |
+
+> **Anpassung 2026-04-25/26:** Worker-Resources nach 30-Tage-Werktagsdaten neu dimensioniert (Cluster-CPU-Requests 8.450m → 2.350m). Vespa-Pod komplett entfernt (siehe Abschnitt 8).
 
 ### 5.3 Cluster-Varianten nach Umgebung
 
@@ -345,7 +346,7 @@ Der Tunnel transportiert ausschließlich **Nutzer- und Admin-Traffic Richtung Ch
 |---|---|---|
 | Cluster | `vob-chatbot` | `vob-prod` (eigener Cluster) |
 | Namespace | onyx-dev | onyx-prod |
-| Worker Nodes | 2x g1a.4d (4 vCPU, 16 GB) | 2x g1a.8d (8 vCPU, 32 GB) |
+| Worker Nodes | 2x g1a.4d (4 vCPU, 16 GB) | 2x g1a.4d (4 vCPU, 16 GB) |
 | PostgreSQL | Flex 2.4 Single | Flex 4.8 HA (3-Node) |
 | API-Replicas | 1 | 2 (HA) |
 | Frontend-Replicas | 1 | 2 (HA) |
@@ -405,7 +406,7 @@ Der Bucket nimmt alle **von Nutzern hochgeladenen Dokumente** auf. Die eigentlic
 
 OpenSearch dient als **RAG-Backend**: Die Chat-Frage wird vektorisiert und mit den ebenfalls vektorisierten Dokument-Chunks verglichen. Relevante Treffer werden als Kontext an das LLM übergeben.
 
-**Hintergrund:** Onyx hat mit v3.0.0 von Vespa auf OpenSearch als Primär-Index migriert. Aus Kompatibilitätsgründen läuft Vespa minimal weiter ("Zombie-Mode"), bis Onyx v4 erscheint — er verarbeitet aber keine produktiven Daten mehr.
+**Hintergrund:** Onyx hat mit v3.0.0 von Vespa auf OpenSearch als Primär-Index migriert. Vespa lief bis 2026-04-25 in einem minimalen "Zombie-Mode" weiter, weil der Worker-Boot-Pfad einen Vespa-Health-Check erzwang. Mit Upstream PR #10330 (Sync #6) ist die Umgebungsvariable `ONYX_DISABLE_VESPA` eingeführt worden, die diesen Check überspringt. Auf DEV und PROD wurde Vespa am **2026-04-25/26** vollständig deaktiviert (`vespa.enabled=false`, `ONYX_DISABLE_VESPA=true`); der Vespa-Pod existiert nicht mehr, alle Document-Index-Operationen laufen ausschließlich auf OpenSearch.
 
 ---
 
@@ -463,35 +464,31 @@ Das Embedding-Modell vektorisiert hochgeladene Dokumente und Nutzer-Fragen, dami
 
 | Parameter | Wert |
 |---|---|
-| Worker Nodes | 2 x g1a.8d |
-| CPU je Node | 8 vCPU |
-| RAM je Node | 32 GB |
+| Worker Nodes | **2 x g1a.4d** (Downgrade durchgeführt 2026-04-26) |
+| CPU je Node | 4 vCPU |
+| RAM je Node | 16 GB |
 | Disk je Node | 100 GB |
-| Gesamt-CPU | 16 vCPU |
-| Gesamt-RAM | 64 GB |
-| Pods im Betrieb | 20 |
-| CPU-Auslastung (30-Tage-Schnitt) | ca. 15–20 % |
-| RAM-Auslastung (30-Tage-Schnitt) | ca. 25 % |
+| Gesamt-CPU | 8 vCPU |
+| Gesamt-RAM | 32 GB |
+| Pods im Betrieb | 17 |
+| CPU-Auslastung (Live, Werktag-Avg) | ca. 4–8 % |
+| CPU-Auslastung (Werktag-Spitze 14:00 UTC, p99) | bis 20 % |
+| RAM-Auslastung (Live) | ca. 30–60 % |
+| Cluster-CPU-Requests-Summe | ca. 5,8 vCPU (74 % der Allocatable) |
 | Verfügbarkeit | 99,9 %+ (HA: 2x API, 2x Frontend, 3x PostgreSQL) |
 
-**Sizing-Prognose:** Die aktuelle Konfiguration bedient ca. **150 gleichzeitige Nutzer** komfortabel.
+**Sizing-Prognose:** Die aktuelle Konfiguration bedient ca. **150 gleichzeitige Nutzer** komfortabel. Cluster-Headroom (CPU-Limits) erlaubt p99-Bursts bis ~1.500m ohne Throttling.
 
-### 10.2 Geplanter Downgrade (Kostenoptimierung)
+> **Anpassungen 2026-04-25/26:** Vespa deaktiviert, PVCs gelöscht, Worker-Resources nach 30-Tage-Werktagsdaten rebalanciert, Node-Downgrade g1a.8d → g1a.4d durchgeführt. **Einsparung: ~283 EUR/Mo** (PROD Worker Nodes 566 → 283 EUR/Mo).
 
-Die 30-Tage-Messdaten zeigen eine deutliche Unterauslastung der Nodes. Daher ist ein Downgrade auf das gleiche Format wie DEV vorgesehen:
+### 10.2 Weitere Optimierungspotenziale (geplant, noch offen)
 
-| Parameter | Aktuell | Geplant | Änderung |
-|---|---|---|---|
-| Node-Typ | g1a.8d | g1a.4d | –50 % |
-| CPU je Node | 8 vCPU | 4 vCPU | –50 % |
-| RAM je Node | 32 GB | 16 GB | –50 % |
-| Gesamt-CPU | 16 vCPU | 8 vCPU | –50 % |
-| Gesamt-RAM | 64 GB | 32 GB | –50 % |
-| Erwartete CPU-Auslastung | 15–20 % | 30–40 % | |
-| Erwartete RAM-Auslastung | 25 % | 50–60 % | |
-| Einsparung | — | ~283 EUR netto/Monat | |
+| Optimierung | Voraussetzung | Effekt |
+|---|---|---|
+| PostgreSQL Flex (PROD) | Nach 6 Mo Live-Daten (Q3 2026) | –174 EUR/Mo (Flex 4.8 HA → Flex 2.4 HA möglich) |
+| DEV-Konsolidierung | DEV-Monitoring-Ausbau | –141 EUR/Mo (1× g1a.4d statt 2×) |
 
-**Umsetzung:** Terraform-gestützt in einem Wartungsfenster am Wochenende. Rollback durch Terraform-Revert jederzeit möglich, Rollback-Zeit ca. 15 Minuten.
+**Umsetzung jeweils Terraform-gestützt im Wartungsfenster.** Rollbacks über Terraform-Revert jederzeit möglich.
 
 ---
 
@@ -623,7 +620,7 @@ Jeder Namespace startet mit einem `default-deny-all` — alle erlaubten Verbindu
 - **`privileged: false`** ohne Ausnahme
 - **Capabilities Drop** (ALL) in den Exporter-Pods
 - **`readOnlyRootFilesystem: true`** für Exporter-Pods
-- Ausnahme: Vespa (Zombie-Mode, keine produktiven Daten) läuft aus Upstream-Gründen noch als Root. Entfällt mit Onyx v4.
+- Vorherige Ausnahme: Vespa lief im Zombie-Mode aus Upstream-Gründen als Root. Vespa wurde 2026-04-26 vollständig deaktiviert (siehe Abschnitt 8) — die Ausnahme entfällt damit auf DEV und PROD.
 
 ### Layer 5 — Applikation
 
@@ -1102,18 +1099,16 @@ Der Runner baut eine **outbound-Verbindung** zu GitHub auf (long-poll), zieht ne
 
 ## 25. Laufende Kosten (netto, monatlich)
 
-Aktueller Stand (vor dem geplanten Downgrade der PROD-Nodes):
-
 | Posten | Leistungsumfang | DEV | PROD |
 |---|---|---|---|
 | Kubernetes-Management-Fee | 1× Managed Control Plane je Cluster (Auto-Patching, Maintenance-Fenster, HA-Masters) | 71,71 EUR | 71,71 EUR |
-| Worker Nodes | **DEV:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk) — **PROD:** 2× g1a.8d (je 8 vCPU, 32 GB RAM, 100 GB Disk) | 283,18 EUR | 566,36 EUR |
+| Worker Nodes | **DEV:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk) — **PROD:** 2× g1a.4d (je 4 vCPU, 16 GB RAM, 100 GB Disk; Downgrade von g1a.8d am 2026-04-26) | 283,18 EUR | 283,18 EUR |
 | PostgreSQL Flex | **DEV:** Flex 2.4 Single (2 vCPU, 4 GB RAM, 20 GB SSD) — **PROD:** Flex 4.8 HA 3-Node-Cluster (je 4 vCPU, 8 GB RAM). Beide inkl. täglicher Backups + 30-Tage-Retention; PROD zusätzlich PITR sekundengenau | 105,54 EUR | 316,23 EUR |
 | Object Storage | verbrauchsabhängig (ca. 0,027 EUR/GB/Monat); aktueller Stand entspricht ca. 10 GB je Bucket | 0,27 EUR | 0,27 EUR |
 | Load Balancer (intern) | Essential-10 Tier, 1 interne IP im VPC | 9,39 EUR | 9,39 EUR |
-| **Summe** | | **470,09 EUR** | **963,96 EUR** |
+| **Summe** | | **470,09 EUR** | **680,78 EUR** |
 
-**Gesamt beide Umgebungen: 1.434,05 EUR netto/Monat** (Plattform-Betrieb ohne VPN-Anbindung).
+**Gesamt beide Umgebungen: ~1.150,87 EUR netto/Monat** (Plattform-Betrieb ohne VPN-Anbindung; vorher 1.434 EUR/Monat, –283 EUR/Mo / –20 % nach PROD-Node-Downgrade 2026-04-26).
 
 > **Zusätzliche Kosten für die Site-to-Site-VPN-Anbindung:** Die laufenden Kosten für das Palo-Alto-HA-Paar im StackIT-VPC (zwei IaaS-VMs für die Firewall-Pair, ggf. Palo-Alto-Subscription) werden im Rahmen der technischen Abstimmung mit dem VÖB-Netzwerk-Team und dem Palo-Alto-Account-Manager konkretisiert. Entscheidend sind hier die VM-Dimensionierung (abhängig vom gewünschten Durchsatz) und das Lizenzierungsmodell (BYOL über bestehendes VÖB-Enterprise-Agreement vs. PAYG). Die Kosten werden separat ausgewiesen, sobald die Rahmenbedingungen geklärt sind.
 
@@ -1125,7 +1120,7 @@ Aktueller Stand (vor dem geplanten Downgrade der PROD-Nodes):
   - StackIT Container Registry (minimal, nutzungsabhängig)
   - StackIT AI Model Serving — abhängig vom Chat-Volumen; aktuell überschaubar (StackIT rechnet hier per Token ab, nicht per Grundgebühr)
 
-**Nach dem geplanten Downgrade** der PROD-Nodes auf g1a.4d reduziert sich die PROD-Summe um ca. **283 EUR** auf rund **681 EUR / Monat** (Gesamt beide Umgebungen: ~1.151 EUR, ohne VPN-Anbindung).
+**Weitere Optimierungspotenziale (geplant):** PROD-PostgreSQL-Downgrade auf Flex 2.4 HA (–174 EUR/Mo) nach 6 Monaten Live-Daten, DEV-Single-Node-Konsolidierung (–141 EUR/Mo) bei nicht mehr benötigtem DEV-Monitoring.
 
 Alle Preise netto, zuzüglich MwSt. Preisstand März 2026.
 

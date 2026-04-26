@@ -48,7 +48,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ HTTPS: LIVE (DNS A-Record auf 188.34.118.222          │  │ │
 │  │  │        aktualisiert durch GlobVill, 2026-03-22)       │  │ │
 │  │  │                                                       │  │ │
-│  │  │  Pods (17):                                            │  │ │
+│  │  │  Pods (15, Vespa entfiel 2026-04-26):                  │  │ │
 │  │  │  ├── onyx-dev-web-server       (Frontend, 1 Replica)  │  │ │
 │  │  │  ├── onyx-dev-api-server       (Backend, 1 Replica)   │  │ │
 │  │  │  ├── onyx-dev-celery-beat      (Scheduler, 1 Replica) │  │ │
@@ -62,7 +62,6 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-dev-inference-model  (Model Server, 1 Rep.) │  │ │
 │  │  │  ├── onyx-dev-indexing-model   (Model Server, 1 Rep.) │  │ │
 │  │  │  ├── opensearch                (Document Index, 1 Rep.)│  │ │
-│  │  │  ├── vespa                     (Zombie-Mode, 1 Rep.)  │  │ │
 │  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
@@ -73,7 +72,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │ SKE Kubernetes Cluster "vob-prod" (PROD — eigener Cluster)  │ │
-│  │ Node Pool: 2× g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)     │ │
+│  │ Node Pool: 2× g1a.4d (4 vCPU, 16 GB RAM, 100 GB Disk)     │ │
 │  │ Kubernetes 1.33.9, Flatcar 4459.2.3                          │ │
 │  │                                                             │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
@@ -81,7 +80,7 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │ IngressClass: nginx (eigener Cluster, kein Konflikt)  │  │ │
 │  │  │ LoadBalancer IP: 188.34.92.162                        │  │ │
 │  │  │                                                       │  │ │
-│  │  │  Pods (20):                                           │  │ │
+│  │  │  Pods (17, Vespa entfiel 2026-04-26):                 │  │ │
 │  │  │  ├── onyx-prod-web-server       (Frontend, 2 Replicas HA)│  │ │
 │  │  │  ├── onyx-prod-api-server       (Backend, 2 Replicas HA) │  │ │
 │  │  │  ├── onyx-prod-celery-beat      (Scheduler, 1 Replica)│  │ │
@@ -95,7 +94,6 @@ Das Betriebskonzept beschreibt die operativen Anforderungen, Prozesse und Richtl
 │  │  │  ├── onyx-prod-inference-model  (Model Server, 1 Rep.)│  │ │
 │  │  │  ├── onyx-prod-indexing-model   (Model Server, 1 Rep.)│  │ │
 │  │  │  ├── opensearch                (Document Index, 1 Rep.)│  │ │
-│  │  │  ├── vespa                     (Zombie-Mode, 1 Rep.)  │  │ │
 │  │  │  ├── redis                     (Cache, 1 Replica)     │  │ │
 │  │  │  └── nginx-ingress-controller  (Ingress, 1 Replica)   │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
@@ -827,11 +825,11 @@ Für dringende Fixes auf einer bereits released Version:
 **DEV**: Keine Autoskalierung. 1 Replica pro Service. Standard Celery Mode (8 separate Worker).
 
 **PROD (deployed)**:
-- Eigener SKE-Cluster `vob-prod` (ADR-004), 2x g1a.8d (8 vCPU, 32 GB RAM, 100 GB Disk)
+- Eigener SKE-Cluster `vob-prod` (ADR-004), 2x g1a.4d (4 vCPU, 16 GB RAM, 100 GB Disk; Downgrade von g1a.8d am 2026-04-26 nach Vespa-Disable + Resource-Rightsizing)
 - **HA fuer API + Web**: 2 Replicas je API Server und Web Server
 - Standard Celery Mode: 8 separate Worker (7 Worker + 1 Beat)
 - PostgreSQL: Flex 4.8 HA (3-Node Cluster) — automatisches Failover
-- **Kapazitaet**: 2x g1a.8d reicht fuer ca. 150 gleichzeitige User (~40% CPU, ~25% RAM bei Vollauslastung, extrapoliert aus DEV-Messungen)
+- **Kapazitaet**: 2x g1a.4d reicht fuer ca. 150 gleichzeitige User. Live-Werktagsspitze ~5 % CPU (avg) / ~20 % CPU (p99), Cluster-CPU-Requests-Auslastung 74 % der Allocatable.
 - **Deployment-Strategie**: Recreate (kein RollingUpdate — vermeidet DB Connection Pool Exhaustion)
 - HPA (HorizontalPodAutoscaler) nach Bedarf nachruestbar
 
