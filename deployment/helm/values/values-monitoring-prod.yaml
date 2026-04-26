@@ -32,7 +32,7 @@ prometheus:
     scrapeInterval: "30s"
     resources:
       requests:
-        cpu: 500m
+        cpu: 250m       # 30d-Peak Werktag 100m, p99 50m. Limit faengt Spitzen ab.
         memory: 1Gi
       limits:
         cpu: 1000m

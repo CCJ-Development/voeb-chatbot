@@ -35,7 +35,7 @@ loki:
 
   resources:
     requests:
-      cpu: 250m
+      cpu: 100m       # 2026-04-26: 30d-Peak nur 12m, Live 3m. Senkung zu g1a.4d-Pricetag.
       memory: 512Mi
     limits:
       cpu: 500m

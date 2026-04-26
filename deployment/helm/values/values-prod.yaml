@@ -169,7 +169,7 @@ celery_worker_docfetching:
   replicaCount: 1
   resources:
     requests:
-      cpu: 300m       # Reserve fuer Connector-Bursts (heute nur Ingestion-API aktiv).
+      cpu: 100m       # 30d-Peak Werktag 90m, p99 11m. Limit faengt Connector-Bursts.
       memory: 512Mi   # 30d-Peak nur 233 Mi — bei realen Connectors koennen PDFs RAM ziehen.
     limits:
       cpu: 1500m
@@ -179,7 +179,7 @@ celery_worker_docprocessing:
   replicaCount: 1
   resources:
     requests:
-      cpu: 300m       # Reserve fuer Indexing-Pipeline-Bursts.
+      cpu: 100m       # 30d-Peak Werktag 86m, p99 11m. Limit faengt Indexing-Bursts.
       memory: 512Mi   # 30d-Peak nur 232 Mi — Embedding-Batches koennen jedoch hoeher gehen.
     limits:
       cpu: 2000m
@@ -301,10 +301,11 @@ webserver:
 # Rebalanced 2026-04-25: 30d-Peak RAM 3.469 Mi war 85 % vom alten 4 GiB Limit
 # — zu eng fuer Indexing-Bursts. Limit auf 5 GiB hoch, Request auf 2,5 GiB.
 # JavaOpts auf -Xmx3g angehoben (war 2g, OS-Heap sollte ~50% des Limits sein).
+# 2026-04-26: CPU-Request 500m → 250m (Werktag-Peak 219m, p99 13m).
 opensearch:
   resources:
     requests:
-      cpu: 500m       # 30d-Peak 102m, p95 9m. Reserve fuer Indexing-Spikes.
+      cpu: 250m       # 30d-Peak Werktag 219m, p99 13m. Limit 2000m bleibt fuer Bursts.
       memory: 2560Mi  # 30d-Peak 3.469 Mi. Request schedule-freundlich, Limit faengt Peaks.
     limits:
       cpu: 2000m
@@ -319,8 +320,6 @@ opensearch:
 
 # --- Redis: PROD ---
 # Rebalanced 2026-04-25: 30d-Peak nur 40 Mi RAM, 7m CPU — bisher massiv ueberprovisioniert.
-# TODO Niko: redis-operator hatte 10 Restarts in 44d (~1x alle 4-5 Tage). Ursache pruefen
-# (Logs, Resource-Druck, Liveness-Probe-Verhalten) — separates Issue, nicht im Rebalancing-Scope.
 redis:
   redisStandalone:
     resources:
@@ -330,6 +329,22 @@ redis:
       limits:
         cpu: 500m
         memory: 512Mi
+
+# --- Redis-Operator: PROD ---
+# Rebalanced 2026-04-26: Chart-Default war 500m/500Mi (=Limit), Live nur 4m/22 Mi.
+# Faktor 100x ueberprovisioniert. Senkung auf 100m/128Mi gibt Headroom fuer
+# Liveness-Probe-Spikes (timeoutSeconds=1s ist sehr aggressiv); Limit getrennt
+# vom Request damit Bursts moeglich sind.
+# HINWEIS: redis-operator ist eine eigene Helm-Release auf PROD (nicht Onyx-Sub-Chart).
+# Werte werden via separatem `helm upgrade redis-operator -f <override>` deployed.
+redisOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
 
 # --- Model Server: PROD ---
 # Rebalanced 2026-04-25: Embedding/Inference-Calls gehen an StackIT AI Model Serving,
