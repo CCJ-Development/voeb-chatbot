@@ -231,10 +231,8 @@ opensearch:
   persistence:
     size: 20Gi
 
-# Vespa-Block entfaellt: vespa.enabled=false in values-common.yaml.
-# Aufraeumen DEV (eigenes Mini-Epic):
-#   - PVC vespa-storage-da-vespa-0 loeschen (20 GiB, davon kaum belegt)
-#   - Veraltete Doku-Kommentare entfernen
+# Vespa entfaellt komplett: vespa.enabled=false in values-common.yaml,
+# ONYX_DISABLE_VESPA=true in configMap, PVC + Service geloescht 2026-04-26.
 
 # --- Redis: Minimal ---
 # Rebalanced 2026-04-25: 30d-Peak nur 30 Mi RAM. Schon vorher schlank, weiter senken nicht noetig.

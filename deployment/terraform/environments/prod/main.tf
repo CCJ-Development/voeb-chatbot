@@ -2,12 +2,12 @@
 # PROD Environment — VÖB Service Chatbot
 # ===========================================================
 # Provisioniert:
-#   - 1x SKE Cluster "vob-prod" (2 Nodes: g1a.8d, je 8 vCPU, 32 GB)
+#   - 1x SKE Cluster "vob-prod" (2 Nodes: g1a.4d, je 4 vCPU, 16 GB)
 #   - 1x PostgreSQL Flex 4.8 Replica HA (4 CPU, 8 GB, 3 Nodes)
 #   - 1x Object Storage Bucket (vob-prod)
 #
 # Eigener Cluster, getrennt von DEV/TEST (ADR-004).
-# Geschaetzte Kosten: ~964 EUR/Monat (ADR-005)
+# Geschaetzte Kosten: ~681 EUR/Monat (nach Downgrade 2026-04-26, ADR-005 Addendum)
 # ===========================================================
 
 module "stackit" {
@@ -38,10 +38,13 @@ module "stackit" {
   # Kubeconfig: 90 Tage (Provider-Default ist nur 3600s = 1h!)
   kubeconfig_expiration = 7776000
 
-  # Node Pool "prod" — 2 dedizierte Nodes (nicht shared)
+  # Node Pool "prod" — 2 dedizierte Nodes (nicht shared).
+  # Downgrade g1a.8d → g1a.4d am 2026-04-26 nach Sync #6 + Worker-Resource-Rebalance
+  # (Cluster-Total-Requests 8.450m → 7.294m, passt jetzt auf 2x g1a.4d ~7.400m allocatable).
+  # Einsparung: ~283 EUR/Mo. Rollback: machine_type = "g1a.8d" + terraform apply (~10 Min).
   node_pool_name = "prod"
   node_pool = {
-    machine_type = "g1a.8d"
+    machine_type = "g1a.4d"
     minimum      = 2
     maximum      = 2
     volume_size  = 100

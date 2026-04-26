@@ -6,8 +6,10 @@
 # Abgedeckte Verbindungen (Beispiele):
 #   nginx → api-server:8080, web-server:3000
 #   web-server → api-server:8080 (INTERNAL_URL)
-#   api-server → redis:6379, vespa:8081+19071, opensearch:9200, inference-model:9000
-#   celery-* → redis:6379, vespa:8081+19071, opensearch:9200, model-server:9000, api-server:8080
+#   api-server → redis:6379, opensearch:9200, inference-model:9000
+#   celery-* → redis:6379, opensearch:9200, model-server:9000, api-server:8080
+#
+# Vespa wurde 2026-04-25 deaktiviert (siehe values-common.yaml ONYX_DISABLE_VESPA=true).
 #
 # NICHT abgedeckt:
 #   Cross-Namespace-Traffic (onyx-dev ↔ onyx-test) — absichtlich blockiert

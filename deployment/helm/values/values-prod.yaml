@@ -313,12 +313,9 @@ opensearch:
   persistence:
     size: 30Gi
 
-# Vespa-Block entfaellt: vespa.enabled=false in values-common.yaml.
-# Aufraeumen nach Stabilisierung (eigenes Mini-Epic):
-#   - PVC vespa-storage-da-vespa-0 loeschen (50 GiB, davon 2,6 GiB belegt)
-#   - NetworkPolicy 03-allow-intra-namespace.yaml: Vespa-Eintraege entfernen
-#   - Monitoring-Alert VespaStorageFull aus values-monitoring-prod.yaml entfernen
-#   - Veraltete Doku-Kommentare in values-dev.yaml ("Zombie-Mode") entfernen
+# Vespa entfaellt komplett: vespa.enabled=false in values-common.yaml,
+# ONYX_DISABLE_VESPA=true in configMap, PVC + Service geloescht 2026-04-26,
+# NetworkPolicy + Monitoring-Alert bereinigt.
 
 # --- Redis: PROD ---
 # Rebalanced 2026-04-25: 30d-Peak nur 40 Mi RAM, 7m CPU — bisher massiv ueberprovisioniert.
