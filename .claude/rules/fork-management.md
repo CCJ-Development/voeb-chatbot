@@ -54,6 +54,36 @@ git fetch upstream
 git log --oneline HEAD..upstream/main | wc -l   # Anzahl neuer Commits
 ```
 
+### 1a. Pre-PR-Verifikation (PFLICHT vor PR-Erstellung)
+
+**Lesson Learned Sync #7:** Wenn ein Sync neue oder strengere Lint-Regeln scharf macht, decken sie sich sequenziell im CI auf — jeder Push triggert einen Concurrency-cancelten Deploy. Drei Iterationen in 7 Min sind Verschwendung. Daher VOR `git push` lokal alle Stages durchspielen, die `ci-checks.yml` (`.github/workflows/ci-checks.yml`) prueft:
+
+```bash
+# 1. TOML-Parser (kann Auto-Merge-Duplicate-Keys uebersehen)
+python3 -c "import tomllib; tomllib.loads(open('pyproject.toml').read())"
+
+# 2. Ruff Check (I001, G004, F401, ARG, etc.)
+ruff check backend/ext/
+
+# 3. Ruff Format (line-length, Trailing-Commas, multi-line/single-line)
+ruff format --check backend/ext/
+
+# 4. TypeScript Strict (Frontend)
+cd web && npx tsc --noEmit --project tsconfig.json && cd -
+
+# 5. AST-Sanity der gepatchten Backend-Files (Quick-Check, ersetzt nicht pytest)
+for f in backend/onyx/main.py backend/onyx/llm/multi_llm.py \
+         backend/onyx/access/access.py backend/onyx/chat/prompt_utils.py \
+         backend/onyx/db/persona.py backend/onyx/db/document_set.py \
+         backend/onyx/natural_language_processing/search_nlp_models.py; do
+  python3 -c "import ast; ast.parse(open('$f').read())" && echo "✓ $f"
+done
+```
+
+**Falls ruff lokal nicht installiert ist:** `pipx install ruff` oder `pyenv exec python -m pip install ruff`. Auf macOS+pyenv funktionierte zuletzt: `PYENV_VERSION=3.11.12 pyenv exec python -m pip install ruff` (~2s).
+
+**Falls eine Stage failt:** Direkt fixen, **nicht** als CI-Followup-Commit nachreichen — sonst entsteht eine Concurrency-Cancel-Kette. Ruff hat fuer I001 `--fix`, fuer G004 manuell auf `%`-Style umstellen (`f"... {x}"` → `"... %s", x`).
+
 ### 2. Test-Merge (Dry-Run in Worktree)
 ```bash
 mkdir -p .claude/worktrees

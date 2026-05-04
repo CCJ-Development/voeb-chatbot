@@ -38,6 +38,7 @@
   - ✅ TLS/HTTPS TEST: **LIVE** (2026-03-09) — `https://test.chatbot.voeb-service.de`, Let's Encrypt ECDSA P-384, TLSv1.3, HTTP/2. Analog DEV, IngressClass `nginx-test`
   - ✅ LLM: 4 Chat-Modelle konfiguriert (GPT-OSS 120B, Qwen3-VL 235B, Llama 3.3 70B, Llama 3.1 8B). Gemma 3 + Mistral-Nemo nicht kompatibel (kein Tool Calling auf StackIT).
   - ✅ Embedding DEV: Qwen3-VL-Embedding 8B aktiv (umgestellt 2026-03-12).
+  - ✅ **Sync #7 DEV: LIVE** (2026-05-04) — Helm Rev 70, Chart 0.4.48, alle 14 Pods Running, `/api/health` + `/api/ext/health/deep` 200. **Alembic-Recovery NICHT noetig** (`alembic_version=d8a1b2c3e4f5` automatisch durchgelaufen, weil die zwei neuen Upstream-Migrationen `14162713706c` + `31bd8c17325e` nur neue Tabellen anlegen statt Spalten-Aenderungen auf bestehenden Tabellen zu machen). Drei Followup-Lint-Fixes (TOML-Duplicate-Key, I001+G004, ruff format Baseline) als Folge der durch Sync #7 neu/strenger scharf gemachten CI-Stages.
   - 📋 Scope: DEV live, TEST dauerhaft heruntergefahren (seit 2026-03-19), PROD **HTTPS LIVE** (2026-03-17).
 - **Phase 2 PROD:** ✅ **PROD AKTUALISIERT** (2026-03-22, Helm Rev 4)
   - ✅ Terraform apply: SKE `vob-prod` (eigener Cluster, ADR-004) + PG Flex 4.8 HA (3-Node) + Bucket `vob-prod`
@@ -97,7 +98,9 @@
 
 **Bemerkenswerte Upstream-Aenderungen:** 2 Security-Fixes (DSGVO-relevant: `#10602` document set access + `#10601` agent access on chat session creation + `#10528` is_listed-Filter), OpenSearch-Race-Condition-Fixes (Index-Lock #10446, Index-Refresh #10525/#10514), Confluence-Connector-Fixes (`/Date`-Macro + kyrillisches Encoding #10488), `litellm 1.83.0` (Tool-Calling-Stabilitaet auf StackIT), Multi-Threading fuer Image-Processing (#10744), neue Tracing-Infrastruktur (`LLMFlow`-Registry #10735, passive), Helm `extraEnv`-Hook (#10533), Node 20 → 24 (#10526), Vespa-Refactor (#10613, bei uns durch `ONYX_DISABLE_VESPA=true` unkritisch).
 
-**Offen Sync #7:** Push + PR + Merge-zu-main + DEV-Deploy + 3-Step-Alembic-Recovery + Smoke-Test, danach **Sync #7 PROD-Rollout** (gleicher 3-Step-Pattern, gleiche Branch-Hygiene-Vorsicht wie Sync #6 PROD — manuelle Helm-Upgrades nur aus `main` heraus oder via `workflow_dispatch`).
+**Sync #7 DEV LIVE (2026-05-04):** Helm Rev 70, Chart 0.4.48, alle 14 Pods Running, Health 200, Branding aktiv. Drei Followup-Lint-Fix-Commits noetig (TOML-Duplicate-Key + I001+G004 + ruff format Baseline) als Folge der durch Sync #7 neu/strenger scharf gemachten CI-Stages. **Alembic-Recovery diesmal NICHT noetig** (`alembic_version=d8a1b2c3e4f5` automatisch durchgelaufen, weil die zwei neuen Upstream-Migrationen `14162713706c` + `31bd8c17325e` nur neue Tabellen anlegen). Pattern-Erkenntnis: Recovery ist nur noetig, wenn Upstream-Migrationen Spalten-Aenderungen auf bestehenden Tabellen machen, die der Boot-Code sofort liest (Sync #5: `account_type`/`is_listed`/`permission_grant`; Sync #6: `document.file_id`).
+
+**Offen Sync #7 PROD-Rollout:** `gh workflow run stackit-deploy.yml -f environment=prod --ref main` triggern (Required-Reviewer-Approval noetig). Erwartung: kein Alembic-Crash, weil PROD-Migrationen identisch zu DEV. Falls Crash: gleicher 3-Step-Recovery-Pattern wie Sync #5/#6 PROD (3/3 erfolgreich validiert). Branch-Hygiene-Vorsicht: manuelle Helm-Upgrades nur aus `main` heraus oder via `workflow_dispatch` — nie aus aktivem Feature/Doku-Branch (Sync #6 PROD-Lesson #1).
 
 ---
 
@@ -121,6 +124,7 @@
 **Ruff-Format-Drift:** ✅ Erledigt mit Sync #7 (2026-05-04, Commit `b61a3b0a6`). 24 Files reformatiert via `ruff format`. CI-Lint nun komplett gruen (check + format).
 
 **Offen:**
+- **Sync #7 PROD-Rollout** (2026-05-04+) — Helm-Trigger via workflow_dispatch + Required-Reviewer-Approval. Identische Migrationen zu DEV → vermutlich kein Crash, falls doch: 3-Step-Recovery (`UPDATE alembic_version='a7c3e2b1d4f8'` → `alembic upgrade 31bd8c17325e` → `UPDATE alembic_version='d8a1b2c3e4f5'`). Branch-Hygiene-Vorsicht (siehe Sync #6 PROD-Lesson #1).
 - **Soak PROD nach Node-Downgrade** — 24-48h aktive Beobachtung, 7d passive Beobachtung. Memory-Druck bei Werktag-Spitzen pruefen
 - **redis-operator Restart-Pattern** auf neuem Pod beobachten (~7d). Falls weiter Restarts: Liveness-Probe `timeoutSeconds: 1 → 3`
 - **DEV-Single-Node-Frage** — nach 7d-Soak mit neuen Werktagsdaten unter optimiertem Stack neu rechnen. Voraussetzung: DEV-Monitoring-Removal (eigenes Mini-Branch) erhoeht den Spielraum
