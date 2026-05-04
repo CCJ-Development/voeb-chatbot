@@ -118,7 +118,7 @@
 
 **PROD-Node-Downgrade:** Nach Soak (mind. 7 Tage). Cluster-Total 7.294m passt mathematisch auf 2× g1a.4d (7.400m allocatable = 99 %), aber API-Peak 1.245m (einmaliger 30d-Outlier) frisst zuviel Headroom bei aktiver User-Last. Erst mit neuen 30d-Daten unter Sync-#6-Stack pruefen ob stabil. Eigener Branch `feature/prod-node-downgrade`.
 
-**Ruff-Format-Drift:** Unveraendert. 28 Files pre-existing Drift. Voraussetzung fuer sauberes Fixen: explizite Ruff-Config in `pyproject.toml`.
+**Ruff-Format-Drift:** ✅ Erledigt mit Sync #7 (2026-05-04, Commit `b61a3b0a6`). 24 Files reformatiert via `ruff format`. CI-Lint nun komplett gruen (check + format).
 
 **Offen:**
 - **Soak PROD nach Node-Downgrade** — 24-48h aktive Beobachtung, 7d passive Beobachtung. Memory-Druck bei Werktag-Spitzen pruefen
@@ -127,7 +127,7 @@
 - **DEV-Monitoring-Removal** (eigener Branch) — dann ggf. Single-Node moeglich (~143 EUR/Mo)
 - **Loki-Chart-Migration** auf nicht-deprecated Variante (grafana/loki-distributed oder loki-Chart 6.x)
 - **PROD PG-Downgrade Flex 4.8 HA → Flex 2.4 HA** (~174 EUR/Mo) — nach 6 Mo PROD-Live-Daten (Q3 2026)
-- **Ruff-Format-Baseline** (pyproject.toml-Config + 28 Files formatten)
+- ~~Ruff-Format-Baseline (pyproject.toml-Config + 28 Files formatten)~~ — ✅ erledigt mit Sync #7
 - **2 neue Default-UserGroups** ("Admin" id 54/56, "Basic" id 55/57) — optional löschen falls VÖB nicht will
 - **Rate-Limit-Retry Feature** aus Stash fertigstellen
 - **Monitoring Phase 7-11** (optional): Incident-Playbook, Post-Incident-Review, Chaos-Test, On-Call-Konzept
