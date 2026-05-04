@@ -40,9 +40,14 @@ def resync_all_groups(
     result = trigger_full_resync(db_session)
     from ext.services.audit import log_audit_event
 
-    log_audit_event(db_session, user, "RESYNC", "DOC_ACCESS",
-                    details={"groups_queued": result["groups_queued"]},
-                    audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "RESYNC",
+        "DOC_ACCESS",
+        details={"groups_queued": result["groups_queued"]},
+        audit_ctx=audit_ctx,
+    )
     logger.info(
         "[EXT-ACCESS] Resync triggered by admin: %d groups",
         result["groups_queued"],

@@ -85,26 +85,40 @@ class TestSchemas:
         data = {
             "period": {"from_date": date(2026, 3, 1), "to_date": date(2026, 3, 26)},
             "users": {
-                "registered": 0, "active_period": 0, "dau_avg": 0.0,
-                "new_in_period": 0, "inactive_30d": 0,
+                "registered": 0,
+                "active_period": 0,
+                "dau_avg": 0.0,
+                "new_in_period": 0,
+                "inactive_30d": 0,
             },
             "sessions": {
-                "total": 0, "avg_per_user": 0.0,
-                "avg_messages_per_session": 0.0, "avg_duration_seconds": 0.0,
+                "total": 0,
+                "avg_per_user": 0.0,
+                "avg_messages_per_session": 0.0,
+                "avg_duration_seconds": 0.0,
             },
             "tokens": {
-                "total": 0, "prompt": 0, "completion": 0,
-                "requests": 0, "by_model": [],
+                "total": 0,
+                "prompt": 0,
+                "completion": 0,
+                "requests": 0,
+                "by_model": [],
             },
             "quality": {
-                "feedback_total": 0, "feedback_positive": 0, "feedback_negative": 0,
-                "satisfaction_pct": 0.0, "error_rate_pct": 0.0,
-                "avg_response_time_seconds": None, "p95_response_time_seconds": None,
+                "feedback_total": 0,
+                "feedback_positive": 0,
+                "feedback_negative": 0,
+                "satisfaction_pct": 0.0,
+                "error_rate_pct": 0.0,
+                "avg_response_time_seconds": None,
+                "p95_response_time_seconds": None,
             },
             "agents": {"total": 0, "active_in_period": 0, "top": []},
             "content": {
-                "total_documents": 0, "active_connectors": 0,
-                "error_connectors": 0, "document_sets": 0,
+                "total_documents": 0,
+                "active_connectors": 0,
+                "error_connectors": 0,
+                "document_sets": 0,
             },
             "compliance": {"admin_actions": 0, "admin_actions_by_type": {}},
         }
@@ -116,15 +130,17 @@ class TestSchemas:
 
         data = {
             "total": 1,
-            "users": [{
-                "email": "test@example.com",
-                "role": "ADMIN",
-                "registered": datetime(2026, 3, 1),
-                "sessions": 10,
-                "messages": 50,
-                "tokens": 5000,
-                "last_activity": datetime(2026, 3, 25),
-            }],
+            "users": [
+                {
+                    "email": "test@example.com",
+                    "role": "ADMIN",
+                    "registered": datetime(2026, 3, 1),
+                    "sessions": 10,
+                    "messages": 50,
+                    "tokens": 5000,
+                    "last_activity": datetime(2026, 3, 25),
+                }
+            ],
         }
         response = UserActivityResponse(**data)
         assert response.users[0].sessions == 10
@@ -135,8 +151,18 @@ class TestSchemas:
         data = {
             "total": 2,
             "agents": [
-                {"name": "Assistant", "sessions": 100, "messages": 500, "unique_users": 10},
-                {"name": "Recherche", "sessions": 50, "messages": 200, "unique_users": 5},
+                {
+                    "name": "Assistant",
+                    "sessions": 100,
+                    "messages": 500,
+                    "unique_users": 10,
+                },
+                {
+                    "name": "Recherche",
+                    "sessions": 50,
+                    "messages": 200,
+                    "unique_users": 5,
+                },
             ],
         }
         response = AgentDetailResponse(**data)
@@ -182,69 +208,123 @@ class TestRouterDateValidation:
 class TestCsvExport:
     @patch("ext.services.analytics.get_analytics_summary")
     @patch("ext.services.analytics.get_user_activity")
-    def test_csv_contains_headers(self, mock_users: MagicMock, mock_summary: MagicMock) -> None:
+    def test_csv_contains_headers(
+        self, mock_users: MagicMock, mock_summary: MagicMock
+    ) -> None:
         from ext.services.analytics import export_analytics_csv
 
         mock_summary.return_value = {
             "users": {
-                "registered": 10, "active_period": 5, "dau_avg": 2.0,
-                "new_in_period": 1, "inactive_30d": 3,
+                "registered": 10,
+                "active_period": 5,
+                "dau_avg": 2.0,
+                "new_in_period": 1,
+                "inactive_30d": 3,
             },
             "sessions": {
-                "total": 20, "avg_per_user": 4.0,
-                "avg_messages_per_session": 3.0, "avg_duration_seconds": 60.0,
+                "total": 20,
+                "avg_per_user": 4.0,
+                "avg_messages_per_session": 3.0,
+                "avg_duration_seconds": 60.0,
             },
             "tokens": {
-                "total": 1000, "prompt": 600, "completion": 400,
-                "requests": 50, "by_model": [],
+                "total": 1000,
+                "prompt": 600,
+                "completion": 400,
+                "requests": 50,
+                "by_model": [],
             },
             "quality": {
-                "feedback_total": 0, "feedback_positive": 0, "feedback_negative": 0,
-                "satisfaction_pct": 0.0, "error_rate_pct": 0.0,
-                "avg_response_time_seconds": None, "p95_response_time_seconds": None,
+                "feedback_total": 0,
+                "feedback_positive": 0,
+                "feedback_negative": 0,
+                "satisfaction_pct": 0.0,
+                "error_rate_pct": 0.0,
+                "avg_response_time_seconds": None,
+                "p95_response_time_seconds": None,
             },
             "agents": {"total": 1, "active_in_period": 1, "top": []},
             "content": {
-                "total_documents": 0, "active_connectors": 1,
-                "error_connectors": 0, "document_sets": 0,
+                "total_documents": 0,
+                "active_connectors": 1,
+                "error_connectors": 0,
+                "document_sets": 0,
             },
             "compliance": {"admin_actions": 0, "admin_actions_by_type": {}},
         }
         mock_users.return_value = {"total": 0, "users": []}
 
-        csv = export_analytics_csv(_mock_db_session(), date(2026, 3, 1), date(2026, 3, 26))
+        csv = export_analytics_csv(
+            _mock_db_session(), date(2026, 3, 1), date(2026, 3, 26)
+        )
         assert "Kategorie,KPI,Wert" in csv
         assert "Registrierte User" in csv
         assert "Token" in csv
 
     @patch("ext.services.analytics.get_analytics_summary")
     @patch("ext.services.analytics.get_user_activity")
-    def test_csv_includes_user_table(self, mock_users: MagicMock, mock_summary: MagicMock) -> None:
+    def test_csv_includes_user_table(
+        self, mock_users: MagicMock, mock_summary: MagicMock
+    ) -> None:
         from ext.services.analytics import export_analytics_csv
 
         mock_summary.return_value = {
-            "users": {"registered": 0, "active_period": 0, "dau_avg": 0.0, "new_in_period": 0, "inactive_30d": 0},
-            "sessions": {"total": 0, "avg_per_user": 0.0, "avg_messages_per_session": 0.0, "avg_duration_seconds": 0.0},
-            "tokens": {"total": 0, "prompt": 0, "completion": 0, "requests": 0, "by_model": []},
-            "quality": {"feedback_total": 0, "feedback_positive": 0, "feedback_negative": 0, "satisfaction_pct": 0.0, "error_rate_pct": 0.0, "avg_response_time_seconds": None, "p95_response_time_seconds": None},
+            "users": {
+                "registered": 0,
+                "active_period": 0,
+                "dau_avg": 0.0,
+                "new_in_period": 0,
+                "inactive_30d": 0,
+            },
+            "sessions": {
+                "total": 0,
+                "avg_per_user": 0.0,
+                "avg_messages_per_session": 0.0,
+                "avg_duration_seconds": 0.0,
+            },
+            "tokens": {
+                "total": 0,
+                "prompt": 0,
+                "completion": 0,
+                "requests": 0,
+                "by_model": [],
+            },
+            "quality": {
+                "feedback_total": 0,
+                "feedback_positive": 0,
+                "feedback_negative": 0,
+                "satisfaction_pct": 0.0,
+                "error_rate_pct": 0.0,
+                "avg_response_time_seconds": None,
+                "p95_response_time_seconds": None,
+            },
             "agents": {"total": 0, "active_in_period": 0, "top": []},
-            "content": {"total_documents": 0, "active_connectors": 0, "error_connectors": 0, "document_sets": 0},
+            "content": {
+                "total_documents": 0,
+                "active_connectors": 0,
+                "error_connectors": 0,
+                "document_sets": 0,
+            },
             "compliance": {"admin_actions": 0, "admin_actions_by_type": {}},
         }
         mock_users.return_value = {
             "total": 1,
-            "users": [{
-                "email": "test@voeb.de",
-                "role": "ADMIN",
-                "registered": datetime(2026, 3, 1),
-                "sessions": 5,
-                "messages": 20,
-                "tokens": 3000,
-                "last_activity": datetime(2026, 3, 25, 14, 30),
-            }],
+            "users": [
+                {
+                    "email": "test@voeb.de",
+                    "role": "ADMIN",
+                    "registered": datetime(2026, 3, 1),
+                    "sessions": 5,
+                    "messages": 20,
+                    "tokens": 3000,
+                    "last_activity": datetime(2026, 3, 25, 14, 30),
+                }
+            ],
         }
 
-        csv = export_analytics_csv(_mock_db_session(), date(2026, 3, 1), date(2026, 3, 26))
+        csv = export_analytics_csv(
+            _mock_db_session(), date(2026, 3, 1), date(2026, 3, 26)
+        )
         assert "test@voeb.de" in csv
         assert "ADMIN" in csv
 
@@ -258,4 +338,5 @@ class TestFeatureFlag:
     def test_flag_disabled_no_registration(self) -> None:
         """When EXT_ANALYTICS_ENABLED=false, router is not registered."""
         from ext.config import EXT_ANALYTICS_ENABLED
+
         assert not EXT_ANALYTICS_ENABLED

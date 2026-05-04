@@ -129,24 +129,29 @@ def _build_user_group_response(
     document_sets[], personas[], is_up_to_date, is_up_for_deletion
     """
     # Fetch memberships with curator flag
-    memberships = db_session.execute(
-        select(User__UserGroup).where(
-            User__UserGroup.user_group_id == group.id
+    memberships = (
+        db_session.execute(
+            select(User__UserGroup).where(User__UserGroup.user_group_id == group.id)
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
 
     user_ids = [m.user_id for m in memberships if m.user_id is not None]
     curator_ids = [
-        str(m.user_id) for m in memberships
-        if m.is_curator and m.user_id is not None
+        str(m.user_id) for m in memberships if m.is_curator and m.user_id is not None
     ]
 
     # Fetch users
     users = []
     if user_ids:
-        user_rows = db_session.execute(
-            select(User).where(User.id.in_(user_ids))
-        ).scalars().unique().all()
+        user_rows = (
+            db_session.execute(select(User).where(User.id.in_(user_ids)))
+            .scalars()
+            .unique()
+            .all()
+        )
         users = [
             {
                 "id": str(u.id),
@@ -157,21 +162,31 @@ def _build_user_group_response(
         ]
 
     # Fetch cc_pairs (only current)
-    cc_pair_rows = db_session.execute(
-        select(UserGroup__ConnectorCredentialPair).where(
-            UserGroup__ConnectorCredentialPair.user_group_id == group.id,
-            UserGroup__ConnectorCredentialPair.is_current == True,  # noqa: E712
+    cc_pair_rows = (
+        db_session.execute(
+            select(UserGroup__ConnectorCredentialPair).where(
+                UserGroup__ConnectorCredentialPair.user_group_id == group.id,
+                UserGroup__ConnectorCredentialPair.is_current == True,  # noqa: E712
+            )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
 
     cc_pairs = []
     if cc_pair_rows:
         cc_pair_ids = [r.cc_pair_id for r in cc_pair_rows]
-        pairs = db_session.execute(
-            select(ConnectorCredentialPair).where(
-                ConnectorCredentialPair.id.in_(cc_pair_ids)
+        pairs = (
+            db_session.execute(
+                select(ConnectorCredentialPair).where(
+                    ConnectorCredentialPair.id.in_(cc_pair_ids)
+                )
             )
-        ).scalars().unique().all()
+            .scalars()
+            .unique()
+            .all()
+        )
         cc_pairs = [
             {
                 "id": p.id,
@@ -186,41 +201,57 @@ def _build_user_group_response(
         ]
 
     # Fetch personas
-    persona_rows = db_session.execute(
-        select(Persona__UserGroup.persona_id).where(
-            Persona__UserGroup.user_group_id == group.id
+    persona_rows = (
+        db_session.execute(
+            select(Persona__UserGroup.persona_id).where(
+                Persona__UserGroup.user_group_id == group.id
+            )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
 
     personas = []
     if persona_rows:
         from onyx.db.models import Persona
 
-        persona_objs = db_session.execute(
-            select(Persona).where(Persona.id.in_(persona_rows))
-        ).scalars().unique().all()
+        persona_objs = (
+            db_session.execute(select(Persona).where(Persona.id.in_(persona_rows)))
+            .scalars()
+            .unique()
+            .all()
+        )
         personas = [
-            {"id": p.id, "name": p.name or f"Persona {p.id}"}
-            for p in persona_objs
+            {"id": p.id, "name": p.name or f"Persona {p.id}"} for p in persona_objs
         ]
 
     # Fetch document sets
-    doc_set_rows = db_session.execute(
-        select(DocumentSet__UserGroup.document_set_id).where(
-            DocumentSet__UserGroup.user_group_id == group.id
+    doc_set_rows = (
+        db_session.execute(
+            select(DocumentSet__UserGroup.document_set_id).where(
+                DocumentSet__UserGroup.user_group_id == group.id
+            )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
 
     document_sets = []
     if doc_set_rows:
         from onyx.db.models import DocumentSet
 
-        doc_set_objs = db_session.execute(
-            select(DocumentSet).where(DocumentSet.id.in_(doc_set_rows))
-        ).scalars().unique().all()
+        doc_set_objs = (
+            db_session.execute(
+                select(DocumentSet).where(DocumentSet.id.in_(doc_set_rows))
+            )
+            .scalars()
+            .unique()
+            .all()
+        )
         document_sets = [
-            {"id": ds.id, "name": ds.name or f"DocSet {ds.id}"}
-            for ds in doc_set_objs
+            {"id": ds.id, "name": ds.name or f"DocSet {ds.id}"} for ds in doc_set_objs
         ]
 
     return {
@@ -245,23 +276,35 @@ def fetch_all_user_groups(
 ) -> list[dict]:
     """Fetch all groups. Curators only see groups they curate."""
     if user.role == UserRole.ADMIN:
-        groups = db_session.execute(
-            select(UserGroup).where(
-                UserGroup.is_up_for_deletion == False  # noqa: E712
-            ).order_by(UserGroup.name)
-        ).scalars().unique().all()
+        groups = (
+            db_session.execute(
+                select(UserGroup)
+                .where(
+                    UserGroup.is_up_for_deletion == False  # noqa: E712
+                )
+                .order_by(UserGroup.name)
+            )
+            .scalars()
+            .unique()
+            .all()
+        )
     elif user.role in (UserRole.CURATOR, UserRole.GLOBAL_CURATOR):
         # Only groups where user is curator
-        groups = db_session.execute(
-            select(UserGroup)
-            .join(User__UserGroup)
-            .where(
-                User__UserGroup.user_id == user.id,
-                User__UserGroup.is_curator == True,  # noqa: E712
-                UserGroup.is_up_for_deletion == False,  # noqa: E712
+        groups = (
+            db_session.execute(
+                select(UserGroup)
+                .join(User__UserGroup)
+                .where(
+                    User__UserGroup.user_id == user.id,
+                    User__UserGroup.is_curator == True,  # noqa: E712
+                    UserGroup.is_up_for_deletion == False,  # noqa: E712
+                )
+                .order_by(UserGroup.name)
             )
-            .order_by(UserGroup.name)
-        ).scalars().unique().all()
+            .scalars()
+            .unique()
+            .all()
+        )
     else:
         return []
 
@@ -310,9 +353,7 @@ def create_user_group(
     # Validate cc_pair_ids exist
     if cc_pair_ids:
         found_count = db_session.execute(
-            select(func.count()).where(
-                ConnectorCredentialPair.id.in_(cc_pair_ids)
-            )
+            select(func.count()).where(ConnectorCredentialPair.id.in_(cc_pair_ids))
         ).scalar_one()
         if found_count != len(cc_pair_ids):
             raise HTTPException(
@@ -379,9 +420,7 @@ def update_user_group(
     # Validate cc_pair_ids
     if cc_pair_ids:
         found_count = db_session.execute(
-            select(func.count()).where(
-                ConnectorCredentialPair.id.in_(cc_pair_ids)
-            )
+            select(func.count()).where(ConnectorCredentialPair.id.in_(cc_pair_ids))
         ).scalar_one()
         if found_count != len(cc_pair_ids):
             raise HTTPException(
@@ -397,7 +436,10 @@ def update_user_group(
                 User__UserGroup.user_group_id == user_group_id,
                 User__UserGroup.is_curator == True,  # noqa: E712
             )
-        ).scalars().unique().all()
+        )
+        .scalars()
+        .unique()
+        .all()
         if m.user_id is not None
     ]
 
@@ -408,14 +450,15 @@ def update_user_group(
             select(User__UserGroup).where(
                 User__UserGroup.user_group_id == user_group_id
             )
-        ).scalars().unique().all()
+        )
+        .scalars()
+        .unique()
+        .all()
         if m.user_id is not None
     }
 
     db_session.execute(
-        delete(User__UserGroup).where(
-            User__UserGroup.user_group_id == user_group_id
-        )
+        delete(User__UserGroup).where(User__UserGroup.user_group_id == user_group_id)
     )
 
     new_user_id_set = set(user_ids)
@@ -473,7 +516,10 @@ def delete_user_group(
                 User__UserGroup.user_group_id == user_group_id,
                 User__UserGroup.is_curator == True,  # noqa: E712
             )
-        ).scalars().unique().all()
+        )
+        .scalars()
+        .unique()
+        .all()
         if m.user_id is not None
     ]
 
@@ -481,9 +527,7 @@ def delete_user_group(
 
     # Delete all M2M associations
     db_session.execute(
-        delete(User__UserGroup).where(
-            User__UserGroup.user_group_id == user_group_id
-        )
+        delete(User__UserGroup).where(User__UserGroup.user_group_id == user_group_id)
     )
     db_session.execute(
         delete(UserGroup__ConnectorCredentialPair).where(
@@ -541,9 +585,7 @@ def add_users_to_group(
         select(func.count()).where(User.id.in_(user_ids))
     ).scalar_one()
     if found_count != len(user_ids):
-        raise HTTPException(
-            status_code=404, detail="One or more user IDs not found"
-        )
+        raise HTTPException(status_code=404, detail="One or more user IDs not found")
 
     # Get existing members
     existing = set(
@@ -551,7 +593,10 @@ def add_users_to_group(
             select(User__UserGroup.user_id).where(
                 User__UserGroup.user_group_id == user_group_id
             )
-        ).scalars().unique().all()
+        )
+        .scalars()
+        .unique()
+        .all()
     )
 
     added = 0
@@ -570,9 +615,7 @@ def add_users_to_group(
         group.is_up_to_date = False
         group.time_last_modified_by_user = datetime.now(timezone.utc)
         db_session.commit()
-        logger.info(
-            "[EXT-RBAC] %d users added to group '%s'", added, group.name
-        )
+        logger.info("[EXT-RBAC] %d users added to group '%s'", added, group.name)
 
 
 def set_curator_status(
@@ -635,9 +678,11 @@ def fetch_minimal_user_groups(
     """
     if user.role == UserRole.ADMIN:
         groups = db_session.execute(
-            select(UserGroup.id, UserGroup.name).where(
+            select(UserGroup.id, UserGroup.name)
+            .where(
                 UserGroup.is_up_for_deletion == False  # noqa: E712
-            ).order_by(UserGroup.name)
+            )
+            .order_by(UserGroup.name)
         ).all()
     else:
         groups = db_session.execute(

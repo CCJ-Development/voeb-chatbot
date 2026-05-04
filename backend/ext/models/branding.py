@@ -24,23 +24,17 @@ class ExtBrandingConfig(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
 
     # App identity
-    application_name: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )
+    application_name: Mapped[str | None] = mapped_column(String(50), nullable=True)
     use_custom_logo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
     use_custom_logotype: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
-    logo_display_style: Mapped[str | None] = mapped_column(
-        String(20), nullable=True
-    )
+    logo_display_style: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Custom navigation (stored as JSON string)
-    custom_nav_items_json: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    custom_nav_items_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Chat components
     custom_lower_disclaimer_content: Mapped[str | None] = mapped_column(
@@ -52,35 +46,21 @@ class ExtBrandingConfig(Base):
     two_lines_for_chat_header: Mapped[bool | None] = mapped_column(
         Boolean, nullable=True
     )
-    custom_popup_header: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )
-    custom_popup_content: Mapped[str | None] = mapped_column(
-        String(500), nullable=True
-    )
-    enable_consent_screen: Mapped[bool | None] = mapped_column(
-        Boolean, nullable=True
-    )
+    custom_popup_header: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    custom_popup_content: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    enable_consent_screen: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     consent_screen_prompt: Mapped[str | None] = mapped_column(
         String(200), nullable=True
     )
-    show_first_visit_notice: Mapped[bool | None] = mapped_column(
-        Boolean, nullable=True
-    )
+    show_first_visit_notice: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     custom_greeting_message: Mapped[str | None] = mapped_column(
         String(50), nullable=True
     )
 
     # Logo binary data
-    logo_data: Mapped[bytes | None] = mapped_column(
-        LargeBinary, nullable=True
-    )
-    logo_content_type: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )
-    logo_filename: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
+    logo_data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    logo_content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    logo_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

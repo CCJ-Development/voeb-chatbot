@@ -22,9 +22,7 @@ logger = logging.getLogger("ext.prompts")
 
 # --- Cache configuration ---
 
-_CACHE_TTL_SECONDS: int = int(
-    os.getenv("EXT_PROMPTS_CACHE_TTL_SECONDS", "60")
-)
+_CACHE_TTL_SECONDS: int = int(os.getenv("EXT_PROMPTS_CACHE_TTL_SECONDS", "60"))
 
 # Module-global cache (thread-safe via lock)
 _cache_lock = threading.Lock()
@@ -96,16 +94,12 @@ def get_all_prompts(db_session: Session) -> list[ExtCustomPrompt]:
     )
 
 
-def get_prompt_by_id(
-    db_session: Session, prompt_id: int
-) -> ExtCustomPrompt | None:
+def get_prompt_by_id(db_session: Session, prompt_id: int) -> ExtCustomPrompt | None:
     """Single prompt by ID, or None."""
     return db_session.get(ExtCustomPrompt, prompt_id)
 
 
-def create_prompt(
-    db_session: Session, data: "PromptCreate"
-) -> ExtCustomPrompt:
+def create_prompt(db_session: Session, data: "PromptCreate") -> ExtCustomPrompt:
     """Create a new prompt and invalidate cache."""
     row = ExtCustomPrompt(
         name=data.name,

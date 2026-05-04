@@ -48,9 +48,7 @@ def get_group_acls_for_user(user: User, db_session: Session) -> set[str]:
     return {prefix_user_group(name) for (name,) in groups}
 
 
-def get_user_groups_for_document(
-    document_id: str, db_session: Session
-) -> list[str]:
+def get_user_groups_for_document(document_id: str, db_session: Session) -> list[str]:
     """Alle Gruppennamen die Zugriff auf ein Dokument haben.
 
     Wird von Core #3 Hook in _get_access_for_document(s)() aufgerufen.
@@ -64,8 +62,7 @@ def get_user_groups_for_document(
         )
         .join(
             ConnectorCredentialPair,
-            UserGroup__ConnectorCredentialPair.cc_pair_id
-            == ConnectorCredentialPair.id,
+            UserGroup__ConnectorCredentialPair.cc_pair_id == ConnectorCredentialPair.id,
         )
         .join(
             DocumentByConnectorCredentialPair,
@@ -90,9 +87,7 @@ def get_user_groups_for_document(
 # ---------------------------------------------------------------------------
 
 
-def get_document_ids_for_group(
-    group_id: int, db_session: Session
-) -> list[str]:
+def get_document_ids_for_group(group_id: int, db_session: Session) -> list[str]:
     """Alle Dokument-IDs die zu einer Gruppe gehoeren (via CC-Pairs)."""
     doc_ids = (
         db_session.query(DocumentByConnectorCredentialPair.id)
@@ -109,8 +104,7 @@ def get_document_ids_for_group(
         )
         .join(
             UserGroup__ConnectorCredentialPair,
-            ConnectorCredentialPair.id
-            == UserGroup__ConnectorCredentialPair.cc_pair_id,
+            ConnectorCredentialPair.id == UserGroup__ConnectorCredentialPair.cc_pair_id,
         )
         .filter(UserGroup__ConnectorCredentialPair.user_group_id == group_id)
         .distinct()
@@ -199,9 +193,7 @@ def trigger_full_resync(db_session: Session) -> dict:
 
     # Geschaetzte Dokumente zaehlen
     estimated_docs = (
-        db_session.query(
-            func.count(DocumentByConnectorCredentialPair.id.distinct())
-        )
+        db_session.query(func.count(DocumentByConnectorCredentialPair.id.distinct()))
         .join(
             ConnectorCredentialPair,
             (
@@ -215,8 +207,7 @@ def trigger_full_resync(db_session: Session) -> dict:
         )
         .join(
             UserGroup__ConnectorCredentialPair,
-            ConnectorCredentialPair.id
-            == UserGroup__ConnectorCredentialPair.cc_pair_id,
+            ConnectorCredentialPair.id == UserGroup__ConnectorCredentialPair.cc_pair_id,
         )
         .scalar()
         or 0

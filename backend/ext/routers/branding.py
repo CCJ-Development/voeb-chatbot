@@ -100,8 +100,14 @@ async def admin_put_enterprise_logo(
     error = update_logo(db_session, file_data, file.filename or "logo")
     if error:
         raise HTTPException(status_code=400, detail=error)
-    log_audit_event(db_session, user, "UPDATE", "LOGO",
-                    resource_name=file.filename, audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "LOGO",
+        resource_name=file.filename,
+        audit_ctx=audit_ctx,
+    )
 
 
 @admin_router.delete("/logo")

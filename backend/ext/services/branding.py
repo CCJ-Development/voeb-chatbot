@@ -92,15 +92,11 @@ def get_branding_config(db_session: Session) -> BrandingConfigResponse:
     return _row_to_response(row)
 
 
-def update_branding_config(
-    db_session: Session, data: BrandingConfigUpdate
-) -> None:
+def update_branding_config(db_session: Session, data: BrandingConfigUpdate) -> None:
     """Upsert branding config (singleton row)."""
     row = db_session.get(ExtBrandingConfig, _SINGLETON_ID)
 
-    nav_items_json = json.dumps(
-        [item.model_dump() for item in data.custom_nav_items]
-    )
+    nav_items_json = json.dumps([item.model_dump() for item in data.custom_nav_items])
 
     if row is None:
         row = ExtBrandingConfig(
@@ -149,9 +145,7 @@ def get_logo(db_session: Session) -> tuple[bytes, str] | None:
     return row.logo_data, row.logo_content_type or "image/png"
 
 
-def update_logo(
-    db_session: Session, file_data: bytes, filename: str
-) -> str | None:
+def update_logo(db_session: Session, file_data: bytes, filename: str) -> str | None:
     """Validate and store logo. Returns error message or None on success."""
     if len(file_data) > LOGO_MAX_SIZE_BYTES:
         return "Logo must be under 2MB"

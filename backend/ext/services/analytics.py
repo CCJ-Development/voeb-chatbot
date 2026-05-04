@@ -171,62 +171,106 @@ def export_analytics_csv(
     writer.writerow(["Kategorie", "KPI", "Wert"])
     writer.writerow([])
 
-    _write_section(writer, "Nutzung", {
-        "Registrierte User": summary["users"]["registered"],
-        "Aktive User (Zeitraum)": summary["users"]["active_period"],
-        "DAU Durchschnitt": summary["users"]["dau_avg"],
-        "Neue User": summary["users"]["new_in_period"],
-        "Inaktive User (30d)": summary["users"]["inactive_30d"],
-    })
-    _write_section(writer, "Sessions", {
-        "Sessions gesamt": summary["sessions"]["total"],
-        "Sessions pro User": summary["sessions"]["avg_per_user"],
-        "Nachrichten pro Session": summary["sessions"]["avg_messages_per_session"],
-        "Durchschnittliche Dauer (s)": summary["sessions"]["avg_duration_seconds"],
-    })
-    _write_section(writer, "Token", {
-        "Total Tokens": summary["tokens"]["total"],
-        "Prompt Tokens": summary["tokens"]["prompt"],
-        "Completion Tokens": summary["tokens"]["completion"],
-        "Requests": summary["tokens"]["requests"],
-    })
+    _write_section(
+        writer,
+        "Nutzung",
+        {
+            "Registrierte User": summary["users"]["registered"],
+            "Aktive User (Zeitraum)": summary["users"]["active_period"],
+            "DAU Durchschnitt": summary["users"]["dau_avg"],
+            "Neue User": summary["users"]["new_in_period"],
+            "Inaktive User (30d)": summary["users"]["inactive_30d"],
+        },
+    )
+    _write_section(
+        writer,
+        "Sessions",
+        {
+            "Sessions gesamt": summary["sessions"]["total"],
+            "Sessions pro User": summary["sessions"]["avg_per_user"],
+            "Nachrichten pro Session": summary["sessions"]["avg_messages_per_session"],
+            "Durchschnittliche Dauer (s)": summary["sessions"]["avg_duration_seconds"],
+        },
+    )
+    _write_section(
+        writer,
+        "Token",
+        {
+            "Total Tokens": summary["tokens"]["total"],
+            "Prompt Tokens": summary["tokens"]["prompt"],
+            "Completion Tokens": summary["tokens"]["completion"],
+            "Requests": summary["tokens"]["requests"],
+        },
+    )
     for m in summary["tokens"]["by_model"]:
-        writer.writerow(["Token", f"Modell: {m['model']}", f"{m['tokens']} Tokens / {m['requests']} Requests"])
+        writer.writerow(
+            [
+                "Token",
+                f"Modell: {m['model']}",
+                f"{m['tokens']} Tokens / {m['requests']} Requests",
+            ]
+        )
 
-    _write_section(writer, "Qualitaet", {
-        "Feedback gesamt": summary["quality"]["feedback_total"],
-        "Positiv": summary["quality"]["feedback_positive"],
-        "Negativ": summary["quality"]["feedback_negative"],
-        "Zufriedenheit (%)": summary["quality"]["satisfaction_pct"],
-        "Fehlerrate (%)": summary["quality"]["error_rate_pct"],
-        "Antwortzeit Median (s)": summary["quality"]["avg_response_time_seconds"],
-        "Antwortzeit P95 (s)": summary["quality"]["p95_response_time_seconds"],
-    })
-    _write_section(writer, "Content", {
-        "Indexierte Dokumente": summary["content"]["total_documents"],
-        "Aktive Connectors": summary["content"]["active_connectors"],
-        "Fehlerhafte Connectors": summary["content"]["error_connectors"],
-        "Document Sets": summary["content"]["document_sets"],
-    })
-    _write_section(writer, "Compliance", {
-        "Admin-Aktionen": summary["compliance"]["admin_actions"],
-    })
+    _write_section(
+        writer,
+        "Qualitaet",
+        {
+            "Feedback gesamt": summary["quality"]["feedback_total"],
+            "Positiv": summary["quality"]["feedback_positive"],
+            "Negativ": summary["quality"]["feedback_negative"],
+            "Zufriedenheit (%)": summary["quality"]["satisfaction_pct"],
+            "Fehlerrate (%)": summary["quality"]["error_rate_pct"],
+            "Antwortzeit Median (s)": summary["quality"]["avg_response_time_seconds"],
+            "Antwortzeit P95 (s)": summary["quality"]["p95_response_time_seconds"],
+        },
+    )
+    _write_section(
+        writer,
+        "Content",
+        {
+            "Indexierte Dokumente": summary["content"]["total_documents"],
+            "Aktive Connectors": summary["content"]["active_connectors"],
+            "Fehlerhafte Connectors": summary["content"]["error_connectors"],
+            "Document Sets": summary["content"]["document_sets"],
+        },
+    )
+    _write_section(
+        writer,
+        "Compliance",
+        {
+            "Admin-Aktionen": summary["compliance"]["admin_actions"],
+        },
+    )
     for action_type, count in summary["compliance"]["admin_actions_by_type"].items():
         writer.writerow(["Compliance", f"Aktion: {action_type}", count])
 
     # Section 2: User Activity Table
     writer.writerow([])
-    writer.writerow(["User", "Rolle", "Registriert", "Sessions", "Nachrichten", "Tokens", "Letzte Aktivitaet"])
+    writer.writerow(
+        [
+            "User",
+            "Rolle",
+            "Registriert",
+            "Sessions",
+            "Nachrichten",
+            "Tokens",
+            "Letzte Aktivitaet",
+        ]
+    )
     for u in users["users"]:
-        writer.writerow([
-            u["email"],
-            u["role"],
-            u["registered"].strftime("%Y-%m-%d") if u["registered"] else "",
-            u["sessions"],
-            u["messages"],
-            u["tokens"],
-            u["last_activity"].strftime("%Y-%m-%d %H:%M") if u["last_activity"] else "",
-        ])
+        writer.writerow(
+            [
+                u["email"],
+                u["role"],
+                u["registered"].strftime("%Y-%m-%d") if u["registered"] else "",
+                u["sessions"],
+                u["messages"],
+                u["tokens"],
+                u["last_activity"].strftime("%Y-%m-%d %H:%M")
+                if u["last_activity"]
+                else "",
+            ]
+        )
 
     return output.getvalue()
 
@@ -334,9 +378,7 @@ def _get_session_metrics(
     }
 
 
-def _get_token_metrics(
-    db_session: Session, from_ts: datetime, to_ts: datetime
-) -> dict:
+def _get_token_metrics(db_session: Session, from_ts: datetime, to_ts: datetime) -> dict:
     row = db_session.execute(
         text("""
             SELECT
@@ -443,9 +485,7 @@ def _get_quality_metrics(
     }
 
 
-def _get_agent_metrics(
-    db_session: Session, from_ts: datetime, to_ts: datetime
-) -> dict:
+def _get_agent_metrics(db_session: Session, from_ts: datetime, to_ts: datetime) -> dict:
     total_row = db_session.execute(
         text("SELECT COUNT(*) FROM persona WHERE is_listed AND NOT deleted"),
     ).fetchone()

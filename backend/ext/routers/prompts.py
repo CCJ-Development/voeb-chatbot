@@ -77,9 +77,15 @@ def api_create_prompt(
     audit_ctx: dict = Depends(get_audit_context),
 ) -> PromptResponse:
     row = create_prompt(db_session, body)
-    log_audit_event(db_session, user, "CREATE", "PROMPT",
-                    resource_id=str(row.id), resource_name=body.name,
-                    audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "CREATE",
+        "PROMPT",
+        resource_id=str(row.id),
+        resource_name=body.name,
+        audit_ctx=audit_ctx,
+    )
     return _to_response(row)
 
 
@@ -94,8 +100,14 @@ def api_update_prompt(
     row = update_prompt(db_session, prompt_id, body)
     if row is None:
         raise HTTPException(status_code=404, detail="Prompt not found")
-    log_audit_event(db_session, user, "UPDATE", "PROMPT",
-                    resource_id=str(prompt_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "PROMPT",
+        resource_id=str(prompt_id),
+        audit_ctx=audit_ctx,
+    )
     return _to_response(row)
 
 
@@ -106,8 +118,14 @@ def api_delete_prompt(
     db_session: Session = Depends(get_session),
     audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
-    log_audit_event(db_session, user, "DELETE", "PROMPT",
-                    resource_id=str(prompt_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "DELETE",
+        "PROMPT",
+        resource_id=str(prompt_id),
+        audit_ctx=audit_ctx,
+    )
     deleted = delete_prompt(db_session, prompt_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Prompt not found")

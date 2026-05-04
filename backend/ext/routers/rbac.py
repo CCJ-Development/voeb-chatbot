@@ -72,9 +72,15 @@ def api_create_user_group(
         user_ids=request.user_ids,
         cc_pair_ids=request.cc_pair_ids,
     )
-    log_audit_event(db_session, user, "CREATE", "GROUP",
-                    resource_id=str(result.get("id", "")),
-                    resource_name=request.name, audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "CREATE",
+        "GROUP",
+        resource_id=str(result.get("id", "")),
+        resource_name=request.name,
+        audit_ctx=audit_ctx,
+    )
     return result
 
 
@@ -96,8 +102,14 @@ def api_update_user_group(
         user_ids=request.user_ids,
         cc_pair_ids=request.cc_pair_ids,
     )
-    log_audit_event(db_session, user, "UPDATE", "GROUP",
-                    resource_id=str(user_group_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "GROUP",
+        resource_id=str(user_group_id),
+        audit_ctx=audit_ctx,
+    )
     return result
 
 
@@ -111,8 +123,14 @@ def api_delete_user_group(
     db_session: Session = Depends(get_session),
     audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
-    log_audit_event(db_session, user, "DELETE", "GROUP",
-                    resource_id=str(user_group_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "DELETE",
+        "GROUP",
+        resource_id=str(user_group_id),
+        audit_ctx=audit_ctx,
+    )
     delete_user_group(db_session, user_group_id)
 
 
@@ -129,10 +147,15 @@ def api_add_users_to_group(
 ) -> None:
     validate_curator_for_group(db_session, user, user_group_id)
     add_users_to_group(db_session, user_group_id, request.user_ids)
-    log_audit_event(db_session, user, "UPDATE", "GROUP_MEMBERS",
-                    resource_id=str(user_group_id),
-                    details={"users_added": len(request.user_ids)},
-                    audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "GROUP_MEMBERS",
+        resource_id=str(user_group_id),
+        details={"users_added": len(request.user_ids)},
+        audit_ctx=audit_ctx,
+    )
 
 
 # --- Endpoint 6: Set curator status ---
@@ -152,11 +175,15 @@ def api_set_curator(
         user_id=request.user_id,
         is_curator=request.is_curator,
     )
-    log_audit_event(db_session, user, "UPDATE", "GROUP_CURATOR",
-                    resource_id=str(user_group_id),
-                    details={"user_id": str(request.user_id),
-                             "is_curator": request.is_curator},
-                    audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "GROUP_CURATOR",
+        resource_id=str(user_group_id),
+        details={"user_id": str(request.user_id), "is_curator": request.is_curator},
+        audit_ctx=audit_ctx,
+    )
 
 
 # --- Endpoint 7: Minimal group list ---

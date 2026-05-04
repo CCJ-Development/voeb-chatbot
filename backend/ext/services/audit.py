@@ -49,7 +49,9 @@ def log_audit_event(
 
     try:
         actor_email = actor.email if actor else None
-        actor_role = actor.role.value if actor and hasattr(actor.role, "value") else None
+        actor_role = (
+            actor.role.value if actor and hasattr(actor.role, "value") else None
+        )
 
         ip_address = None
         user_agent = None
@@ -142,23 +144,33 @@ def export_audit_csv(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "timestamp", "actor_email", "actor_role", "action",
-        "resource_type", "resource_id", "resource_name",
-        "details", "ip_address",
-    ])
+    writer.writerow(
+        [
+            "timestamp",
+            "actor_email",
+            "actor_role",
+            "action",
+            "resource_type",
+            "resource_id",
+            "resource_name",
+            "details",
+            "ip_address",
+        ]
+    )
     for e in events:
-        writer.writerow([
-            e.timestamp.isoformat() if e.timestamp else "",
-            e.actor_email or "",
-            e.actor_role or "",
-            e.action,
-            e.resource_type,
-            e.resource_id or "",
-            e.resource_name or "",
-            str(e.details) if e.details else "",
-            str(e.ip_address) if e.ip_address else "",
-        ])
+        writer.writerow(
+            [
+                e.timestamp.isoformat() if e.timestamp else "",
+                e.actor_email or "",
+                e.actor_role or "",
+                e.action,
+                e.resource_type,
+                e.resource_id or "",
+                e.resource_name or "",
+                str(e.details) if e.details else "",
+                str(e.ip_address) if e.ip_address else "",
+            ]
+        )
 
     return output.getvalue()
 

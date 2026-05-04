@@ -277,9 +277,7 @@ class TestFetchUserGroupById:
 class TestSetCuratorStatus:
     @patch("ext.services.rbac._check_and_demote_curator")
     @patch("ext.services.rbac.fetch_user_group_by_id")
-    def test_sets_curator_and_promotes_user(
-        self, mock_fetch, mock_demote
-    ) -> None:
+    def test_sets_curator_and_promotes_user(self, mock_fetch, mock_demote) -> None:
         """Setting is_curator=True should also set user.role to CURATOR."""
         from ext.services.rbac import set_curator_status
         from onyx.auth.schemas import UserRole
@@ -387,7 +385,8 @@ class TestFetchAllUserGroups:
         group2 = MagicMock()
         # Code: .execute(...).scalars().unique().all()
         db.execute.return_value.scalars.return_value.unique.return_value.all.return_value = [
-            group1, group2
+            group1,
+            group2,
         ]
 
         mock_build.side_effect = [{"id": 1}, {"id": 2}]

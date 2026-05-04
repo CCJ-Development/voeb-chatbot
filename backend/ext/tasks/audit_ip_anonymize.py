@@ -44,9 +44,7 @@ def ext_audit_ip_anonymize_task(self) -> None:  # type: ignore[no-untyped-def]  
 
             count = anonymize_old_ips(db_session)
             if count > 0:
-                logger.info(
-                    "[EXT-AUDIT] IP anonymization: %d events anonymized", count
-                )
+                logger.info("[EXT-AUDIT] IP anonymization: %d events anonymized", count)
     except Exception:
         logger.error("[EXT-AUDIT] IP anonymization task failed", exc_info=True)
     finally:
@@ -54,4 +52,6 @@ def ext_audit_ip_anonymize_task(self) -> None:  # type: ignore[no-untyped-def]  
         try:
             ext_audit_ip_anonymize_task.apply_async(countdown=_ANONYMIZE_INTERVAL)
         except Exception:
-            logger.error("[EXT-AUDIT] Failed to re-schedule anonymization", exc_info=True)
+            logger.error(
+                "[EXT-AUDIT] Failed to re-schedule anonymization", exc_info=True
+            )

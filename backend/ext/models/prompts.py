@@ -29,9 +29,7 @@ class ExtCustomPrompt(Base):
     category: Mapped[str] = mapped_column(
         String(50), nullable=False, server_default="general"
     )
-    priority: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default="100"
-    )
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="100")
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="true"
     )

@@ -38,8 +38,12 @@ class TestLogAuditEvent:
         user = _mock_user()
 
         log_audit_event(
-            db, user, "CREATE", "GROUP",
-            resource_id="5", resource_name="Kreditabteilung",
+            db,
+            user,
+            "CREATE",
+            "GROUP",
+            resource_id="5",
+            resource_name="Kreditabteilung",
         )
 
         db.add.assert_called_once()
@@ -55,7 +59,10 @@ class TestLogAuditEvent:
         ctx = {"ip_address": "188.34.92.162", "user_agent": "Mozilla/5.0"}
 
         log_audit_event(
-            db, user, "UPDATE", "BRANDING",
+            db,
+            user,
+            "UPDATE",
+            "BRANDING",
             audit_ctx=ctx,
         )
 

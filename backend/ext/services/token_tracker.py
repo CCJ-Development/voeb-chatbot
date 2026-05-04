@@ -338,9 +338,13 @@ def get_usage_timeseries(
 
 def get_user_limits(db_session: Session) -> list[dict]:
     """Get all per-user token limits with current usage."""
-    limits = db_session.execute(
-        select(ExtTokenUserLimit).order_by(ExtTokenUserLimit.created_at)
-    ).scalars().all()
+    limits = (
+        db_session.execute(
+            select(ExtTokenUserLimit).order_by(ExtTokenUserLimit.created_at)
+        )
+        .scalars()
+        .all()
+    )
 
     if not limits:
         return []
@@ -357,9 +361,7 @@ def get_user_limits(db_session: Session) -> list[dict]:
         # Calculate current usage in the limit's window
         window_start = datetime.now(timezone.utc) - timedelta(hours=lim.period_hours)
         current_usage = db_session.execute(
-            select(
-                func.coalesce(func.sum(ExtTokenUsage.total_tokens), 0)
-            ).where(
+            select(func.coalesce(func.sum(ExtTokenUsage.total_tokens), 0)).where(
                 ExtTokenUsage.user_id == lim.user_id,
                 ExtTokenUsage.created_at >= window_start,
             )
@@ -409,7 +411,12 @@ def create_user_limit(
     db_session.add(limit)
     db_session.commit()
     db_session.refresh(limit)
-    logger.info("User limit created: user=%s budget=%d period=%dh", user_id, token_budget, period_hours)
+    logger.info(
+        "User limit created: user=%s budget=%d period=%dh",
+        user_id,
+        token_budget,
+        period_hours,
+    )
     return limit
 
 
@@ -430,7 +437,12 @@ def update_user_limit(
     limit.enabled = enabled
     db_session.commit()
     db_session.refresh(limit)
-    logger.info("User limit updated: id=%d budget=%d period=%dh", limit_id, token_budget, period_hours)
+    logger.info(
+        "User limit updated: id=%d budget=%d period=%dh",
+        limit_id,
+        token_budget,
+        period_hours,
+    )
     return limit
 
 

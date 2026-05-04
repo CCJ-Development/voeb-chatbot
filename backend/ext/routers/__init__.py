@@ -56,12 +56,8 @@ def register_ext_routers(application: FastAPI) -> None:
             ]
         )
 
-        include_router_with_global_prefix_prepended(
-            application, branding_public_router
-        )
-        include_router_with_global_prefix_prepended(
-            application, branding_admin_router
-        )
+        include_router_with_global_prefix_prepended(application, branding_public_router)
+        include_router_with_global_prefix_prepended(application, branding_admin_router)
         logger.info("Extension branding routers registered")
 
     # ext-token: LLM Usage Tracking + Token Limits
@@ -90,9 +86,7 @@ def register_ext_routers(application: FastAPI) -> None:
         from ext.routers.rbac import minimal_router as rbac_minimal_router
 
         include_router_with_global_prefix_prepended(application, rbac_admin_router)
-        include_router_with_global_prefix_prepended(
-            application, rbac_minimal_router
-        )
+        include_router_with_global_prefix_prepended(application, rbac_minimal_router)
         logger.info("Extension RBAC routers registered")
 
     # ext-access: Document Access Control
@@ -101,9 +95,7 @@ def register_ext_routers(application: FastAPI) -> None:
     if EXT_DOC_ACCESS_ENABLED:
         from ext.routers.doc_access import router as doc_access_router
 
-        include_router_with_global_prefix_prepended(
-            application, doc_access_router
-        )
+        include_router_with_global_prefix_prepended(application, doc_access_router)
         # Import Celery-Task damit er vom Worker entdeckt wird
         import ext.tasks.doc_access_sync  # noqa: F401
 

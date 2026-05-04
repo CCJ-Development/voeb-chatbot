@@ -236,9 +236,7 @@ class TestPromptCache:
 
     @patch("ext.services.prompt_manager._CACHE_TTL_SECONDS", 0)
     @patch("ext.services.prompt_manager._assemble_active_prompts")
-    def test_cache_refreshes_after_ttl(
-        self, mock_assemble: MagicMock
-    ) -> None:
+    def test_cache_refreshes_after_ttl(self, mock_assemble: MagicMock) -> None:
         """Cache refreshes after TTL expires."""
         from ext.services.prompt_manager import get_cached_global_prompt
 

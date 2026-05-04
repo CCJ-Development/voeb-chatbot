@@ -81,7 +81,10 @@ class TestLogTokenUsage:
             added_row = mock_session.add.call_args[0][0]
             assert added_row.user_id is None
 
-    @patch("ext.services.token_tracker.get_sqlalchemy_engine", side_effect=Exception("DB down"))
+    @patch(
+        "ext.services.token_tracker.get_sqlalchemy_engine",
+        side_effect=Exception("DB down"),
+    )
     def test_never_raises(self, mock_engine: MagicMock) -> None:
         """log_token_usage must NEVER raise — it's fire-and-forget."""
         from ext.services.token_tracker import log_token_usage
@@ -130,7 +133,9 @@ class TestCheckUserTokenLimit:
         # First call: get limit
         # Second call: get usage sum
         mock_session.execute.return_value.scalar_one_or_none.return_value = mock_limit
-        mock_session.execute.return_value.scalar_one.return_value = 100_000  # Under 500k
+        mock_session.execute.return_value.scalar_one.return_value = (
+            100_000  # Under 500k
+        )
 
         mock_engine.return_value = MagicMock()
 
@@ -158,7 +163,9 @@ class TestCheckUserTokenLimit:
         ]
         results[0].scalar_one_or_none.return_value = mock_limit
         results[1].scalar_one.return_value = 200_000  # Over 100k budget
-        results[2].scalar_one.return_value = datetime.now(timezone.utc) - timedelta(hours=12)
+        results[2].scalar_one.return_value = datetime.now(timezone.utc) - timedelta(
+            hours=12
+        )
 
         mock_session.execute.side_effect = results
         mock_engine.return_value = MagicMock()

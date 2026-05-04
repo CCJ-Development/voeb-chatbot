@@ -62,9 +62,7 @@ class TestGetGroupAclsForUser:
         from ext.services.doc_access import get_group_acls_for_user
 
         db = _mock_db_session()
-        db.query.return_value.join.return_value.filter.return_value.all.return_value = (
-            []
-        )
+        db.query.return_value.join.return_value.filter.return_value.all.return_value = []
 
         user = _mock_user()
         result = get_group_acls_for_user(user, db)
@@ -119,9 +117,7 @@ class TestGetUserGroupsForDocument:
         from ext.services.doc_access import get_user_groups_for_document
 
         db = _mock_db_session()
-        db.query.return_value.join.return_value.join.return_value.join.return_value.filter.return_value.distinct.return_value.all.return_value = (
-            []
-        )
+        db.query.return_value.join.return_value.join.return_value.join.return_value.filter.return_value.distinct.return_value.all.return_value = []
 
         result = get_user_groups_for_document("doc-456", db)
 
@@ -131,7 +127,9 @@ class TestGetUserGroupsForDocument:
     @patch("ext.services.doc_access.ConnectorCredentialPair")
     @patch("ext.services.doc_access.UserGroup__ConnectorCredentialPair")
     @patch("ext.services.doc_access.UserGroup")
-    def test_document_in_multiple_groups(self, mock_ug, mock_ugcc, mock_cc, mock_dcc) -> None:
+    def test_document_in_multiple_groups(
+        self, mock_ug, mock_ugcc, mock_cc, mock_dcc
+    ) -> None:
         """Dokument in 2 Gruppen → beide Gruppennamen."""
         from ext.services.doc_access import get_user_groups_for_document
 

@@ -24,12 +24,8 @@ class BrandingConfigUpdate(BaseModel):
     application_name: str | None = Field(None, max_length=50)
     use_custom_logo: bool = False
     use_custom_logotype: bool = False
-    logo_display_style: Literal[
-        "logo_and_name", "logo_only", "name_only"
-    ] | None = None
-    custom_nav_items: list[NavigationItem] = Field(
-        default_factory=list, max_length=10
-    )
+    logo_display_style: Literal["logo_and_name", "logo_only", "name_only"] | None = None
+    custom_nav_items: list[NavigationItem] = Field(default_factory=list, max_length=10)
     custom_lower_disclaimer_content: str | None = Field(None, max_length=200)
     custom_header_content: str | None = Field(None, max_length=100)
     two_lines_for_chat_header: bool | None = None
@@ -63,9 +59,7 @@ class BrandingConfigResponse(BaseModel):
     application_name: str | None
     use_custom_logo: bool
     use_custom_logotype: bool
-    logo_display_style: Literal[
-        "logo_and_name", "logo_only", "name_only"
-    ] | None
+    logo_display_style: Literal["logo_and_name", "logo_only", "name_only"] | None
     custom_nav_items: list[NavigationItem]
     custom_lower_disclaimer_content: str | None
     custom_header_content: str | None

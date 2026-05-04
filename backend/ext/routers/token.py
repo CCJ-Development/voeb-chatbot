@@ -98,10 +98,15 @@ def api_create_user_limit(
         period_hours=body.period_hours,
         enabled=body.enabled,
     )
-    log_audit_event(db_session, user, "CREATE", "TOKEN_LIMIT",
-                    resource_id=str(limit.id),
-                    details={"token_budget": body.token_budget},
-                    audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "CREATE",
+        "TOKEN_LIMIT",
+        resource_id=str(limit.id),
+        details={"token_budget": body.token_budget},
+        audit_ctx=audit_ctx,
+    )
     return UserLimitResponse(
         id=limit.id,
         user_id=limit.user_id,
@@ -128,8 +133,14 @@ def api_update_user_limit(
         period_hours=body.period_hours,
         enabled=body.enabled,
     )
-    log_audit_event(db_session, user, "UPDATE", "TOKEN_LIMIT",
-                    resource_id=str(limit_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "UPDATE",
+        "TOKEN_LIMIT",
+        resource_id=str(limit_id),
+        audit_ctx=audit_ctx,
+    )
     return UserLimitResponse(
         id=limit.id,
         user_id=limit.user_id,
@@ -148,6 +159,12 @@ def api_delete_user_limit(
     db_session: Session = Depends(get_session),
     audit_ctx: dict = Depends(get_audit_context),
 ) -> None:
-    log_audit_event(db_session, user, "DELETE", "TOKEN_LIMIT",
-                    resource_id=str(limit_id), audit_ctx=audit_ctx)
+    log_audit_event(
+        db_session,
+        user,
+        "DELETE",
+        "TOKEN_LIMIT",
+        resource_id=str(limit_id),
+        audit_ctx=audit_ctx,
+    )
     delete_user_limit(db_session, limit_id)
