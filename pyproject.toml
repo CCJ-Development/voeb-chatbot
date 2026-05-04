@@ -242,7 +242,6 @@ select = [
   "S324",
   "W",
 ]
-per-file-ignores = {"backend/ext/tests/**" = ["ARG002"]}
 
 [tool.ruff.lint.isort]
 force-single-line = true
@@ -253,6 +252,8 @@ known-first-party = ["onyx", "ee", "tests", "shared_configs", "model_server"]
 # alembic has a folder named `alembic` in backend/ which confuses import sorters
 "backend/alembic/**" = ["I"]
 "backend/alembic_tenants/**" = ["I"]
+# VOeB ext tests: Celery-Task-Argument self ist required, ARG002 deaktivieren
+"backend/ext/tests/**" = ["ARG002"]
 
 [tool.setuptools.packages.find]
 where = ["backend"]
