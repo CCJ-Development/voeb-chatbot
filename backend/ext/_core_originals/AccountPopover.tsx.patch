@@ -1,75 +1,126 @@
---- backend/ext/_core_originals/AccountPopover.tsx.original	2026-04-23 11:17:56
-+++ web/src/sections/sidebar/AccountPopover.tsx	2026-04-20 23:00:48
-@@ -26,6 +26,16 @@
- import { useVectorDbEnabled } from "@/providers/SettingsProvider";
- import UserAvatar from "@/refresh-components/avatars/UserAvatar";
+--- backend/ext/_core_originals/AccountPopover.tsx.original	2026-05-02 17:00:40
++++ web/src/sections/sidebar/AccountPopover.tsx	2026-05-02 16:59:00
+@@ -36,6 +36,18 @@
+ import { SvgOnyxLogo } from "@opal/logos";
+ import { markdown } from "@opal/utils";
  
 +// VOeB ext-branding: Whitelabel-Gate fuer das User-Menu. Blendet die
-+// "Notifications"- und "Help & FAQ"-Menu-Eintraege sowie den Notifications-
-+// Bubble-Indikator am Sidebar-Trigger aus. VOeB nutzt Onyx' internes
-+// Notifications-System nicht (Release Notes/Announcements sind kein VOeB-
-+// Kontext) und "Help & FAQ" verweist auf docs.onyx.app — fuer ein Whitelabel-
-+// Deployment stoerend. Gate ist build-time (NEXT_PUBLIC_EXT_BRANDING_ENABLED),
-+// gilt fuer alle Umgebungen in denen der Flag gesetzt ist (DEV + PROD).
++// "Notifications"- und "Help & FAQ"-Menu-Eintraege, den Notifications-Bubble-
++// Indikator am Sidebar-Trigger sowie den seit Sync #7 (Upstream PR #10646)
++// hinzugekommenen "Onyx <version>"-Eintrag mit Link auf docs.onyx.app/changelog
++// aus. VOeB nutzt Onyx' internes Notifications-System nicht (Release Notes/
++// Announcements sind kein VOeB-Kontext), "Help & FAQ" und Versions-Eintrag
++// verweisen auf docs.onyx.app — fuer ein Whitelabel-Deployment stoerend. Gate
++// ist build-time (NEXT_PUBLIC_EXT_BRANDING_ENABLED), gilt fuer alle Umgebungen
++// in denen der Flag gesetzt ist (DEV + PROD).
 +const EXT_BRANDING_ENABLED =
 +  process.env.NEXT_PUBLIC_EXT_BRANDING_ENABLED?.toLowerCase() === "true";
 +
  interface SettingsPopoverProps {
    onUserSettingsClick: () => void;
    onOpenNotifications: () => void;
-@@ -96,24 +106,28 @@
-               User Settings
-             </LineItem>
-           </div>,
--          <LineItem
--            key="notifications"
--            icon={SvgBell}
--            onClick={onOpenNotifications}
--          >
--            {`Notifications${
--              undismissedCount > 0 ? ` (${undismissedCount})` : ""
--            }`}
--          </LineItem>,
--          <LineItem
--            key="help-faq"
--            icon={SvgExternalLink}
--            href="https://docs.onyx.app"
--            target="_blank"
--            rel="noopener noreferrer"
--          >
--            Help & FAQ
--          </LineItem>,
-+          !EXT_BRANDING_ENABLED && (
-+            <LineItem
-+              key="notifications"
-+              icon={SvgBell}
-+              onClick={onOpenNotifications}
-+            >
-+              {`Notifications${
-+                undismissedCount > 0 ? ` (${undismissedCount})` : ""
-+              }`}
-+            </LineItem>
-+          ),
-+          !EXT_BRANDING_ENABLED && (
-+            <LineItem
-+              key="help-faq"
-+              icon={SvgExternalLink}
-+              href="https://docs.onyx.app"
-+              target="_blank"
-+              rel="noopener noreferrer"
-+            >
-+              Help & FAQ
-+            </LineItem>
-+          ),
-           null,
-           showLogin && (
-             <LineItem key="log-in" icon={SvgUser} onClick={handleLogin}>
-@@ -190,7 +204,7 @@
+@@ -106,30 +118,34 @@
+             onClick={onUserSettingsClick}
+           />
+         </div>,
+-        <LineItemButton
+-          key="notifications"
+-          sizePreset="main-ui"
+-          variant="section"
+-          rounding="sm"
+-          icon={SvgBell}
+-          title="Notifications"
+-          onClick={onOpenNotifications}
+-          rightChildren={
+-            !!undismissedCount ? (
+-              <SvgNotificationBubble count={undismissedCount} />
+-            ) : undefined
+-          }
+-        />,
+-        <LineItemButton
+-          key="help-faq"
+-          sizePreset="main-ui"
+-          variant="section"
+-          rounding="sm"
+-          icon={SvgHelpCircle}
+-          title="Help & FAQ"
+-          href="https://docs.onyx.app"
+-          target="_blank"
+-        />,
++        !EXT_BRANDING_ENABLED && (
++          <LineItemButton
++            key="notifications"
++            sizePreset="main-ui"
++            variant="section"
++            rounding="sm"
++            icon={SvgBell}
++            title="Notifications"
++            onClick={onOpenNotifications}
++            rightChildren={
++              !!undismissedCount ? (
++                <SvgNotificationBubble count={undismissedCount} />
++              ) : undefined
++            }
++          />
++        ),
++        !EXT_BRANDING_ENABLED && (
++          <LineItemButton
++            key="help-faq"
++            sizePreset="main-ui"
++            variant="section"
++            rounding="sm"
++            icon={SvgHelpCircle}
++            title="Help & FAQ"
++            href="https://docs.onyx.app"
++            target="_blank"
++          />
++        ),
+         showLogin && (
+           <LineItemButton
+             key="log-in"
+@@ -154,20 +170,22 @@
+           />
+         ),
+         null,
+-        <div key="version" className="p-2">
+-          <Content
+-            sizePreset="secondary"
+-            variant="body"
+-            color="muted"
+-            orientation="reverse"
+-            icon={SvgOnyxLogo}
+-            title={markdown(
+-              `[Onyx ${
+-                settings?.webVersion ?? "dev"
+-              }](https://docs.onyx.app/changelog)`
+-            )}
+-          />
+-        </div>,
++        !EXT_BRANDING_ENABLED && (
++          <div key="version" className="p-2">
++            <Content
++              sizePreset="secondary"
++              variant="body"
++              color="muted"
++              orientation="reverse"
++              icon={SvgOnyxLogo}
++              title={markdown(
++                `[Onyx ${
++                  settings?.webVersion ?? "dev"
++                }](https://docs.onyx.app/changelog)`
++              )}
++            />
++          </div>
++        ),
+       ]}
+     </PopoverMenu>
+   );
+@@ -217,7 +235,7 @@
                </div>
              )}
              rightChildren={
--              hasNotifications ? (
-+              hasNotifications && !EXT_BRANDING_ENABLED ? (
+-              !!undismissedCount ? (
++              !!undismissedCount && !EXT_BRANDING_ENABLED ? (
                  <Section padding={0.5}>
-                   <SvgNotificationBubble size={6} />
+                   <SvgNotificationBubble count={undismissedCount} />
                  </Section>

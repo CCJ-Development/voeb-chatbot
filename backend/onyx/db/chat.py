@@ -41,7 +41,6 @@ from onyx.server.query_and_chat.models import ChatMessageDetail
 from onyx.utils.logger import setup_logger
 from onyx.utils.postgres_sanitization import sanitize_string
 
-
 logger = setup_logger()
 
 
@@ -417,7 +416,8 @@ def get_chat_message(
 
     if expected_user_id != user_id:
         logger.error(
-            f"User {user_id} tried to fetch a chat message that does not belong to them"
+            "User %s tried to fetch a chat message that does not belong to them",
+            user_id,
         )
         raise ValueError("Chat message does not belong to user")
 

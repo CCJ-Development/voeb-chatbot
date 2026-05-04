@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { OnyxIcon } from "../icons/icons";
+import { SvgOnyxLogo } from "@opal/logos";
 import { useContext } from "react";
 import { SettingsContext } from "@/providers/SettingsProvider";
 import { t } from "@/ext/i18n";
@@ -34,7 +34,7 @@ export default function AuthFlowContainer({
             />
           </div>
         ) : (
-          <OnyxIcon size={44} className="text-theme-primary-05" />
+          <SvgOnyxLogo size={44} className="text-theme-primary-05" />
         )}
         <div className="w-full mt-3">{children}</div>
       </div>

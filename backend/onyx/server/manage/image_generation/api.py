@@ -39,13 +39,13 @@ admin_router = APIRouter(prefix="/admin/image-generation")
 def _get_test_quality_for_model(model_name: str) -> str | None:
     """Returns the fastest quality setting for credential testing.
 
-    - gpt-image-1: 'low' (fastest)
+    - gpt-image-*: 'low' (fastest)
     - dall-e-3: 'standard' (faster than 'hd')
     - Other models: None (use API default)
     """
     model_lower = model_name.lower()
 
-    if "gpt-image-1" in model_lower:
+    if "gpt-image-" in model_lower:
         return "low"
     elif "dall-e-3" in model_lower or "dalle-3" in model_lower:
         return "standard"
@@ -282,7 +282,7 @@ def test_image_generation(
     except Exception as e:
         # Log only exception type to avoid exposing sensitive data
         # (LiteLLM errors may contain URLs with API keys or auth tokens)
-        logger.warning(f"Image generation test failed: {type(e).__name__}")
+        logger.warning("Image generation test failed: %s", type(e).__name__)
         raise HTTPException(
             status_code=400,
             detail=f"Image generation test failed: {type(e).__name__}",

@@ -57,10 +57,8 @@ class WorkerResult(TypedDict):
 
 def _get_all_backend_configs() -> List[BackendConfig]:
     """Get configurations for all available backends"""
-    from onyx.configs.app_configs import (
-        S3_ENDPOINT_URL,
-        AWS_REGION_NAME,
-    )
+    from onyx.configs.app_configs import AWS_REGION_NAME
+    from onyx.configs.app_configs import S3_ENDPOINT_URL
 
     s3_aws_access_key_id = os.environ.get("S3_AWS_ACCESS_KEY_ID_FOR_TEST")
     s3_aws_secret_access_key = os.environ.get("S3_AWS_SECRET_ACCESS_KEY_FOR_TEST")
@@ -97,7 +95,8 @@ def _get_all_backend_configs() -> List[BackendConfig]:
 
     if not configs:
         pytest.skip(
-            "No backend configurations available - set MinIO or AWS S3 credentials"
+            "No backend configurations available - set MinIO or AWS S3 credentials",
+            allow_module_level=True,
         )
 
     return configs
@@ -130,7 +129,9 @@ def file_store(
     # Initialize the store and ensure bucket exists
     store.initialize()
     logger.info(
-        f"Successfully initialized {backend_config['backend_name']} file store with bucket {TEST_BUCKET_NAME}"
+        "Successfully initialized %s file store with bucket %s",
+        backend_config["backend_name"],
+        TEST_BUCKET_NAME,
     )
 
     yield store
@@ -152,10 +153,12 @@ def file_store(
                 Delete={"Objects": objects_to_delete},
             )
             logger.info(
-                f"Cleaned up {len(objects_to_delete)} test objects from {backend_config['backend_name']}"
+                "Cleaned up %s test objects from %s",
+                len(objects_to_delete),
+                backend_config["backend_name"],
             )
     except Exception as e:
-        logger.warning(f"Failed to cleanup test objects: {e}")
+        logger.warning("Failed to cleanup test objects: %s", e)
 
 
 class TestS3BackedFileStore:

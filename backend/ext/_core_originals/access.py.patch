@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/access.py.original	2026-04-23 11:17:56
-+++ backend/onyx/access/access.py	2026-03-25 14:17:37
-@@ -25,9 +25,25 @@
+--- backend/ext/_core_originals/access.py.original	2026-05-02 17:00:39
++++ backend/onyx/access/access.py	2026-05-02 16:56:25
+@@ -37,9 +37,25 @@
          document_id=document_id,
      )
  
@@ -27,7 +27,7 @@
          external_user_emails=[],
          external_user_group_ids=[],
          is_public=info[2] if info else False,
-@@ -64,12 +80,35 @@
+@@ -76,12 +92,35 @@
          db_session=db_session,
          document_ids=document_ids,
      )
@@ -65,21 +65,21 @@
              is_public=is_public,
              external_user_emails=[],
              external_user_group_ids=[],
-@@ -108,9 +147,27 @@
+@@ -120,9 +159,27 @@
      """
      if user.is_anonymous:
          return {PUBLIC_DOC_PAT}
 -    return {prefix_user_email(user.email), PUBLIC_DOC_PAT}
- 
++
 +    acl = {prefix_user_email(user.email), PUBLIC_DOC_PAT}
- 
++
 +    # ext-access hook: Gruppen-ACLs zum User hinzufuegen
 +    try:
 +        from ext.config import EXT_DOC_ACCESS_ENABLED
-+
+ 
 +        if EXT_DOC_ACCESS_ENABLED:
 +            from ext.services.doc_access import get_group_acls_for_user
-+
+ 
 +            acl.update(get_group_acls_for_user(user, db_session))
 +    except ImportError:
 +        pass

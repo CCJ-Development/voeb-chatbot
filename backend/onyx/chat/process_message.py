@@ -69,6 +69,7 @@ from onyx.db.chat import get_chat_session_by_id
 from onyx.db.chat import get_or_create_root_message
 from onyx.db.chat import reserve_message_id
 from onyx.db.chat import reserve_multi_model_message_ids
+from onyx.db.document_set import filter_document_set_names_by_user_access
 from onyx.db.enums import HookPoint
 from onyx.db.memory import get_memories
 from onyx.db.models import ChatMessage
@@ -276,7 +277,8 @@ def _fetch_cached_image_captions(
         )
     except Exception:
         logger.warning(
-            f"Failed to fetch cached captions for user_file {user_file.id}",
+            "Failed to fetch cached captions for user_file %s",
+            user_file.id,
             exc_info=True,
         )
         return []
@@ -353,7 +355,7 @@ def _extract_text_from_in_memory_file(
 
         return "\n\n".join(parts).strip() or None
     except Exception:
-        logger.warning(f"Failed to extract text from file {f.file_id}", exc_info=True)
+        logger.warning("Failed to extract text from file %s", f.file_id, exc_info=True)
         return None
 
 
@@ -465,7 +467,8 @@ def extract_context_files(
             # Only the metadata is provided, with LLM using tools
             if not uf:
                 logger.error(
-                    f"File with id={f.file_id} in metadata-only path with no associated user file"
+                    "File with id=%s in metadata-only path with no associated user file",
+                    f.file_id,
                 )
                 continue
             tool_metadata.append(_build_tool_metadata(uf))
@@ -476,7 +479,7 @@ def extract_context_files(
             if not text_content:
                 continue
             if not uf:
-                logger.warning(f"No user file for file_id={f.file_id}")
+                logger.warning("No user file for file_id=%s", f.file_id)
                 continue
             file_texts.append(text_content)
             file_metadata.append(
@@ -639,7 +642,7 @@ def build_chat_turn(
             raise RuntimeError("Must specify a chat session id or chat session info")
         chat_session = create_chat_session_from_request(
             chat_session_request=new_msg_req.chat_session_info,
-            user_id=user_id,
+            user=user,
             db_session=db_session,
         )
         yield CreateChatSessionID(chat_session_id=chat_session.id)
@@ -979,7 +982,8 @@ def build_chat_turn(
 
     if all_injected_file_metadata:
         logger.debug(
-            f"FileReader: file metadata for LLM: {[(fid, m.filename) for fid, m in all_injected_file_metadata.items()]}"
+            "FileReader: file metadata for LLM: %s",
+            [(fid, m.filename) for fid, m in all_injected_file_metadata.items()],
         )
 
     if summary_message is not None:
@@ -1431,6 +1435,31 @@ def _stream_chat_turn(
     setup: ChatTurnSetup | None = None
 
     try:
+        # Enforce document-set access on any user-supplied filters before setup
+        # or any tool invocation. Running here (rather than inside SearchTool.run())
+        # means the OnyxError propagates to the StreamingError handler below
+        # instead of being swallowed by the tool runner's catch-all.
+        if (
+            not bypass_acl
+            and new_msg_req.internal_search_filters is not None
+            and new_msg_req.internal_search_filters.document_set is not None
+        ):
+            accessible_names = filter_document_set_names_by_user_access(
+                db_session=db_session,
+                document_set_names=new_msg_req.internal_search_filters.document_set,
+                user=user,
+            )
+            unauthorized = sorted(
+                name
+                for name in new_msg_req.internal_search_filters.document_set
+                if name not in accessible_names
+            )
+            if unauthorized:
+                raise OnyxError(
+                    OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+                    f"User does not have access to document sets: {unauthorized}",
+                )
+
         setup = yield from build_chat_turn(
             new_msg_req=new_msg_req,
             user=user,
@@ -1480,7 +1509,10 @@ def _stream_chat_turn(
     except EmptyLLMResponseError as e:
         stack_trace = traceback.format_exc()
         logger.warning(
-            f"LLM returned an empty response (provider={e.provider}, model={e.model}, tool_choice={e.tool_choice})"
+            "LLM returned an empty response (provider=%s, model=%s, tool_choice=%s)",
+            e.provider,
+            e.model,
+            e.tool_choice,
         )
         yield StreamingError(
             error=e.client_error_msg,
@@ -1496,7 +1528,7 @@ def _stream_chat_turn(
         db_session.rollback()
 
     except Exception as e:
-        logger.exception(f"Failed to process chat message due to {e}")
+        logger.exception("Failed to process chat message due to %s", e)
         stack_trace = traceback.format_exc()
 
         llm = setup.llms[0] if setup else None
@@ -1663,7 +1695,7 @@ def llm_loop_completion_handle(
         final_answer = answer_tokens
     else:
         # Stopped by user - append stop message
-        logger.debug(f"Chat session {chat_session_id} stopped by user")
+        logger.debug("Chat session %s stopped by user", chat_session_id)
         if answer_tokens:
             final_answer = (
                 answer_tokens + " ... \n\nGeneration was stopped by the user."

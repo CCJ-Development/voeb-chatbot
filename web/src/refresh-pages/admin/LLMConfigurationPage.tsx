@@ -152,7 +152,7 @@ function ExistingProviderCard({
               <div className="flex flex-row">
                 <Hoverable.Item
                   group="ExistingProviderCard"
-                  variant="opacity-on-hover"
+                  variant="appear-on-hover"
                 >
                   <Button
                     icon={SvgTrash}
@@ -335,7 +335,7 @@ export default function LLMConfigurationPage() {
 
   return (
     <SettingsLayouts.Root>
-      <SettingsLayouts.Header icon={route.icon} title={route.title} separator />
+      <SettingsLayouts.Header icon={route.icon} title={route.title} divider />
 
       <SettingsLayouts.Body>
         {hasProviders ? (

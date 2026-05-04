@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/persona.py.original	2026-04-23 11:17:56
-+++ backend/onyx/db/persona.py	2026-04-16 11:33:56
-@@ -252,7 +252,25 @@
+--- backend/ext/_core_originals/persona.py.original	2026-05-02 17:00:39
++++ backend/onyx/db/persona.py	2026-05-02 16:56:25
+@@ -261,7 +261,25 @@
          ).delete(synchronize_session="fetch")
  
          if group_ids:

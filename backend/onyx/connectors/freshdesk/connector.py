@@ -9,9 +9,7 @@ from retry import retry
 
 from onyx.configs.app_configs import INDEX_BATCH_SIZE
 from onyx.configs.constants import DocumentSource
-from onyx.connectors.cross_connector_utils.rate_limit_wrapper import (
-    rl_requests,
-)
+from onyx.connectors.cross_connector_utils.rate_limit_wrapper import rl_requests
 from onyx.connectors.interfaces import GenerateDocumentsOutput
 from onyx.connectors.interfaces import LoadConnector
 from onyx.connectors.interfaces import PollConnector
@@ -235,7 +233,9 @@ class FreshdeskConnector(PollConnector, LoadConnector):
 
             tickets = json.loads(response.content)
             logger.info(
-                f"Fetched {len(tickets)} tickets from Freshdesk API (Page {params['page']})"
+                "Fetched %s tickets from Freshdesk API (Page %s)",
+                len(tickets),
+                params["page"],
             )
 
             yield tickets

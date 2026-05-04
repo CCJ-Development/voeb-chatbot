@@ -13,7 +13,6 @@ from onyx.db.oauth_config import upsert_user_oauth_token
 from onyx.utils.logger import setup_logger
 from onyx.utils.sensitive import SensitiveValue
 
-
 logger = setup_logger()
 
 
@@ -46,7 +45,7 @@ class OAuthTokenManager:
                 try:
                     return self.refresh_token(user_token)
                 except Exception as e:
-                    logger.warning(f"Failed to refresh token: {e}")
+                    logger.warning("Failed to refresh token: %s", e)
                     return None
             else:
                 return None

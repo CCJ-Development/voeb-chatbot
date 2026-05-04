@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/document_set.py.original	2026-04-23 11:17:56
-+++ backend/onyx/db/document_set.py	2026-04-23 11:15:49
-@@ -171,14 +171,38 @@
+--- backend/ext/_core_originals/document_set.py.original	2026-05-02 17:00:39
++++ backend/onyx/db/document_set.py	2026-05-02 16:56:25
+@@ -189,14 +189,38 @@
  
  
  def make_doc_set_private(

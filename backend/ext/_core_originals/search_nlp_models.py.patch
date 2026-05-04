@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/search_nlp_models.py.original	2026-04-23 11:17:56
-+++ backend/onyx/natural_language_processing/search_nlp_models.py	2026-04-23 11:15:49
-@@ -180,7 +180,8 @@
+--- backend/ext/_core_originals/search_nlp_models.py.original	2026-05-02 17:00:39
++++ backend/onyx/natural_language_processing/search_nlp_models.py	2026-05-02 16:56:25
+@@ -185,7 +185,8 @@
  
  
  def clean_model_name(model_str: str) -> str:

@@ -20,7 +20,6 @@ from onyx.db.models import User
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import get_current_tenant_id
 
-
 logger = setup_logger()
 
 
@@ -80,7 +79,7 @@ def _schedule_pat_last_used_update(hashed_token: str, now: datetime) -> None:
                 )
                 await session.commit()
         except Exception as e:
-            logger.warning(f"Failed to update last_used_at for PAT: {e}")
+            logger.warning("Failed to update last_used_at for PAT: %s", e)
 
     asyncio.create_task(_update())
 

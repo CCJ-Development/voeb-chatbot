@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-04-23 11:17:56
-+++ web/src/sections/sidebar/AdminSidebar.tsx	2026-04-23 11:15:49
+--- backend/ext/_core_originals/AdminSidebar.tsx.original	2026-05-02 17:00:40
++++ web/src/sections/sidebar/AdminSidebar.tsx	2026-04-23 12:55:07
 @@ -21,8 +21,16 @@
  import { Divider, SidebarTab } from "@opal/components";
  import InputTypeIn from "@/refresh-components/inputs/InputTypeIn";

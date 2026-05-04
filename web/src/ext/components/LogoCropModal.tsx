@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Modal from "@/refresh-components/Modal";
 import Button from "@/refresh-components/buttons/Button";
 import Text from "@/refresh-components/texts/Text";
-import Checkbox from "@/refresh-components/inputs/Checkbox";
+import { Checkbox } from "@opal/components";
 
 const OUTPUT_SIZE = 256;
 const MIN_ZOOM = 1;
