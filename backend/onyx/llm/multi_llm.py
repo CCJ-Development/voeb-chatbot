@@ -421,7 +421,7 @@ class LitellmLLM(LLM):
                 db_session.commit()
         except Exception as e:
             # Log but don't fail the LLM call if tracking fails
-            logger.warning(f"Failed to track LLM cost: {e}")
+            logger.warning("Failed to track LLM cost: %s", e)
 
     def _completion(
         self,
@@ -453,8 +453,10 @@ class LitellmLLM(LLM):
             logger.warning("ext-token limit check failed", exc_info=True)
 
         # Lazy loading to avoid memory bloat for non-inference flows
+        from litellm.exceptions import RateLimitError
+        from litellm.exceptions import Timeout
+
         from onyx.llm.litellm_singleton import litellm
-        from litellm.exceptions import Timeout, RateLimitError
 
         #########################
         # Flags that modify the final arguments
@@ -765,8 +767,8 @@ class LitellmLLM(LLM):
             # only held during connection setup (not the full inference).
             # The chunks are then collected outside the lock and reassembled
             # into a single ModelResponse via stream_chunk_builder.
-            from litellm import stream_chunk_builder
             from litellm import CustomStreamWrapper as LiteLLMCustomStreamWrapper
+            from litellm import stream_chunk_builder
 
             stream_response = cast(
                 LiteLLMCustomStreamWrapper,

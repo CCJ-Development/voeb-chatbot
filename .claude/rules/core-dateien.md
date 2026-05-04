@@ -13,9 +13,11 @@ paths:
 
 **NUR DIESE 17 DATEIEN dürfen verändert werden. Keine Ausnahmen.**
 
-**Status (Stand 2026-04-20):** 16 von 17 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
+**Status (Stand 2026-05-02):** 16 von 17 gepatcht, nur **#5 `web/src/components/header/`** noch offen.
 
 **Historie:**
+- 2026-05-02 (Sync #7): Core #9 `AuthFlowContainer.tsx` **angepasst** — Opal-Migration: `OnyxIcon` aus `../icons/icons` (Legacy-Pfad) durch `SvgOnyxLogo` aus `@opal/logos` ersetzt. Custom-Logo-Conditional unveraendert, Fallback-Branch nutzt `SvgOnyxLogo`. Upstream PRs #10474 + #10483.
+- 2026-05-02 (Sync #7): Core #17 `AccountPopover.tsx` **erweitert** — Schema-Migration `LineItem` → `LineItemButton` (Upstream PR #10646). Patch von 3 auf 4 `EXT_BRANDING_ENABLED`-Gate-Stellen erweitert: Notifications, Help & FAQ, Bubble (alle bestehend) + neuer "Onyx <version>"-Eintrag mit Link auf `docs.onyx.app/changelog` (Whitelabel-konsistent ausgeblendet bei aktivem Flag). Bubble-Conditional von `hasNotifications` auf `!!undismissedCount` (Upstream hat `hasNotifications` weg-refactored).
 - 2026-04-20: Core #17 `AccountPopover.tsx` **neu** — `EXT_BRANDING_ENABLED`-Gate blendet im User-Dropdown (Klick auf eigenen Namen unten links) die Menu-Eintraege "Notifications" und "Help & FAQ" sowie den roten Notifications-Bubble-Indikator am Sidebar-Trigger aus. Whitelabel-Anforderung: VOeB nutzt Onyx' internes Release-Notes-/Announcement-System nicht, und "Help & FAQ" linkte auf `docs.onyx.app` (Onyx-Branding auf VOeB-Oberflaeche).
 - 2026-04-20: Core #15 `useSettings.ts` **reduziert** — `useCustomAnalyticsScript`-Gate wieder entfernt (nur `useEnterpriseSettings` bleibt erweitert). Ursache: Endpoint `/api/enterprise-settings/custom-analytics-script` lebt nur in `backend/ee/` → 404 in FOSS → SWR-Retry-Loop spammt Browser-Konsole.
 - 2026-04-20: Core #16 `DynamicMetadata.tsx` **neu** — `usePathname` dep fuer `document.title`-Resync nach Soft-Navigation. Upstream-Bug: `useEffect`-Dep-Array ohne `pathname` laesst Titel auf "Onyx" stehen wenn Next.js App Router bei Nav den statischen `metadata.title` neu injiziert.
@@ -33,7 +35,7 @@ paths:
 | 6 | `web/src/lib/constants.ts` | Gepatcht | ext-branding |
 | 7 | `backend/onyx/chat/prompt_utils.py` | Gepatcht | ext-prompts |
 | 8 | `web/src/app/auth/login/LoginText.tsx` | Gepatcht | 2026-03-08 (ext-branding) |
-| 9 | `web/src/components/auth/AuthFlowContainer.tsx` | Gepatcht | 2026-03-08 (ext-branding) |
+| 9 | `web/src/components/auth/AuthFlowContainer.tsx` | Gepatcht | 2026-05-02 (Sync #7 Opal-Migration) |
 | 10 | `web/src/sections/sidebar/AdminSidebar.tsx` | Gepatcht | 2026-03-23 (ext-rbac) |
 | 11 | `backend/onyx/db/persona.py` | Gepatcht | 2026-03-23 (ext-rbac) |
 | 12 | `backend/onyx/db/document_set.py` | Gepatcht | 2026-03-23 (ext-rbac) |
@@ -41,7 +43,7 @@ paths:
 | 14 | `web/src/refresh-components/popovers/ActionsPopover/index.tsx` | Gepatcht | 2026-03-26 |
 | 15 | `web/src/hooks/useSettings.ts` | Gepatcht | 2026-04-20 (Analytics-404-Fix) |
 | 16 | `web/src/providers/DynamicMetadata.tsx` | Gepatcht | 2026-04-20 (ext-branding) |
-| 17 | `web/src/sections/sidebar/AccountPopover.tsx` | Gepatcht | 2026-04-20 (ext-branding User-Menu) |
+| 17 | `web/src/sections/sidebar/AccountPopover.tsx` | Gepatcht | 2026-05-02 (Sync #7 LineItemButton-Migration + 4. Gate) |
 
 ## 1. `backend/onyx/main.py` — Router registrieren
 - ERLAUBT: `from ext.config import EXT_ENABLED` + `register_ext_routers(app)` hinter Feature Flag + try/except ImportError
@@ -88,10 +90,11 @@ paths:
 - HINWEIS: Freigabe durch Niko (2026-03-08) für ext-branding Whitelabel
 
 ## 9. `web/src/components/auth/AuthFlowContainer.tsx` — Login Icon + Text
-- ERLAUBT: OnyxIcon durch Custom Logo ersetzen (mit Fallback), "New to Onyx?" durch application_name ersetzen
+- ERLAUBT: `SvgOnyxLogo` aus `@opal/logos` durch Custom Logo ersetzen (mit Fallback auf `SvgOnyxLogo`), "New to Onyx?" durch `application_name` ersetzen, ext-i18n `t()`-Calls fuer alle user-sichtbaren Strings, `useContext(SettingsContext)` fuer `enterpriseSettings`-Lookup
 - VERBOTEN: Auth-Flow-Logik, Formular-Struktur verändern
-- MERGE: Icon/Text-Ersetzung, kein Strukturkonflikt
-- HINWEIS: Freigabe durch Niko (2026-03-08) für ext-branding Whitelabel
+- MERGE: 2 Stellen: Imports (`Image`, `SvgOnyxLogo` von `@opal/logos`, `useContext`, `SettingsContext`, `t`) + Icon-Ersetzung im JSX (`use_custom_logo` Conditional → `Image` ODER `SvgOnyxLogo`-Fallback). Niedriges Merge-Risiko aber Frontend-Component-Refactor moeglich (Sync #7 hatte `OnyxIcon`→`SvgOnyxLogo`-Migration).
+- STATUS: ✅ Gepatcht. Letzter Patch-Update: 2026-05-02 (Sync #7) — Opal-Migration `OnyxIcon` aus `../icons/icons` (Legacy) → `SvgOnyxLogo` aus `@opal/logos`.
+- HINWEIS: Freigabe durch Niko (2026-03-08) für ext-branding Whitelabel. Bei zukuenftigen Opal-Migrationen (Sync #8+) muss der Fallback-Branch ggf. erneut umgebogen werden — `web/CLAUDE.md` ist die SoT fuer aktuelle Komponentenpfade.
 
 ## 10. `web/src/sections/sidebar/AdminSidebar.tsx` — Admin Sidebar
 - ERLAUBT: "Upgrade Plan"/Billing ausblenden wenn ext-branding aktiv, "Branding"-Link + "Token Usage"-Link + "System Prompts"-Link + "Gruppen"-Link einfuegen, ausgegraute EE-Items (Groups, SCIM, Theme, Usage, Query History) komplett ausblenden wenn EE nicht aktiv
@@ -142,10 +145,10 @@ paths:
 - STATUS: ✅ Gepatcht (2026-04-20). Ohne `pathname` in den Deps laeuft der `useEffect` bei Route-Wechsel nicht neu (SWR-Referenz von `enterpriseSettings` stabil). Ohne `searchParams` fehlen Query-Only-Transitions: Chat-Wechsel ruft `/chat?chatId=xxx` auf, wird aber per Next.js-Redirect (`next.config.js`) auf `/app?chatId=xxx` umgeleitet → pathname bleibt `/app`, nur `searchParams` aendert sich. Beide Deps zusammen decken jede URL-Aenderung ab. Next.js App Router injiziert bei jeder Navigation den statischen `metadata.title = "Onyx"` aus `app/layout.tsx` in den `<head>`; der Effect ueberschreibt das synchron zurueck.
 
 ## 17. `web/src/sections/sidebar/AccountPopover.tsx` — User-Menu Whitelabel-Aufraeumung
-- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED`-Konstante am Dateianfang (nach den Imports) definieren + 3 Stellen mit `!EXT_BRANDING_ENABLED &&` (bzw. `hasNotifications && !EXT_BRANDING_ENABLED`) gaten: (a) Menu-Item "Notifications" im `PopoverMenu`-Array, (b) Menu-Item "Help & FAQ" im `PopoverMenu`-Array, (c) Notifications-Bubble in `rightChildren` der `SidebarTab`.
-- VERBOTEN: Menu-Reihenfolge, Menu-Item "User Settings", Trenner (`null`-Eintrag), Login/Logout-Logik, `SidebarTab`-Props (ausser `rightChildren`-Conditional), Popover-Struktur, SWR-Fetches veraendern. SWR-Calls bleiben erhalten (kein Funktionsunterschied bei deaktiviertem Flag, Upstream-Behaviour wird respektiert).
-- MERGE: 3 Stellen: Konstante (~11 Zeilen inkl. Kommentar) nach UserAvatar-Import + 2x Array-Element-Gate im PopoverMenu (Zeilen ~99-116 upstream) + 1x Bubble-Conditional in SidebarTab rightChildren (Zeile ~193). Niedriges Merge-Risiko: Upstream veraendert das User-Menu selten, Insertion-Stellen sind stabil (JSX-Array-Elemente sind per `key` identifizierbar).
-- STATUS: ✅ Gepatcht (ext-branding, 2026-04-20). Whitelabel-Aufraeumung fuer VOeB. Bei `NEXT_PUBLIC_EXT_BRANDING_ENABLED=true` zeigt das User-Menu nur noch "Benutzereinstellungen" + Trenner + "Abmelden".
+- ERLAUBT: `NEXT_PUBLIC_EXT_BRANDING_ENABLED`-Konstante am Dateianfang (nach den Imports) definieren + **4 Stellen** mit `!EXT_BRANDING_ENABLED &&` (bzw. `!!undismissedCount && !EXT_BRANDING_ENABLED` fuer Bubble) gaten: (a) `LineItemButton` "Notifications" im `PopoverMenu`-Array, (b) `LineItemButton` "Help & FAQ" im `PopoverMenu`-Array, (c) Notifications-Bubble in `rightChildren` der `SidebarTab`, (d) `<div key="version">`-Eintrag mit `Content`-Komponente am Ende des Arrays (Onyx-Version-Link auf docs.onyx.app/changelog).
+- VERBOTEN: Menu-Reihenfolge, Menu-Item "Settings" (`SvgSliders`), `<div key="user-email">`-Eintrag, Trenner (`null`-Eintrag), Login/Logout-Logik, `SidebarTab`-Props (ausser `rightChildren`-Conditional), Popover-Struktur, SWR-Fetches veraendern. SWR-Calls bleiben erhalten (kein Funktionsunterschied bei deaktiviertem Flag, Upstream-Behaviour wird respektiert).
+- MERGE: 4 Stellen: Konstante (~14 Zeilen inkl. Kommentar) nach UserAvatar-Import + 2x Array-Element-Gate im PopoverMenu (Notifications + Help-FAQ als `LineItemButton`) + 1x neues Array-Element-Gate (`version`-Eintrag, neu seit Sync #7 / PR #10646) + 1x Bubble-Conditional in SidebarTab rightChildren. **Mittel-hohes Merge-Risiko:** Upstream hat das gesamte Menu in Sync #7 von `LineItem` auf `LineItemButton` umgestellt — bei zukuenftigen Opal-Migrationen (z. B. weiterer Schema-Wechsel, neue Menu-Eintraege) muss der Patch komplett neu angewendet werden.
+- STATUS: ✅ Gepatcht. Letzter Patch-Update: 2026-05-02 (Sync #7) — `LineItem` → `LineItemButton`-Schema-Migration, 4. Gate-Stelle (`version`-Eintrag) hinzugefuegt, Bubble-Conditional von `hasNotifications` auf `!!undismissedCount` (Upstream-Refactor). Bei `NEXT_PUBLIC_EXT_BRANDING_ENABLED=true` zeigt das User-Menu nur noch "User-Email" + Trenner + "Settings" + Trenner + "Log Out".
 - HINWEIS: Build-time Gate, gesetzt in `web/Dockerfile` (beide Stages) und `.github/workflows/stackit-deploy.yml` — gleicher Flag wie Core #15 (`useSettings.ts`). Kein neuer Build-Arg noetig. `onShowBuildIntro`-Prop bleibt erhalten (wird via `NotificationsPopover` weitergeleitet, aber Popover wird bei aktivem Flag nie geoeffnet — defensiv). Die ext-i18n-Eintraege "Notifications" und "Help & FAQ" im Translation-Dictionary werden NICHT entfernt — sie sind tot-code bei aktivem Flag, aber ein Rueckzug auf Upstream (Flag off) wuerde sie wieder brauchen.
 
 ## Absicherung

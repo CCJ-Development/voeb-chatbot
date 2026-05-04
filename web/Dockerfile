@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f AS base
 
 LABEL com.onyx.maintainer="founders@onyx.app"
 LABEL com.onyx.description="This image is the web/frontend container of Onyx which \
@@ -189,7 +189,7 @@ ENV NEXT_PUBLIC_EXT_RBAC_ENABLED=${NEXT_PUBLIC_EXT_RBAC_ENABLED}
 ARG NEXT_PUBLIC_EXT_BRANDING_ENABLED
 ENV NEXT_PUBLIC_EXT_BRANDING_ENABLED=${NEXT_PUBLIC_EXT_BRANDING_ENABLED}
 
-# Default ONYX_VERSION, typically overriden during builds by GitHub Actions.
+# Default ONYX_VERSION, typically overridden during builds by GitHub Actions.
 ARG ONYX_VERSION=0.0.0-dev
 ENV ONYX_VERSION=${ONYX_VERSION}
 

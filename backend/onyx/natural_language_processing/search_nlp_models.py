@@ -6,7 +6,6 @@ import time
 from collections.abc import Callable
 from concurrent.futures import as_completed
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from functools import wraps
 from types import TracebackType
 from typing import Any
@@ -43,6 +42,10 @@ from onyx.natural_language_processing.exceptions import CohereBillingLimitError
 from onyx.natural_language_processing.exceptions import ModelServerRateLimitError
 from onyx.natural_language_processing.utils import get_tokenizer
 from onyx.natural_language_processing.utils import tokenizer_trim_content
+from onyx.server.metrics.embedding import observe_embedding_client
+from onyx.server.metrics.embedding import track_embedding_in_progress
+from onyx.tracing.flows import LLMFlow
+from onyx.tracing.llm_utils import traced_llm_call
 from onyx.utils.logger import setup_logger
 from onyx.utils.search_nlp_models_utils import pass_aws_key
 from onyx.utils.text_processing import remove_invalid_unicode_chars
@@ -97,7 +100,7 @@ def _get_or_create_event_loop() -> asyncio.AbstractEventLoop:
     which was causing memory leaks. Instead, each thread reuses the same loop.
 
     Returns:
-        asyncio.AbstractEventLoop: The thread-local event loop
+        asyncio.AbstractEventLoop: The thread-local event loop.
     """
     if (
         not hasattr(_thread_local, "loop")
@@ -131,7 +134,9 @@ def cleanup_embedding_thread_locals() -> None:
                 pending = asyncio.all_tasks(loop)
                 if pending:
                     logger.debug(
-                        f"Cleaning up event loop with {len(pending)} pending tasks in thread {threading.current_thread().name}"
+                        "Cleaning up event loop with %s pending tasks in thread %s",
+                        len(pending),
+                        threading.current_thread().name,
                     )
                     for task in pending:
                         task.cancel()
@@ -141,12 +146,12 @@ def cleanup_embedding_thread_locals() -> None:
                     )
             except Exception as e:
                 # If gathering tasks fails, just close the loop
-                logger.debug(f"Error gathering tasks during cleanup: {e}")
+                logger.debug("Error gathering tasks during cleanup: %s", e)
 
             # Close the event loop
             loop.close()
             logger.debug(
-                f"Closed event loop in thread {threading.current_thread().name}"
+                "Closed event loop in thread %s", threading.current_thread().name
             )
 
         # Clear the thread-local reference
@@ -369,7 +374,7 @@ class CloudEmbedding:
         location = (
             service_account_info.get("location")
             or os.environ.get("GOOGLE_CLOUD_LOCATION")
-            or "us-central1"
+            or "global"
         )
 
         client = genai.Client(
@@ -418,8 +423,10 @@ class CloudEmbedding:
         all_embeddings: list[Embedding] = []
 
         logger.debug(
-            f"VertexAI embedding: processing {len(texts)} texts in {len(batches)} batches "
-            f"(batch_size={VERTEXAI_EMBEDDING_LOCAL_BATCH_SIZE})"
+            "VertexAI embedding: processing %s texts in %s batches (batch_size=%s)",
+            len(texts),
+            len(batches),
+            VERTEXAI_EMBEDDING_LOCAL_BATCH_SIZE,
         )
 
         try:
@@ -430,11 +437,15 @@ class CloudEmbedding:
                 # Log progress for large batches to track memory usage patterns
                 if batch_idx % 10 == 0 and batch_idx > 0:
                     logger.debug(
-                        f"VertexAI embedding progress: batch {batch_idx}/{len(batches)}, total_embeddings={len(all_embeddings)}"
+                        "VertexAI embedding progress: batch %s/%s, total_embeddings=%s",
+                        batch_idx,
+                        len(batches),
+                        len(all_embeddings),
                     )
 
             logger.debug(
-                f"VertexAI embedding completed: {len(all_embeddings)} embeddings generated"
+                "VertexAI embedding completed: %s embeddings generated",
+                len(all_embeddings),
             )
             return all_embeddings
         finally:
@@ -444,7 +455,7 @@ class CloudEmbedding:
             except asyncio.TimeoutError:
                 logger.warning("Google GenAI client aclose() timed out after 5s")
             except Exception as e:
-                logger.warning(f"Error closing Google GenAI client: {e}")
+                logger.warning("Error closing Google GenAI client: %s", e)
 
     async def _embed_litellm_proxy(
         self, texts: list[str], model_name: str | None
@@ -516,8 +527,13 @@ class CloudEmbedding:
                 sanitized_api_key=self.sanitized_api_key,
                 status_code=e.response.status_code,
             )
-            logger.error(error_string)
-            logger.debug(f"Exception texts: {texts}")
+            # Log at warning because the @retry decorator will re-invoke us
+            # on failure — an ERROR-level log here floods Sentry with up to
+            # _RETRY_TRIES duplicate events per failing batch (rate limits,
+            # transient provider outages). The final failure surfaces via
+            # the RuntimeError below and is logged by the caller.
+            logger.warning(error_string)
+            logger.debug("Exception texts: %s", texts)
 
             raise RuntimeError(error_string)
         except Exception as e:
@@ -531,8 +547,8 @@ class CloudEmbedding:
                 self.provider,
                 sanitized_api_key=self.sanitized_api_key,
             )
-            logger.error(error_string)
-            logger.debug(f"Exception texts: {texts}")
+            logger.warning(error_string)
+            logger.debug("Exception texts: %s", texts)
 
             raise RuntimeError(error_string)
 
@@ -543,7 +559,7 @@ class CloudEmbedding:
         api_url: str | None = None,
         api_version: str | None = None,
     ) -> "CloudEmbedding":
-        logger.debug(f"Creating Embedding instance for provider: {provider}")
+        logger.debug("Creating Embedding instance for provider: %s", provider)
         return CloudEmbedding(api_key, provider, api_url, api_version)
 
     async def aclose(self) -> None:
@@ -702,8 +718,6 @@ class EmbeddingModel:
     async def _make_direct_api_call(
         self,
         embed_request: EmbedRequest,
-        tenant_id: str | None = None,  # noqa: ARG002
-        request_id: str | None = None,  # noqa: ARG002
     ) -> EmbedResponse:
         """Make direct API call to cloud provider, bypassing model server."""
         if self.provider_type is None:
@@ -732,7 +746,10 @@ class EmbeddingModel:
         total_chars = sum(len(text) for text in embed_request.texts)
 
         logger.info(
-            f"Embedding {len(embed_request.texts)} texts with {total_chars} total characters with provider: {self.provider_type}"
+            "Embedding %s texts with %s total characters with provider: %s",
+            len(embed_request.texts),
+            total_chars,
+            self.provider_type,
         )
 
         async with CloudEmbedding(
@@ -758,11 +775,11 @@ class EmbeddingModel:
 
         elapsed = time.monotonic() - start_time
         logger.info(
-            f"event=embedding_provider "
-            f"texts={len(embed_request.texts)} "
-            f"chars={total_chars} "
-            f"provider={self.provider_type} "
-            f"elapsed={elapsed:.2f}"
+            "event=embedding_provider texts=%s chars=%s provider=%s elapsed=%s",
+            len(embed_request.texts),
+            total_chars,
+            self.provider_type,
+            format(elapsed, ".2f"),
         )
 
         return EmbedResponse(embeddings=embeddings)
@@ -842,15 +859,16 @@ class EmbeddingModel:
         request_id: str | None = None,
     ) -> list[Embedding]:
         text_batches = batch_list(texts, batch_size)
+        num_of_batches = len(text_batches)
 
-        logger.debug(f"Encoding {len(texts)} texts in {len(text_batches)} batches")
+        logger.debug("Encoding %s texts in %s batches.", len(texts), num_of_batches)
 
         embeddings: list[Embedding] = []
 
         @_cleanup_thread_local
         def process_batch(
             batch_idx: int,
-            batch_len: int,
+            num_of_batches: int,
             text_batch: list[str],
             tenant_id: str | None = None,
             request_id: str | None = None,
@@ -877,75 +895,137 @@ class EmbeddingModel:
                 reduced_dimension=self.reduced_dimension,
             )
 
+            num_texts = len(text_batch)
+            num_chars = sum(len(t) for t in text_batch)
             start_time = time.monotonic()
-
-            # Route between direct API calls and model server calls
-            if self.provider_type is not None:
-                # For API providers, make direct API call
-                # Use thread-local event loop to prevent memory leaks from creating
-                # thousands of event loops during batch processing
-                loop = _get_or_create_event_loop()
-                response = loop.run_until_complete(
-                    self._make_direct_api_call(
-                        embed_request, tenant_id=tenant_id, request_id=request_id
-                    )
+            response: EmbedResponse
+            success = False
+            embed_flow = (
+                LLMFlow.EMBED_PASSAGE
+                if text_type == EmbedTextType.PASSAGE
+                else LLMFlow.EMBED_QUERY
+            )
+            try:
+                with (
+                    traced_llm_call(
+                        flow=embed_flow,
+                        model=self.model_name or "",
+                        provider=(
+                            self.provider_type.value
+                            if self.provider_type
+                            else "model_server"
+                        ),
+                        extra_config={
+                            "num_texts": str(num_texts),
+                            "num_chars": str(num_chars),
+                        },
+                    ),
+                    track_embedding_in_progress(self.provider_type, text_type),
+                ):
+                    # Route between direct API calls and model server calls.
+                    if self.provider_type is not None:
+                        # For API providers, make direct API call.
+                        try:
+                            # Detect if this code is being called from an event
+                            # loop or not.
+                            asyncio.get_running_loop()
+                        except RuntimeError:
+                            # This code is being called synchronously, safe to
+                            # use run_until_complete.
+                            # Use thread-local event loop to prevent memory
+                            # leaks from creating thousands of event loops
+                            # during batch processing.
+                            loop = _get_or_create_event_loop()
+                            response = loop.run_until_complete(
+                                self._make_direct_api_call(embed_request)
+                            )
+                        else:
+                            # This code is being called from an event loop,
+                            # can't block on it from the same thread without
+                            # deadlocking. Run in a separate thread with its
+                            # own loop.
+                            with ThreadPoolExecutor(max_workers=1) as pool:
+                                response = cast(
+                                    EmbedResponse,
+                                    pool.submit(
+                                        asyncio.run,
+                                        self._make_direct_api_call(embed_request),
+                                    ).result(),
+                                )
+                    else:
+                        # For local models, use model server.
+                        response = self._make_model_server_request(
+                            embed_request, tenant_id=tenant_id, request_id=request_id
+                        )
+                success = True
+            finally:
+                processing_time = time.monotonic() - start_time
+                observe_embedding_client(
+                    provider=self.provider_type,
+                    text_type=text_type,
+                    duration_s=processing_time,
+                    num_texts=num_texts,
+                    num_chars=num_chars,
+                    success=success,
                 )
-            else:
-                # For local models, use model server
-                response = self._make_model_server_request(
-                    embed_request, tenant_id=tenant_id, request_id=request_id
-                )
 
-            end_time = time.monotonic()
-
-            processing_time = end_time - start_time
             logger.debug(
-                f"EmbeddingModel.process_batch: Batch {batch_idx}/{batch_len} processing time: {processing_time:.2f} seconds"
+                "process_batch: Batch idx %s, total num %s, processing time: %ss.",
+                batch_idx,
+                num_of_batches,
+                format(processing_time, ".2f"),
             )
 
             return batch_idx, response.embeddings
 
-        # only multi thread if:
-        #   1. num_threads is greater than 1
-        #   2. we are using an API-based embedding model (provider_type is not None)
-        #   3. there are more than 1 batch (no point in threading if only 1)
+        # Only multi-thread if:
+        #  1. num_threads is greater than 1.
+        #  2. we are using an API-based embedding model (provider_type is not
+        #     None).
+        #  3. there is more than 1 batch (no point in threading if only 1).
         if num_threads >= 1 and self.provider_type and len(text_batches) > 1:
             with ThreadPoolExecutor(max_workers=num_threads) as executor:
-                future_to_batch = {
+                # NOTE: Be careful with closures, we explicitly pass in idx and
+                # batch here because if we were to pass them in via enclosing
+                # scope, they would be passed in as references not values and
+                # would be evaluated at lambda execution time, in which case
+                # every lambda would point to the same values for idx and batch.
+                futures = [
                     executor.submit(
-                        partial(
-                            process_batch,
-                            idx,
-                            len(text_batches),
-                            batch,
+                        lambda idx, batch: process_batch(
+                            batch_idx=idx,
+                            num_of_batches=num_of_batches,
+                            text_batch=batch,
                             tenant_id=tenant_id,
                             request_id=request_id,
-                        )
-                    ): idx
-                    for idx, batch in enumerate(text_batches, start=1)
-                }
+                        ),
+                        idx,
+                        batch,
+                    )
+                    for idx, batch in enumerate(text_batches)
+                ]
 
-                # Collect results in order
+                # Collect results in order.
                 batch_results: list[tuple[int, list[Embedding]]] = []
-                for future in as_completed(future_to_batch):
+                for future in as_completed(futures):
                     try:
                         result = future.result()
                         batch_results.append(result)
                     except Exception as e:
-                        logger.exception("Embedding model failed to process batch")
+                        logger.exception("Embedding model failed to process batch.")
                         raise e
 
-                # Sort by batch index and extend embeddings
+                # Sort by batch index and extend embeddings.
                 batch_results.sort(key=lambda x: x[0])
                 for _, batch_embeddings in batch_results:
                     embeddings.extend(batch_embeddings)
         else:
-            # Original sequential processing
-            for idx, text_batch in enumerate(text_batches, start=1):
+            # Original sequential processing.
+            for idx, text_batch in enumerate(text_batches):
                 _, batch_embeddings = process_batch(
-                    idx,
-                    len(text_batches),
-                    text_batch,
+                    batch_idx=idx,
+                    num_of_batches=num_of_batches,
+                    text_batch=text_batch,
                     tenant_id=tenant_id,
                     request_id=request_id,
                 )
@@ -1091,39 +1171,47 @@ class RerankingModel:
             raise ValueError(f"Unsupported reranking provider: {self.provider_type}")
 
     def predict(self, query: str, passages: list[str]) -> list[float]:
-        # Route between direct API calls and model server calls
-        if self.provider_type is not None:
-            # For API providers, make direct API call
-            loop = asyncio.new_event_loop()
-            try:
-                asyncio.set_event_loop(loop)
-                return loop.run_until_complete(
-                    self._make_direct_rerank_call(query, passages)
+        with traced_llm_call(
+            flow=LLMFlow.RERANK,
+            model=self.model_name,
+            provider=(
+                self.provider_type.value if self.provider_type else "model_server"
+            ),
+            extra_config={"num_passages": str(len(passages))},
+        ):
+            # Route between direct API calls and model server calls
+            if self.provider_type is not None:
+                # For API providers, make direct API call
+                loop = asyncio.new_event_loop()
+                try:
+                    asyncio.set_event_loop(loop)
+                    return loop.run_until_complete(
+                        self._make_direct_rerank_call(query, passages)
+                    )
+                finally:
+                    loop.close()
+            else:
+                # For local models, use model server
+                if self.rerank_server_endpoint is None:
+                    raise ValueError(
+                        "Rerank server endpoint is not configured for local models"
+                    )
+
+                rerank_request = RerankRequest(
+                    query=query,
+                    documents=passages,
+                    model_name=self.model_name,
+                    provider_type=self.provider_type,
+                    api_key=self.api_key,
+                    api_url=self.api_url,
                 )
-            finally:
-                loop.close()
-        else:
-            # For local models, use model server
-            if self.rerank_server_endpoint is None:
-                raise ValueError(
-                    "Rerank server endpoint is not configured for local models"
+
+                response = requests.post(
+                    self.rerank_server_endpoint, json=rerank_request.model_dump()
                 )
+                response.raise_for_status()
 
-            rerank_request = RerankRequest(
-                query=query,
-                documents=passages,
-                model_name=self.model_name,
-                provider_type=self.provider_type,
-                api_key=self.api_key,
-                api_url=self.api_url,
-            )
-
-            response = requests.post(
-                self.rerank_server_endpoint, json=rerank_request.model_dump()
-            )
-            response.raise_for_status()
-
-            return RerankResponse(**response.json()).scores
+                return RerankResponse(**response.json()).scores
 
 
 class QueryAnalysisModel:
@@ -1151,12 +1239,17 @@ class QueryAnalysisModel:
             semantic_percent_threshold=self.semantic_percent_threshold,
         )
 
-        response = requests.post(
-            self.intent_server_endpoint, json=intent_request.model_dump()
-        )
-        response.raise_for_status()
+        with traced_llm_call(
+            flow=LLMFlow.INTENT_CLASSIFICATION,
+            model="query-analysis",
+            provider="model_server",
+        ):
+            response = requests.post(
+                self.intent_server_endpoint, json=intent_request.model_dump()
+            )
+            response.raise_for_status()
 
-        response_model = IntentResponse(**response.json())
+            response_model = IntentResponse(**response.json())
 
         return response_model.is_keyword, response_model.keywords
 
@@ -1177,7 +1270,10 @@ def warm_up_retry(
             except Exception as e:
                 exceptions.append(e)
                 logger.info(
-                    f"Attempt {attempt + 1}/{tries} failed; retrying in {delay} seconds..."
+                    "Attempt %s/%s failed; retrying in %s seconds...",
+                    attempt + 1,
+                    tries,
+                    delay,
                 )
                 time.sleep(delay)
         raise Exception(f"All retries failed: {exceptions}")
@@ -1194,7 +1290,7 @@ def warm_up_bi_encoder(
 
     warm_up_str = " ".join(WARM_UP_STRINGS)
 
-    logger.debug(f"Warming up encoder model: {embedding_model.model_name}")
+    logger.debug("Warming up encoder model: %s", embedding_model.model_name)
     get_tokenizer(
         model_name=embedding_model.model_name,
         provider_type=embedding_model.provider_type,
@@ -1204,17 +1300,20 @@ def warm_up_bi_encoder(
         try:
             embedding_model.encode(texts=[warm_up_str], text_type=EmbedTextType.QUERY)
             logger.debug(
-                f"Warm-up complete for encoder model: {embedding_model.model_name}"
+                "Warm-up complete for encoder model: %s", embedding_model.model_name
             )
         except Exception as e:
             logger.warning(
-                f"Warm-up request failed for encoder model {embedding_model.model_name}: {e}"
+                "Warm-up request failed for encoder model %s: %s",
+                embedding_model.model_name,
+                e,
             )
 
     if non_blocking:
         threading.Thread(target=_warm_up, daemon=True).start()
         logger.debug(
-            f"Started non-blocking warm-up for encoder model: {embedding_model.model_name}"
+            "Started non-blocking warm-up for encoder model: %s",
+            embedding_model.model_name,
         )
     else:
         retry_encode = warm_up_retry(embedding_model.encode)
@@ -1229,7 +1328,7 @@ def warm_up_cross_encoder(
     if SKIP_WARM_UP:
         return
 
-    logger.debug(f"Warming up reranking model: {rerank_model_name}")
+    logger.debug("Warming up reranking model: %s", rerank_model_name)
 
     reranking_model = RerankingModel(
         model_name=rerank_model_name,
@@ -1241,16 +1340,18 @@ def warm_up_cross_encoder(
     def _warm_up() -> None:
         try:
             reranking_model.predict(WARM_UP_STRINGS[0], WARM_UP_STRINGS[1:])
-            logger.debug(f"Warm-up complete for reranking model: {rerank_model_name}")
+            logger.debug("Warm-up complete for reranking model: %s", rerank_model_name)
         except Exception as e:
             logger.warning(
-                f"Warm-up request failed for reranking model {rerank_model_name}: {e}"
+                "Warm-up request failed for reranking model %s: %s",
+                rerank_model_name,
+                e,
             )
 
     if non_blocking:
         threading.Thread(target=_warm_up, daemon=True).start()
         logger.debug(
-            f"Started non-blocking warm-up for reranking model: {rerank_model_name}"
+            "Started non-blocking warm-up for reranking model: %s", rerank_model_name
         )
     else:
         retry_rerank = warm_up_retry(reranking_model.predict)

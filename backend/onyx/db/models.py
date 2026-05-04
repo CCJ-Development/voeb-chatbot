@@ -3,113 +3,107 @@ import json
 from typing import Any
 from typing import Literal
 from typing import NotRequired
-from uuid import uuid4
-
-from pydantic import BaseModel
-from sqlalchemy.orm import validates
-
-from typing_extensions import TypedDict  # noreorder
 from uuid import UUID
-from pydantic import ValidationError
-
-from sqlalchemy.dialects.postgresql import JSONB as PGJSONB
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from uuid import uuid4
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseOAuthAccountTableUUID
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 from fastapi_users_db_sqlalchemy.access_token import SQLAlchemyBaseAccessTokenTableUUID
 from fastapi_users_db_sqlalchemy.generics import TIMESTAMPAware
+from pydantic import BaseModel
+from pydantic import ValidationError
+from sqlalchemy import BigInteger
 from sqlalchemy import Boolean
 from sqlalchemy import DateTime
 from sqlalchemy import desc
 from sqlalchemy import Enum
+from sqlalchemy import event
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import Integer
-from sqlalchemy import BigInteger
-
+from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import postgresql
-from sqlalchemy import event
+from sqlalchemy.dialects.postgresql import JSONB as PGJSONB
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import validates
 from sqlalchemy.types import LargeBinary
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy import PrimaryKeyConstraint
+from typing_extensions import TypedDict  # noreorder
 
-from onyx.db.enums import AccountType
 from onyx.auth.schemas import UserRole
-from onyx.configs.constants import (
-    ANONYMOUS_USER_UUID,
-    DEFAULT_BOOST,
-    FederatedConnectorSource,
-    MilestoneRecordType,
-)
+from onyx.configs.constants import ANONYMOUS_USER_UUID
+from onyx.configs.constants import DEFAULT_BOOST
 from onyx.configs.constants import DocumentSource
+from onyx.configs.constants import FederatedConnectorSource
 from onyx.configs.constants import FileOrigin
 from onyx.configs.constants import MessageType
-from onyx.db.enums import (
-    AccessType,
-    ArtifactType,
-    BuildSessionStatus,
-    EmbeddingPrecision,
-    HierarchyNodeType,
-    HookFailStrategy,
-    HookPoint,
-    IndexingMode,
-    OpenSearchDocumentMigrationStatus,
-    OpenSearchTenantMigrationStatus,
-    ProcessingMode,
-    SandboxStatus,
-    SyncType,
-    SyncStatus,
-    MCPAuthenticationType,
-    UserFileStatus,
-    MCPAuthenticationPerformer,
-    MCPTransport,
-    MCPServerStatus,
-    Permission,
-    GrantSource,
-    LLMModelFlowType,
-    ThemePreference,
-    DefaultAppMode,
-    SwitchoverType,
-    SharingScope,
-)
+from onyx.configs.constants import MilestoneRecordType
 from onyx.configs.constants import NotificationType
 from onyx.configs.constants import SearchFeedbackType
 from onyx.configs.constants import TokenRateLimitScope
 from onyx.connectors.models import InputType
+from onyx.db.enums import AccessType
+from onyx.db.enums import AccountType
+from onyx.db.enums import ArtifactType
+from onyx.db.enums import BuildSessionStatus
 from onyx.db.enums import ChatSessionSharedStatus
 from onyx.db.enums import ConnectorCredentialPairStatus
+from onyx.db.enums import DefaultAppMode
+from onyx.db.enums import EmbeddingPrecision
+from onyx.db.enums import GrantSource
+from onyx.db.enums import HierarchyNodeType
+from onyx.db.enums import HookFailStrategy
+from onyx.db.enums import HookPoint
+from onyx.db.enums import IndexingMode
 from onyx.db.enums import IndexingStatus
 from onyx.db.enums import IndexModelStatus
+from onyx.db.enums import LLMModelFlowType
+from onyx.db.enums import MCPAuthenticationPerformer
+from onyx.db.enums import MCPAuthenticationType
+from onyx.db.enums import MCPServerStatus
+from onyx.db.enums import MCPTransport
+from onyx.db.enums import OpenSearchDocumentMigrationStatus
+from onyx.db.enums import OpenSearchTenantMigrationStatus
+from onyx.db.enums import Permission
 from onyx.db.enums import PermissionSyncStatus
+from onyx.db.enums import ProcessingMode
+from onyx.db.enums import SandboxStatus
+from onyx.db.enums import SharingScope
+from onyx.db.enums import SwitchoverType
+from onyx.db.enums import SyncStatus
+from onyx.db.enums import SyncType
 from onyx.db.enums import TaskStatus
-from onyx.db.pydantic_type import PydanticListType, PydanticType
-from onyx.kg.models import KGEntityTypeAttributes
-from onyx.utils.logger import setup_logger
-from onyx.utils.special_types import JSON_ro
+from onyx.db.enums import ThemePreference
+from onyx.db.enums import UserFileStatus
+from onyx.db.index_attempt_metrics_models import IndexAttemptStage
+from onyx.db.pydantic_type import PydanticListType
+from onyx.db.pydantic_type import PydanticType
 from onyx.file_store.models import FileDescriptor
+from onyx.kg.models import KGEntityTypeAttributes
+from onyx.kg.models import KGStage
 from onyx.llm.override_models import LLMOverride
 from onyx.llm.override_models import PromptOverride
-from onyx.kg.models import KGStage
 from onyx.tools.tool_implementations.web_search.models import WebContentProviderConfig
 from onyx.utils.encryption import decrypt_bytes_to_string
 from onyx.utils.encryption import encrypt_string_to_bytes
-from onyx.utils.sensitive import SensitiveValue
 from onyx.utils.headers import HeaderItemDict
+from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import SensitiveValue
+from onyx.utils.special_types import JSON_ro
 from shared_configs.enums import EmbeddingProvider
 
 # TODO: After anonymous user migration has been deployed, make user_id columns NOT NULL
@@ -279,7 +273,7 @@ class NullFilteredString(TypeDecorator):
         dialect: Dialect,  # noqa: ARG002
     ) -> str | None:
         if value is not None and "\x00" in value:
-            logger.warning(f"NUL characters found in value: {value}")
+            logger.warning("NUL characters found in value: %s", value)
             return value.replace("\x00", "")
         return value
 
@@ -2075,9 +2069,12 @@ class SearchSettings(Base):
         Enum(SwitchoverType, native_enum=False), default=SwitchoverType.REINDEX
     )
 
-    # allows for quantization -> less memory usage for a small performance hit
+    # allows for quantization -> less memory usage for a small performance hit.
+    # Defaults to FLOAT (float32). OpenSearch ignores this field and stores
+    # vectors as float32 regardless; BFLOAT16 is only honored by Vespa.
     embedding_precision: Mapped[EmbeddingPrecision] = mapped_column(
-        Enum(EmbeddingPrecision, native_enum=False)
+        Enum(EmbeddingPrecision, native_enum=False),
+        default=EmbeddingPrecision.FLOAT,
     )
 
     # can be used to reduce dimensionality of vectors and save memory with
@@ -2186,6 +2183,114 @@ class SearchSettings(Base):
         )
 
 
+class TargetedReindexJob(Base):
+    """
+    One row per user-initiated reindex request. Gives the FE a stable handle
+    to poll for aggregate status across a request that may span multiple
+    `(cc_pair, search_settings)` tuples. The per-doc work list lives in
+    `targeted_reindex_job_target`.
+    """
+
+    __tablename__ = "targeted_reindex_job"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requested_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    requested_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[IndexingStatus] = mapped_column(
+        Enum(IndexingStatus, native_enum=False),
+        nullable=False,
+        default=IndexingStatus.NOT_STARTED,
+        index=True,
+    )
+    # Pre-allocated celery task UUID. Written before `apply_async` so the
+    # orphan-detector can clean up if enqueue fails after INSERT, and so
+    # cancellation has a handle to revoke.
+    celery_task_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    resolved_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    still_failing_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    skipped_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+
+    # Snapshot of resolved error rows captured at completion. Outlives later
+    # cleanup of the underlying `index_attempt_errors` rows.
+    resolved_summary: Mapped[list[dict[str, Any]]] = mapped_column(
+        PGJSONB, nullable=False, default=list, server_default="[]"
+    )
+
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    targets: Mapped[list["TargetedReindexJobTarget"]] = relationship(
+        "TargetedReindexJobTarget",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    index_attempts: Mapped[list["IndexAttempt"]] = relationship(
+        "IndexAttempt",
+        back_populates="targeted_reindex_job",
+        primaryjoin="TargetedReindexJob.id == IndexAttempt.targeted_reindex_job_id",
+    )
+
+
+class TargetedReindexJobTarget(Base):
+    """
+    One row per doc a reindex job will touch. Separate table (not JSONB on
+    the job) so each row can FK to its source `IndexAttemptError` for clean
+    resolution tracking and FK to its `cc_pair` for cascade cleanup. NULL
+    `source_error_id` means an arbitrary reindex with no failure context.
+    """
+
+    __tablename__ = "targeted_reindex_job_target"
+
+    targeted_reindex_job_id: Mapped[int] = mapped_column(
+        ForeignKey("targeted_reindex_job.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    cc_pair_id: Mapped[int] = mapped_column(
+        ForeignKey("connector_credential_pair.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    document_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    source_error_id: Mapped[int | None] = mapped_column(
+        ForeignKey("index_attempt_errors.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_targeted_reindex_job_target_cc_pair_doc",
+            "cc_pair_id",
+            "document_id",
+        ),
+    )
+
+    job: Mapped["TargetedReindexJob"] = relationship(
+        "TargetedReindexJob", back_populates="targets"
+    )
+    source_error: Mapped["IndexAttemptError | None"] = relationship(
+        "IndexAttemptError",
+        primaryjoin="TargetedReindexJobTarget.source_error_id == IndexAttemptError.id",
+    )
+
+
 class IndexAttempt(Base):
     """
     Represents an attempt to index a group of 0 or more documents from a
@@ -2207,6 +2312,20 @@ class IndexAttempt(Base):
     # This is only for attempts that are explicitly marked as from the start via
     # the run once API
     from_beginning: Mapped[bool] = mapped_column(Boolean)
+    # NULL on full-run attempts. Set on synthetic attempts spawned by a
+    # targeted reindex; links back to the `targeted_reindex_job` row.
+    # Consumer query sites that only care about full runs filter
+    # `WHERE targeted_reindex_job_id IS NULL`.
+    targeted_reindex_job_id: Mapped[int | None] = mapped_column(
+        ForeignKey("targeted_reindex_job.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    targeted_reindex_job: Mapped["TargetedReindexJob | None"] = relationship(
+        "TargetedReindexJob",
+        back_populates="index_attempts",
+        primaryjoin="IndexAttempt.targeted_reindex_job_id == TargetedReindexJob.id",
+    )
     status: Mapped[IndexingStatus] = mapped_column(
         Enum(IndexingStatus, native_enum=False, index=True)
     )
@@ -2289,6 +2408,12 @@ class IndexAttempt(Base):
 
     error_rows = relationship(
         "IndexAttemptError",
+        back_populates="index_attempt",
+        cascade="all, delete-orphan",
+    )
+
+    stage_metrics: Mapped[list["IndexAttemptStageMetric"]] = relationship(
+        "IndexAttemptStageMetric",
         back_populates="index_attempt",
         cascade="all, delete-orphan",
     )
@@ -2435,6 +2560,67 @@ class IndexAttemptError(Base):
 
     # This is the reverse side of the relationship
     index_attempt = relationship("IndexAttempt", back_populates="error_rows")
+
+
+class IndexAttemptStageMetric(Base):
+    """Per-stage timing aggregate for an `IndexAttempt`.
+
+    One row per `(index_attempt_id, stage)` pair. The row holds running
+    aggregates (count, sum, min, max, and Welford/Chan M2 accumulator) so we
+    can derive average and standard deviation at read time without storing
+    individual samples. See `plans/index-attempt-stage-metrics.md` for the
+    write-path SQL and `onyx.db.index_attempt_metrics_models.STAGE_SCOPE`
+    for the per-stage display scope.
+    """
+
+    __tablename__ = "index_attempt_stage_metric"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    index_attempt_id: Mapped[int] = mapped_column(
+        ForeignKey("index_attempt.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    stage: Mapped[IndexAttemptStage] = mapped_column(
+        Enum(IndexAttemptStage, native_enum=False, length=40),
+        nullable=False,
+    )
+
+    event_count: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    total_duration_ms: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=0
+    )
+    # Welford / Chan running sum of squared deviations from the mean. Stored
+    # as Float (DOUBLE PRECISION on PostgreSQL) so the SQL upsert can apply
+    # Chan's parallel-combination formula without rounding drift.
+    m2_duration_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+    min_duration_ms: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, default=None
+    )
+    max_duration_ms: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, default=None
+    )
+
+    time_first_event: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    time_last_event: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+
+    index_attempt: Mapped["IndexAttempt"] = relationship(
+        "IndexAttempt", back_populates="stage_metrics"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "index_attempt_id",
+            "stage",
+            name="uq_index_attempt_stage_metric_attempt_stage",
+        ),
+    )
 
 
 class SyncRecord(Base):

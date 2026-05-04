@@ -47,6 +47,7 @@ from onyx.llm.factory import get_llm
 from onyx.llm.factory import get_max_input_tokens_from_llm_provider
 from onyx.llm.utils import get_bedrock_token_limit
 from onyx.llm.utils import get_llm_contextual_cost
+from onyx.llm.utils import is_sensitive_custom_config_key
 from onyx.llm.utils import test_llm
 from onyx.llm.well_known_providers.auto_update_service import (
     fetch_llm_recommendations_from_github,
@@ -170,25 +171,13 @@ def _sync_fetched_models(
         )
         if new_count > 0:
             logger.info(
-                f"Added {new_count} new {source_label} models to provider '{provider_name}'"
+                "Added %s new %s models to provider '%s'",
+                new_count,
+                source_label,
+                provider_name,
             )
     except ValueError as e:
-        logger.warning(f"Failed to sync {source_label} models to DB: {e}")
-
-
-# Keys in custom_config that contain sensitive credentials
-_SENSITIVE_CONFIG_KEYS = {
-    "vertex_credentials",
-    "aws_secret_access_key",
-    "aws_access_key_id",
-    "aws_bearer_token_bedrock",
-    "private_key",
-    "api_key",
-    "secret",
-    "password",
-    "token",
-    "credential",
-}
+        logger.warning("Failed to sync %s models to DB: %s", source_label, e)
 
 
 def _mask_provider_credentials(provider_view: LLMProviderView) -> None:
@@ -201,28 +190,18 @@ def _mask_provider_credentials(provider_view: LLMProviderView) -> None:
     if provider_view.custom_config:
         masked_config: dict[str, Any] = {}
         for key, value in provider_view.custom_config.items():
-            # Check if key matches any sensitive pattern (case-insensitive)
-            key_lower = key.lower()
-            is_sensitive = any(
-                sensitive_key in key_lower for sensitive_key in _SENSITIVE_CONFIG_KEYS
-            )
-            if is_sensitive and isinstance(value, str) and value:
+            if is_sensitive_custom_config_key(key) and isinstance(value, str) and value:
                 masked_config[key] = _mask_string(value)
             else:
                 masked_config[key] = value
         provider_view.custom_config = masked_config
 
 
-def _is_sensitive_custom_config_key(key: str) -> bool:
-    key_lower = key.lower()
-    return any(sensitive_key in key_lower for sensitive_key in _SENSITIVE_CONFIG_KEYS)
-
-
 def _is_masked_value_for_existing(
     incoming_value: str, existing_value: str, key: str
 ) -> bool:
     """Return True when incoming_value is a masked round-trip of existing_value."""
-    if not _is_sensitive_custom_config_key(key):
+    if not is_sensitive_custom_config_key(key):
         return False
 
     masked_candidates = {
@@ -426,7 +405,8 @@ def list_llm_providers(
         from_model_end = datetime.now(timezone.utc)
         from_model_duration = (from_model_end - from_model_start).total_seconds()
         logger.debug(
-            f"LLMProviderView.from_model took {from_model_duration:.2f} seconds"
+            "LLMProviderView.from_model took %s seconds",
+            format(from_model_duration, ".2f"),
         )
 
         _mask_provider_credentials(full_llm_provider)
@@ -434,7 +414,9 @@ def list_llm_providers(
 
     end_time = datetime.now(timezone.utc)
     duration = (end_time - start_time).total_seconds()
-    logger.debug(f"Completed fetching LLM providers in {duration:.2f} seconds")
+    logger.debug(
+        "Completed fetching LLM providers in %s seconds", format(duration, ".2f")
+    )
 
     return LLMProviderResponse[LLMProviderView].from_models(
         providers=llm_provider_list,
@@ -686,7 +668,7 @@ def get_vision_capable_providers(
         for provider_id, model_names in provider_models.items()
     ]
 
-    logger.debug(f"Found {len(vision_provider_response)} vision-capable providers")
+    logger.debug("Found %s vision-capable providers", len(vision_provider_response))
 
     return LLMProviderResponse[VisionProviderResponse].from_models(
         providers=vision_provider_response,
@@ -737,7 +719,9 @@ def list_llm_provider_basics(
     end_time = datetime.now(timezone.utc)
     duration = (end_time - start_time).total_seconds()
     logger.debug(
-        f"Completed fetching {len(accessible_providers)} user-accessible providers in {duration:.2f} seconds"
+        "Completed fetching %s user-accessible providers in %s seconds",
+        len(accessible_providers),
+        format(duration, ".2f"),
     )
 
     return LLMProviderResponse[LLMProviderDescriptor].from_models(
@@ -802,7 +786,7 @@ def list_llm_providers_for_persona(
     and should NOT block the UI.
     """
     start_time = datetime.now(timezone.utc)
-    logger.debug(f"Starting to fetch LLM providers for persona {persona_id}")
+    logger.debug("Starting to fetch LLM providers for persona %s", persona_id)
 
     persona = fetch_persona_with_groups(db_session, persona_id)
     if not persona:
@@ -835,7 +819,10 @@ def list_llm_providers_for_persona(
     end_time = datetime.now(timezone.utc)
     duration = (end_time - start_time).total_seconds()
     logger.debug(
-        f"Completed fetching {len(llm_provider_list)} LLM providers for persona {persona_id} in {duration:.2f} seconds"
+        "Completed fetching %s LLM providers for persona %s in %s seconds",
+        len(llm_provider_list),
+        persona_id,
+        format(duration, ".2f"),
     )
 
     # Get the default model and vision model for the persona
@@ -1034,7 +1021,7 @@ def get_bedrock_available_models(
                             "supports_image_input": infer_vision_support(profile_id),
                         }
         except Exception as e:
-            logger.warning(f"Couldn't fetch inference profiles for Bedrock: {e}")
+            logger.warning("Couldn't fetch inference profiles for Bedrock: %s", e)
 
         # Prefer profiles: de-dupe available models, then add profile IDs
         candidates = (available_models - cross_region_models) | profile_ids

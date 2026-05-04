@@ -1,5 +1,5 @@
---- backend/ext/_core_originals/layout.tsx.original	2026-04-23 11:17:56
-+++ web/src/app/layout.tsx	2026-04-23 11:15:49
+--- backend/ext/_core_originals/layout.tsx.original	2026-05-02 17:00:39
++++ web/src/app/layout.tsx	2026-05-02 16:56:25
 @@ -19,6 +19,7 @@
  import CustomAnalyticsScript from "@/providers/CustomAnalyticsScript";
  import ProductGatingWrapper from "@/providers/ProductGatingWrapper";

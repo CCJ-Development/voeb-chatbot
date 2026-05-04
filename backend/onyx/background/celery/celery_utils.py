@@ -15,9 +15,7 @@ from pydantic import BaseModel
 from onyx.configs.app_configs import MAX_PRUNING_DOCUMENT_RETRIEVAL_PER_MINUTE
 from onyx.configs.app_configs import VESPA_REQUEST_TIMEOUT
 from onyx.connectors.connector_runner import CheckpointOutputWrapper
-from onyx.connectors.cross_connector_utils.rate_limit_wrapper import (
-    rate_limit_builder,
-)
+from onyx.connectors.cross_connector_utils.rate_limit_wrapper import rate_limit_builder
 from onyx.connectors.interfaces import BaseConnector
 from onyx.connectors.interfaces import CheckpointedConnector
 from onyx.connectors.interfaces import ConnectorCheckpoint
@@ -34,7 +32,6 @@ from onyx.indexing.indexing_heartbeat import IndexingHeartbeatInterface
 from onyx.server.metrics.pruning_metrics import inc_pruning_rate_limit_error
 from onyx.server.metrics.pruning_metrics import observe_pruning_enumeration_duration
 from onyx.utils.logger import setup_logger
-
 
 logger = setup_logger()
 
@@ -123,7 +120,7 @@ def _extract_from_batch(
             if failed_id:
                 ids[failed_id] = None
             logger.warning(
-                f"Failed to retrieve document {failed_id}: {item.failure_message}"
+                "Failed to retrieve document %s: %s", failed_id, item.failure_message
             )
         else:
             ids[item.id] = item.parent_hierarchy_raw_node_id

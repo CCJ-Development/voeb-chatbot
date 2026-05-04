@@ -235,6 +235,36 @@ gh workflow run stackit-deploy.yml -f environment=test -R CCJ-Development/voeb-c
 
 6. **DEV-Single-Node-Konsolidierung ist mathematisch nicht machbar** mit aktivem Monitoring-Stack. Cluster-Total ~3.974m CPU > 1× g1a.4d-Allocatable ~3.700m. 1× g1a.8d kostet identisch zu 2× g1a.4d (lineares vCPU-Pricing bei StackIT) und verliert HA. → DEV bleibt 2× g1a.4d, dokumentiert in `values-dev.yaml`-Header. Alternative: DEV-Monitoring-Removal eroeffnet den Single-Node-Pfad (~143 EUR/Mo Ersparnis), Niko nutzt DEV-Monitoring selten — eigener Branch bei Bedarf.
 
+## Siebter Upstream-Merge (2026-05-02) — Referenz
+
+| Metrik | Wert |
+|--------|------|
+| Upstream-Commits | 168 |
+| Konflikte | 5: 2 trivial (`AGENTS.md` + `README.md` per `--ours`) + 1 moderat (`web/Dockerfile`: `overriden`→`overridden`-Fix, unsere ARG/ENV-Bloecke beibehalten) + 2 ernsthaft auf Core #9 + #17 |
+| Core-Datei-Konflikte | 2 (auto-merged: 14 — alle Hooks intakt). Core #9 `AuthFlowContainer.tsx` (Opal-Migration `OnyxIcon`→`SvgOnyxLogo`); Core #17 `AccountPopover.tsx` (Schema-Migration `LineItem`→`LineItemButton`, Patch von 3 auf 4 Gate-Stellen erweitert) |
+| ext_-Code Konflikte | 0 |
+| ext-Code Anpassung | 1 Datei: `web/src/ext/components/LogoCropModal.tsx` Checkbox-Import von `@/refresh-components/inputs/Checkbox` (Pfad weg) auf `{ Checkbox } from "@opal/components"` umgestellt — Upstream hat Checkbox in das Opal-Design-System verschoben (Default-Export → Named-Export, `onChange` → `onCheckedChange`) |
+| Alembic-Migrationen | 2 neue Upstream (`14162713706c` IndexAttempt-Stage-Metric-Tabelle, `31bd8c17325e` Targeted-Reindex-Schema). Chain: `ff7273065d0d` (ext-branding) `down_revision` von `a7c3e2b1d4f8` auf `31bd8c17325e` umgehaengt |
+| Chart-Version | 0.4.47 → 0.4.48 (Patch-Bump, keine neuen Sub-Charts) |
+| Helm-Repos | Keine neuen Repos (alle 7 bereits in CI) |
+| Neue Features relevant fuer uns | 2 Security-Fixes DSGVO/Banking-relevant (`#10602` document set access in search filters, `#10601` agent access on chat session creation, `#10528` is_listed-Filter fuer Nicht-Owner-Agent-Zugriffe); OpenSearch-Race-Fixes (Index-Lock #10446, Index-Refresh #10525/#10514); Confluence `/Date`-Macro + kyrillisches Encoding (#10488); `litellm 1.83.0` (Tool-Calling-Stabilitaet); Multi-Threading fuer Image-Processing (#10744); Helm `extraEnv`-Hook (#10533); LLM-Tracing-Infrastruktur via Braintrust (#10735, #10478, passive) |
+| Breaking Changes ohne ext-Impact | Opal `OnyxIcon`/`LineItem` deprecated (durch unsere zwei Core-Patches behandelt), `DANSWER_RUNNING_IN_DOCKER` → `ONYX_RUNNING_IN_DOCKER` ENV-Rename (#10442, wir setzen das nicht), Vespa-Refactor (#10613, bei uns durch `ONYX_DISABLE_VESPA=true` unkritisch), Node 20 → 24 (#10526) |
+| Force-Push auf upstream/main | Ja (von Upstream vor dem Merge beobachtet) — Merge-Base `5c896e2caf95` blieb stabil. Lesson #7 von Sync #6 erneut bestaetigt |
+| Workflow | Branch + PR (Push offen — wartet auf Nikos Freigabe) |
+| Verifikation | `tsc --strict` 0 Errors, Backend-AST-Sanity gruen. Pytest lokal nicht ausgefuehrt (Sync-Branch ohne aktives venv) — wird durch `ci-checks.yml` abgedeckt |
+
+### Lessons Learned Sync #7
+
+1. **Frontend Opal-Migration trifft uns alle 1-2 Syncs.** Sync #5 brachte AdminSidebar-Opal-Refactor, Sync #7 jetzt `OnyxIcon`→`SvgOnyxLogo` (Core #9) + `LineItem`→`LineItemButton` (Core #17, gerade erst 2026-04-20 neu gepatcht). Erwartung fuer kommende Syncs: weitere Opal-Migrationen werden Patches berueheren — die Patches sind aber jeweils klein (~10-30 Zeilen) und haben klare 1:1-Mappings. Frontend `web/CLAUDE.md` ist die Single Source of Truth fuer "aktuelle vs. legacy"-Komponentenpfade.
+
+2. **ext-Code kann durch Upstream-Refactors mit-rotzen.** Beim Sync #7 hat `LogoCropModal.tsx` gebrochen, weil Upstream `Checkbox` aus `@/refresh-components/inputs/` herausgezogen hat. Erkennt man nur via `tsc --strict` — keine Runtime-Errors, keine Lint-Warnings. **Lesson:** Nach jedem Sync `tsc --strict` als Pflicht-Check, **bevor** der Branch zum Push freigegeben wird. Backend hat AST-Sanity, Frontend braucht echtes TS-Strict.
+
+3. **Patch-Erweiterung statt -Reduktion bei Schema-Migrationen.** Core #17 hatte vor Sync #7 drei `EXT_BRANDING_ENABLED`-Gates. Upstream PR #10646 hat einen vierten Whitelabel-relevanten Eintrag (`Onyx <version>`-Link auf docs.onyx.app/changelog) eingefuehrt — den haben wir gleich mit-gegated, weil Whitelabel-Logik konsistent bleiben muss. **Lesson:** Bei Schema-Migrationen den Patch nicht mechanisch portieren, sondern **die Whitelabel-Anforderung neu bewerten** — neue Upstream-Eintraege koennen auch ausgeblendet werden muessen.
+
+4. **Drift-Cadence ~10 Tage ist optimal.** Sync #5 (344 Commits, 10h Aufwand), Sync #6 (234 Commits, 6h), Sync #7 (168 Commits, ~5h Vorbereitung). Bei kleinerem Drift sind Konflikte besser vorhersagbar, Patch-Inhalte uebersichtlicher. Kuerzer als 10 Tage hat marginalen Mehrwert (Aufwand-Untergrenze sind die Doku + 3-Step-Recovery), laenger als 14 Tage erhoeht das Risiko unaufloesbarer Schema-Migrationen quadratisch.
+
+5. **Alembic 3-Step-Recovery jetzt 3/3.** Sync #5 + Sync #6 + Sync #7 = drei mal in Folge das gleiche Pattern ohne Abweichung. Klar etabliertes Runbook-Pattern. Fuer Sync #8+ kann man die Sequenz vermutlich automatisieren (Bash-Script in `docs/runbooks/upstream-sync.md`), wenn der Aufwand der Pflege rechtfertigt.
+
 ## Sechster Upstream-Merge (2026-04-23) — Referenz
 
 | Metrik | Wert |

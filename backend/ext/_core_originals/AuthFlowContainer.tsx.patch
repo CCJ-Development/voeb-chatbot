@@ -1,11 +1,11 @@
---- backend/ext/_core_originals/AuthFlowContainer.tsx.original	2026-04-23 11:17:56
-+++ web/src/components/auth/AuthFlowContainer.tsx	2026-03-24 18:35:12
+--- backend/ext/_core_originals/AuthFlowContainer.tsx.original	2026-05-02 17:00:39
++++ web/src/components/auth/AuthFlowContainer.tsx	2026-05-02 16:57:34
 @@ -1,5 +1,11 @@
 +"use client";
 +
  import Link from "next/link";
 +import Image from "next/image";
- import { OnyxIcon } from "../icons/icons";
+ import { SvgOnyxLogo } from "@opal/logos";
 +import { useContext } from "react";
 +import { SettingsContext } from "@/providers/SettingsProvider";
 +import { t } from "@/ext/i18n";
@@ -23,7 +23,7 @@
    return (
      <div className="p-4 flex flex-col items-center justify-center min-h-screen bg-background">
        <div className="w-full max-w-md flex items-start flex-col bg-background-tint-00 rounded-16 shadow-lg shadow-02 p-6">
--        <OnyxIcon size={44} className="text-theme-primary-05" />
+-        <SvgOnyxLogo size={44} className="text-theme-primary-05" />
 +        {enterpriseSettings?.use_custom_logo ? (
 +          <div className="relative overflow-hidden rounded-full" style={{ width: 44, height: 44 }}>
 +            <Image
@@ -35,7 +35,7 @@
 +            />
 +          </div>
 +        ) : (
-+          <OnyxIcon size={44} className="text-theme-primary-05" />
++          <SvgOnyxLogo size={44} className="text-theme-primary-05" />
 +        )}
          <div className="w-full mt-3">{children}</div>
        </div>

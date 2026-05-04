@@ -1,6 +1,6 @@
---- backend/ext/_core_originals/main.py.original	2026-04-23 11:17:56
-+++ backend/onyx/main.py	2026-04-23 11:15:49
-@@ -528,7 +528,19 @@
+--- backend/ext/_core_originals/main.py.original	2026-05-02 17:00:39
++++ backend/onyx/main.py	2026-05-02 16:56:25
+@@ -523,7 +523,19 @@
  
      include_router_with_global_prefix_prepended(application, pat_router)
      include_router_with_global_prefix_prepended(application, captcha_router)
