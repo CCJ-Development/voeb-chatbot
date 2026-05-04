@@ -14,9 +14,6 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi.responses import JSONResponse
 
-from onyx.auth.users import current_user
-from onyx.db.models import User
-
 from ext.config import EXT_ANALYTICS_ENABLED
 from ext.config import EXT_AUDIT_ENABLED
 from ext.config import EXT_BRANDING_ENABLED
@@ -24,8 +21,10 @@ from ext.config import EXT_CUSTOM_PROMPTS_ENABLED
 from ext.config import EXT_DOC_ACCESS_ENABLED
 from ext.config import EXT_ENABLED
 from ext.config import EXT_I18N_ENABLED
-from ext.config import EXT_TOKEN_LIMITS_ENABLED
 from ext.config import EXT_RBAC_ENABLED
+from ext.config import EXT_TOKEN_LIMITS_ENABLED
+from onyx.auth.users import current_user
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.health")
 
@@ -65,7 +64,7 @@ def _check_postgres() -> dict:
             conn.execute(text("SELECT 1"))
         return {"status": "ok"}
     except Exception as e:
-        logger.warning(f"Deep health: PostgreSQL check failed: {e}")
+        logger.warning("Deep health: PostgreSQL check failed: %s", e)
         return {"status": "error", "detail": str(e)[:200]}
 
 
@@ -78,7 +77,7 @@ def _check_redis() -> dict:
         r.ping()
         return {"status": "ok"}
     except Exception as e:
-        logger.warning(f"Deep health: Redis check failed: {e}")
+        logger.warning("Deep health: Redis check failed: %s", e)
         return {"status": "error", "detail": str(e)[:200]}
 
 
@@ -116,10 +115,10 @@ def _check_opensearch() -> dict:
     except urllib.error.HTTPError as e:
         if e.code == 401:
             return {"status": "ok", "detail": "reachable (auth required)"}
-        logger.warning(f"Deep health: OpenSearch check failed: {e}")
+        logger.warning("Deep health: OpenSearch check failed: %s", e)
         return {"status": "error", "detail": str(e)[:200]}
     except Exception as e:
-        logger.warning(f"Deep health: OpenSearch check failed: {e}")
+        logger.warning("Deep health: OpenSearch check failed: %s", e)
         return {"status": "error", "detail": str(e)[:200]}
 
 

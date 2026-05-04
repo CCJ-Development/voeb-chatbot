@@ -3,10 +3,10 @@
 import uuid
 
 from sqlalchemy import DateTime
+from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import String
 from sqlalchemy import Text
-from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID

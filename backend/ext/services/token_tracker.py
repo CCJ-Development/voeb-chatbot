@@ -26,11 +26,10 @@ from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from onyx.db.engine.sql_engine import get_sqlalchemy_engine
-from onyx.db.models import User
-
 from ext.models.token_usage import ExtTokenUsage
 from ext.models.token_usage import ExtTokenUserLimit
+from onyx.db.engine.sql_engine import get_sqlalchemy_engine
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.token")
 

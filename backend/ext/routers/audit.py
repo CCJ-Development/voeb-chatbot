@@ -21,12 +21,11 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
 from ext.auth import current_admin_user
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.models import User
-
 from ext.schemas.audit import AuditEventsListResponse
 from ext.services.audit import export_audit_csv
 from ext.services.audit import query_audit_events
+from onyx.db.engine.sql_engine import get_session
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.audit")
 

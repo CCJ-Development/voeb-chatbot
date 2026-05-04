@@ -13,9 +13,9 @@ from pydantic import ValidationError
 
 from ext.schemas.branding import BrandingConfigResponse
 from ext.schemas.branding import BrandingConfigUpdate
-from ext.services.branding import LOGO_MAX_SIZE_BYTES
 from ext.services.branding import _detect_mime_type
 from ext.services.branding import _get_defaults
+from ext.services.branding import LOGO_MAX_SIZE_BYTES
 
 
 class TestBrandingSchemaValidation:

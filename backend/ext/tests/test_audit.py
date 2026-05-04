@@ -12,7 +12,6 @@ from unittest.mock import patch
 from uuid import uuid4
 
 
-
 def _mock_user(email: str = "admin@voeb-service.de", role_value: str = "admin"):
     user = MagicMock()
     user.id = uuid4()
@@ -174,6 +173,7 @@ class TestAnonymizeOldIPs:
     def test_anonymize_signature(self) -> None:
         """Funktion akzeptiert db_session und gibt int zurueck."""
         import inspect
+
         from ext.services.audit import anonymize_old_ips
 
         sig = inspect.signature(anonymize_old_ips)

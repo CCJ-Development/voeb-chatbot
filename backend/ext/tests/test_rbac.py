@@ -11,7 +11,6 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 
-
 # --- Helper: Mock User ---
 
 
@@ -119,8 +118,8 @@ class TestValidateCuratorForGroup:
 class TestCheckAndDemoteCurator:
     def test_demotes_when_no_curator_groups_left(self) -> None:
         """Curator with 0 remaining curator groups should be demoted to BASIC."""
-        from onyx.auth.schemas import UserRole
         from ext.services.rbac import _check_and_demote_curator
+        from onyx.auth.schemas import UserRole
 
         uid = uuid4()
         user = _mock_user("curator", user_id=uid)
@@ -136,8 +135,8 @@ class TestCheckAndDemoteCurator:
 
     def test_no_demotion_when_still_curator_somewhere(self) -> None:
         """Curator with remaining curator groups should NOT be demoted."""
-        from onyx.auth.schemas import UserRole
         from ext.services.rbac import _check_and_demote_curator
+        from onyx.auth.schemas import UserRole
 
         uid = uuid4()
         user = _mock_user("curator", user_id=uid)
@@ -153,8 +152,8 @@ class TestCheckAndDemoteCurator:
 
     def test_admin_never_demoted(self) -> None:
         """Admin should never be demoted regardless of curator status."""
-        from onyx.auth.schemas import UserRole
         from ext.services.rbac import _check_and_demote_curator
+        from onyx.auth.schemas import UserRole
 
         uid = uuid4()
         user = _mock_user("admin", user_id=uid)
@@ -168,8 +167,8 @@ class TestCheckAndDemoteCurator:
 
     def test_global_curator_never_demoted(self) -> None:
         """Global curator should never be demoted."""
-        from onyx.auth.schemas import UserRole
         from ext.services.rbac import _check_and_demote_curator
+        from onyx.auth.schemas import UserRole
 
         uid = uuid4()
         user = _mock_user("global_curator", user_id=uid)
@@ -282,8 +281,8 @@ class TestSetCuratorStatus:
         self, mock_fetch, mock_demote
     ) -> None:
         """Setting is_curator=True should also set user.role to CURATOR."""
-        from onyx.auth.schemas import UserRole
         from ext.services.rbac import set_curator_status
+        from onyx.auth.schemas import UserRole
 
         db = _mock_db_session()
         uid = uuid4()
@@ -462,16 +461,18 @@ class TestSchemas:
 
     def test_user_group_create_empty_name_fails(self) -> None:
         """Empty name should fail validation."""
-        from ext.schemas.rbac import UserGroupCreate
         from pydantic import ValidationError
+
+        from ext.schemas.rbac import UserGroupCreate
 
         with pytest.raises(ValidationError):
             UserGroupCreate(name="")
 
     def test_user_group_create_long_name_fails(self) -> None:
         """Name > 255 chars should fail validation."""
-        from ext.schemas.rbac import UserGroupCreate
         from pydantic import ValidationError
+
+        from ext.schemas.rbac import UserGroupCreate
 
         with pytest.raises(ValidationError):
             UserGroupCreate(name="x" * 256)
@@ -487,8 +488,9 @@ class TestSchemas:
 
     def test_add_users_request_requires_at_least_one(self) -> None:
         """AddUsersRequest should require at least 1 user_id."""
-        from ext.schemas.rbac import AddUsersRequest
         from pydantic import ValidationError
+
+        from ext.schemas.rbac import AddUsersRequest
 
         with pytest.raises(ValidationError):
             AddUsersRequest(user_ids=[])

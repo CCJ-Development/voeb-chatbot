@@ -12,21 +12,19 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ext.auth import current_admin_user
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.models import User
-
 from ext.routers.audit import get_audit_context
-from ext.services.audit import log_audit_event
-
 from ext.schemas.prompts import PromptCreate
 from ext.schemas.prompts import PromptPreviewResponse
 from ext.schemas.prompts import PromptResponse
 from ext.schemas.prompts import PromptUpdate
+from ext.services.audit import log_audit_event
 from ext.services.prompt_manager import create_prompt
 from ext.services.prompt_manager import delete_prompt
 from ext.services.prompt_manager import get_all_prompts
 from ext.services.prompt_manager import get_assembled_prompt_text
 from ext.services.prompt_manager import update_prompt
+from onyx.db.engine.sql_engine import get_session
+from onyx.db.models import User
 
 if TYPE_CHECKING:
     from ext.models.prompts import ExtCustomPrompt

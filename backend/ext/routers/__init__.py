@@ -18,9 +18,8 @@ logger = setup_logger("ext", log_level=logging.INFO)
 def register_ext_routers(application: FastAPI) -> None:
     """Register all enabled extension routers."""
     # Import inside function to avoid circular import with onyx.main
-    from onyx.main import include_router_with_global_prefix_prepended
-
     from ext.config import EXT_ENABLED
+    from onyx.main import include_router_with_global_prefix_prepended
 
     if not EXT_ENABLED:
         return

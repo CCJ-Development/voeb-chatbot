@@ -44,9 +44,9 @@ def ext_doc_access_sync_task(self) -> None:  # type: ignore[no-untyped-def]  # n
             result = sync_usergroup_acls(db_session)
             if result["synced"] > 0:
                 logger.info(
-                    f"[EXT-ACCESS] Sync completed: "
-                    f"{result['synced']} groups, "
-                    f"{result['documents']} documents"
+                    "[EXT-ACCESS] Sync completed: %d groups, %d documents",
+                    result["synced"],
+                    result["documents"],
                 )
     except Exception:
         logger.error("[EXT-ACCESS] Sync task failed", exc_info=True)

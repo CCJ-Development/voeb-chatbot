@@ -11,15 +11,12 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from ext.auth import current_admin_user
-from onyx.auth.users import current_curator_or_admin_user
-from onyx.auth.users import current_user
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.models import User
-
+from ext.routers.audit import get_audit_context
 from ext.schemas.rbac import AddUsersRequest
 from ext.schemas.rbac import SetCuratorRequest
 from ext.schemas.rbac import UserGroupCreate
 from ext.schemas.rbac import UserGroupUpdate
+from ext.services.audit import log_audit_event
 from ext.services.rbac import add_users_to_group
 from ext.services.rbac import create_user_group
 from ext.services.rbac import delete_user_group
@@ -28,9 +25,10 @@ from ext.services.rbac import fetch_minimal_user_groups
 from ext.services.rbac import set_curator_status
 from ext.services.rbac import update_user_group
 from ext.services.rbac import validate_curator_for_group
-
-from ext.routers.audit import get_audit_context
-from ext.services.audit import log_audit_event
+from onyx.auth.users import current_curator_or_admin_user
+from onyx.auth.users import current_user
+from onyx.db.engine.sql_engine import get_session
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.rbac")
 

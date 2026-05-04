@@ -145,8 +145,10 @@ def sync_usergroup_acls(db_session: Session) -> dict:
     for group in pending_groups:
         doc_ids = get_document_ids_for_group(group.id, db_session)
         logger.info(
-            f"[EXT-ACCESS] Syncing group '{group.name}' "
-            f"(id={group.id}): {len(doc_ids)} documents"
+            "[EXT-ACCESS] Syncing group '%s' (id=%d): %d documents",
+            group.name,
+            group.id,
+            len(doc_ids),
         )
 
         # ACLs fuer jedes Dokument neu berechnen
@@ -161,8 +163,9 @@ def sync_usergroup_acls(db_session: Session) -> dict:
                 total_docs += 1
             except Exception:
                 logger.error(
-                    f"[EXT-ACCESS] Failed to sync doc {doc_id} "
-                    f"for group {group.name}",
+                    "[EXT-ACCESS] Failed to sync doc %s for group %s",
+                    doc_id,
+                    group.name,
                     exc_info=True,
                 )
 
@@ -172,8 +175,9 @@ def sync_usergroup_acls(db_session: Session) -> dict:
     db_session.commit()
 
     logger.info(
-        f"[EXT-ACCESS] Sync complete: {len(pending_groups)} groups, "
-        f"{total_docs} documents"
+        "[EXT-ACCESS] Sync complete: %d groups, %d documents",
+        len(pending_groups),
+        total_docs,
     )
     return {"synced": len(pending_groups), "documents": total_docs}
 
@@ -191,7 +195,7 @@ def trigger_full_resync(db_session: Session) -> dict:
     )
     db_session.commit()
 
-    logger.info(f"[EXT-ACCESS] Full resync triggered: {count} groups queued")
+    logger.info("[EXT-ACCESS] Full resync triggered: %d groups queued", count)
 
     # Geschaetzte Dokumente zaehlen
     estimated_docs = (

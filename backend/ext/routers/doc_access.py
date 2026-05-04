@@ -12,14 +12,13 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from ext.auth import current_admin_user
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.models import User
-
 from ext.routers.audit import get_audit_context
 from ext.schemas.doc_access import ResyncResponse
 from ext.schemas.doc_access import SyncStatusResponse
 from ext.services.doc_access import get_sync_status
 from ext.services.doc_access import trigger_full_resync
+from onyx.db.engine.sql_engine import get_session
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.doc_access")
 
@@ -45,8 +44,8 @@ def resync_all_groups(
                     details={"groups_queued": result["groups_queued"]},
                     audit_ctx=audit_ctx)
     logger.info(
-        f"[EXT-ACCESS] Resync triggered by admin: "
-        f"{result['groups_queued']} groups"
+        "[EXT-ACCESS] Resync triggered by admin: %d groups",
+        result["groups_queued"],
     )
     return ResyncResponse(
         status="started",

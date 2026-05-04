@@ -15,7 +15,6 @@ from ext.schemas.prompts import PromptPreviewResponse
 from ext.schemas.prompts import PromptResponse
 from ext.schemas.prompts import PromptUpdate
 
-
 # --- Schema Validation Tests ---
 
 
@@ -216,8 +215,8 @@ class TestPromptCache:
         prompt_manager._cache_timestamp = 0.0
 
     def test_invalidate_resets_timestamp(self) -> None:
-        from ext.services.prompt_manager import invalidate_cache
         from ext.services import prompt_manager
+        from ext.services.prompt_manager import invalidate_cache
 
         prompt_manager._cache_timestamp = time.monotonic()
         invalidate_cache()

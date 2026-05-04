@@ -15,19 +15,17 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from ext.auth import current_admin_user
-from onyx.db.engine.sql_engine import get_session
-from onyx.db.models import User
-
 from ext.routers.audit import get_audit_context
-from ext.services.audit import log_audit_event
-
 from ext.schemas.branding import BrandingConfigResponse
 from ext.schemas.branding import BrandingConfigUpdate
+from ext.services.audit import log_audit_event
+from ext.services.branding import delete_logo
 from ext.services.branding import get_branding_config
 from ext.services.branding import get_logo
 from ext.services.branding import update_branding_config
-from ext.services.branding import delete_logo
 from ext.services.branding import update_logo
+from onyx.db.engine.sql_engine import get_session
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.branding")
 

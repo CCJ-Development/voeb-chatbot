@@ -18,9 +18,8 @@ from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from onyx.db.models import User
-
 from ext.models.audit import ExtAuditLog
+from onyx.db.models import User
 
 logger = logging.getLogger("ext.audit")
 

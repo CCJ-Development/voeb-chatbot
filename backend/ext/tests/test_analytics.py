@@ -149,6 +149,7 @@ class TestSchemas:
 class TestRouterDateValidation:
     def test_from_date_after_to_date_raises(self) -> None:
         from fastapi import HTTPException
+
         from ext.routers.analytics import api_analytics_summary
 
         with pytest.raises(HTTPException) as exc_info:
@@ -162,6 +163,7 @@ class TestRouterDateValidation:
 
     def test_export_max_365_days(self) -> None:
         from fastapi import HTTPException
+
         from ext.routers.analytics import api_analytics_export
 
         with pytest.raises(HTTPException) as exc_info:
